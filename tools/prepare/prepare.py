@@ -326,8 +326,7 @@ def cmd_photo(image, out, panel, boxes):
     img = cv2.imread(str(image))
     if img is None:
         raise SystemExit(f"cannot read {image}")
-    img = fit(img)
-    h, w = img.shape[:2]
+    h, w = img.shape[:2]  # photos keep full size: breaker ratings and labels are small
     clean, blurred = anonymise(img, panel, extra=manual_boxes(boxes, image.name, w, h))
     out.parent.mkdir(parents=True, exist_ok=True)
     cv2.imwrite(str(out), clean, [cv2.IMWRITE_JPEG_QUALITY, 92])  # OpenCV writes no EXIF

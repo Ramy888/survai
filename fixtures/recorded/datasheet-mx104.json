@@ -1,0 +1,417 @@
+{
+  "check": "datasheet",
+  "device": "Juniper MX104",
+  "seconds": 34.86561025,
+  "request": {
+    "model": "muse-spark-1.3",
+    "reasoning": {
+      "effort": "low"
+    },
+    "tools": [
+      {
+        "type": "web_search"
+      }
+    ],
+    "input": "Look up the official datasheet or hardware guide for the Juniper MX104 router. Reply with only a JSON object: {\"height_u\": number, \"depth_mm\": number, \"power_w_typical\": number|null, \"power_w_max\": number, \"feed_types\": [\"AC\"|\"DC\"], \"feed_count\": number, \"breaker_rating_a\": number|null, \"airflow\": string, \"weight_kg\": number, \"sources\": [{\"url\": string, \"title\": string}]}. Use null when the source does not say."
+  },
+  "response": {
+    "top_logprobs": 0,
+    "temperature": 1,
+    "top_p": 1,
+    "service_tier": "auto",
+    "model": "muse-spark-1.3",
+    "reasoning": {
+      "effort": "low"
+    },
+    "background": false,
+    "tools": [
+      {
+        "type": "web_search"
+      }
+    ],
+    "tool_choice": "auto",
+    "truncation": "disabled",
+    "id": "resp_6ae090507396cd44f5204714",
+    "object": "response",
+    "status": "completed",
+    "created_at": 1793101904,
+    "completed_at": 1793101937,
+    "error": null,
+    "incomplete_details": null,
+    "output": [
+      {
+        "type": "reasoning",
+        "id": "rs_6ae090507396cd44f5204714:rs_c6593507-6124-44f3-af4c-0c50912dbaa0",
+        "summary": [],
+        "status": "completed"
+      },
+      {
+        "type": "message",
+        "id": "rs_69bdcc91-e136-4182-af7b-41fb3cf23ed0",
+        "role": "assistant",
+        "content": [
+          {
+            "type": "output_text",
+            "text": "I'll pull the official MX104 datasheet to assemble its hardware specs.",
+            "annotations": [],
+            "logprobs": []
+          }
+        ],
+        "phase": "commentary",
+        "status": "completed"
+      },
+      {
+        "type": "web_search_call",
+        "id": "ws_call_f5544f2e-db94-4956-8cdf-4f3a3c3b1842",
+        "status": "completed",
+        "action": {
+          "type": "search",
+          "query": "Juniper MX104 datasheet official"
+        }
+      },
+      {
+        "type": "reasoning",
+        "id": "rs_6ae090507396cd44f5204714:rs_d3b7f978-37a6-4aec-ae62-ecb425690db1",
+        "summary": [],
+        "status": "completed"
+      },
+      {
+        "type": "message",
+        "id": "rs_93c39d9d-b16c-4553-9f6f-588f5ca10fee",
+        "role": "assistant",
+        "content": [
+          {
+            "type": "output_text",
+            "text": "I found the official documentation. Now I'll open the hardware guide to extract the exact specs.",
+            "annotations": [],
+            "logprobs": []
+          }
+        ],
+        "phase": "commentary",
+        "status": "completed"
+      },
+      {
+        "type": "web_search_call",
+        "id": "ws_call_c6583798-ee1f-460f-8e47-46851d5bc976",
+        "status": "completed",
+        "action": {
+          "type": "search",
+          "query": "site:juniper.net MX104 hardware guide physical specifications power"
+        }
+      },
+      {
+        "type": "web_search_call",
+        "id": "ws_call_149f8fd5-e6a1-4943-bb26-fbb34d5274f0",
+        "status": "completed",
+        "action": {
+          "type": "search",
+          "query": "Juniper MX104 hardware documentation power consumption specifications"
+        }
+      },
+      {
+        "type": "reasoning",
+        "id": "rs_6ae090507396cd44f5204714:rs_5ffaacad-b563-400f-9e52-dc6d1968a353",
+        "summary": [],
+        "status": "completed"
+      },
+      {
+        "type": "web_search_call",
+        "id": "ws_call_d85de9b7-e687-4279-a14d-2eb35a2b191b",
+        "status": "completed",
+        "action": {
+          "type": "search",
+          "query": "site:www.juniper.net/documentation MX104 chassis dimensions weight power"
+        }
+      },
+      {
+        "type": "web_search_call",
+        "id": "ws_call_ff27e1ba-b9e0-4266-b2d0-88aedbe9c1b9",
+        "status": "completed",
+        "action": {
+          "type": "search",
+          "query": "\"MX104\" site:juniper.net/documentation \"Physical Specifications\""
+        }
+      },
+      {
+        "type": "web_search_call",
+        "id": "ws_call_aaef602f-1a72-4ae4-8a44-7a9558caee84",
+        "status": "completed",
+        "action": {
+          "type": "search",
+          "query": "MX104 3D Universal Edge Router Hardware Guide Juniper documentation"
+        }
+      },
+      {
+        "type": "reasoning",
+        "id": "rs_6ae090507396cd44f5204714:rs_d31d2fb3-e0f2-4573-af5c-039465029df4",
+        "summary": [],
+        "status": "completed"
+      },
+      {
+        "type": "message",
+        "id": "rs_5b695e5d-f07a-4f23-8a05-26727353a5e1",
+        "role": "assistant",
+        "content": [
+          {
+            "type": "output_text",
+            "text": "Official library results are thin, so I'll broaden the search for chassis and power specifications.",
+            "annotations": [],
+            "logprobs": []
+          }
+        ],
+        "phase": "commentary",
+        "status": "completed"
+      },
+      {
+        "type": "web_search_call",
+        "id": "ws_call_dad8a05a-653b-45b0-8b3a-f14aa0ca2959",
+        "status": "completed",
+        "action": {
+          "type": "search",
+          "query": "Juniper MX104 specs dimensions weight power juniper.net"
+        }
+      },
+      {
+        "type": "reasoning",
+        "id": "rs_6ae090507396cd44f5204714:rs_22305692-2393-4102-990d-be7d95c04f7c",
+        "summary": [],
+        "status": "completed"
+      },
+      {
+        "type": "web_search_call",
+        "id": "ws_call_318b31ac-a6f1-41b2-abf7-c7a8f23cb3eb",
+        "status": "completed",
+        "action": {
+          "type": "open_page",
+          "url": "https://www.juniper.net/assets/us/en/local/pdf/datasheets/1000597-en.pdf"
+        }
+      },
+      {
+        "type": "reasoning",
+        "id": "rs_6ae090507396cd44f5204714:rs_d99d9d2d-ce38-43e9-82ce-6cb9209b2237",
+        "summary": [],
+        "status": "completed"
+      },
+      {
+        "type": "web_search_call",
+        "id": "ws_call_b5dc0f2e-1c86-4986-9e9f-e9ee8c2c3465",
+        "status": "completed",
+        "action": {
+          "type": "search",
+          "query": "\"1000446\" MX104 datasheet pdf Juniper"
+        }
+      },
+      {
+        "type": "web_search_call",
+        "id": "ws_call_75bf6b22-be9a-4017-8c85-579528c2444d",
+        "status": "completed",
+        "action": {
+          "type": "open_page",
+          "url": "https://device.report/m/0279a96c6c07bd549944edd4996c4c7ef427ab5bed3e97c578c3af090225d282.pdf"
+        }
+      },
+      {
+        "type": "reasoning",
+        "id": "rs_6ae090507396cd44f5204714:rs_f80163aa-67ed-494a-8bd5-fe7182d326c4",
+        "summary": [],
+        "status": "completed"
+      },
+      {
+        "type": "message",
+        "id": "rs_4e66fdfc-6b77-422e-9de4-97b1d4928e58",
+        "role": "assistant",
+        "content": [
+          {
+            "type": "output_text",
+            "text": "I've gathered core specs from the datasheet. Now I'll verify power feed details and airflow requirements.",
+            "annotations": [],
+            "logprobs": []
+          }
+        ],
+        "phase": "commentary",
+        "status": "completed"
+      },
+      {
+        "type": "web_search_call",
+        "id": "ws_call_603100df-3de0-4fd0-966b-63c19aa24552",
+        "status": "completed",
+        "action": {
+          "type": "search",
+          "query": "MX104 DC power specifications breaker circuit breaker rating Juniper"
+        }
+      },
+      {
+        "type": "web_search_call",
+        "id": "ws_call_b62988fe-0a43-4c55-aa86-d76dde154d1a",
+        "status": "completed",
+        "action": {
+          "type": "search",
+          "query": "MX104 hardware guide depth power supply slots two AC DC"
+        }
+      },
+      {
+        "type": "reasoning",
+        "id": "rs_6ae090507396cd44f5204714:rs_ac4b2f76-eabd-4765-8e7d-2a1d12df9d0d",
+        "summary": [],
+        "status": "completed"
+      },
+      {
+        "type": "web_search_call",
+        "id": "ws_call_abea7837-dcc8-47d8-8443-dcf46cf66598",
+        "status": "completed",
+        "action": {
+          "type": "open_page",
+          "url": "https://content.etilize.com/User-Manual/1026674737.pdf"
+        }
+      },
+      {
+        "type": "reasoning",
+        "id": "rs_6ae090507396cd44f5204714:rs_9dba2c8a-8a27-4fea-a975-0c69c85d0682",
+        "summary": [],
+        "status": "completed"
+      },
+      {
+        "type": "web_search_call",
+        "id": "ws_call_616b7581-4df7-4f28-8a36-a8bae56bf531",
+        "status": "completed",
+        "action": {
+          "type": "find_in_page",
+          "url": "https://content.etilize.com/User-Manual/1026674737.pdf",
+          "pattern": "Physical Specifications"
+        }
+      },
+      {
+        "type": "web_search_call",
+        "id": "ws_call_25974105-7c34-458a-9062-39311af068ea",
+        "status": "completed",
+        "action": {
+          "type": "open_page",
+          "url": "https://content.etilize.com/User-Manual/1026674737.pdf"
+        }
+      },
+      {
+        "type": "reasoning",
+        "id": "rs_6ae090507396cd44f5204714:rs_b6b4d276-b5a4-464d-b63a-ecafa42824bd",
+        "summary": [],
+        "status": "completed"
+      },
+      {
+        "type": "message",
+        "id": "rs_b829e2fb-2e9a-4bb5-b3a1-f12c1d6aa6b0",
+        "role": "assistant",
+        "content": [
+          {
+            "type": "output_text",
+            "text": "The hardware guide confirms the physical dimensions. Next I'll check power and airflow sections.",
+            "annotations": [],
+            "logprobs": []
+          }
+        ],
+        "phase": "commentary",
+        "status": "completed"
+      },
+      {
+        "type": "web_search_call",
+        "id": "ws_call_364baea1-5b21-4b36-85cc-1740301229a2",
+        "status": "completed",
+        "action": {
+          "type": "find_in_page",
+          "url": "https://content.etilize.com/User-Manual/1026674737.pdf",
+          "pattern": "Power Consumption"
+        }
+      },
+      {
+        "type": "web_search_call",
+        "id": "ws_call_3ae6ef83-f812-4e16-af03-04787e31cc92",
+        "status": "completed",
+        "action": {
+          "type": "open_page",
+          "url": "https://content.etilize.com/User-Manual/1026674737.pdf"
+        }
+      },
+      {
+        "type": "reasoning",
+        "id": "rs_6ae090507396cd44f5204714:rs_537f21a1-1b41-4a02-a1a2-6c65a2a71519",
+        "summary": [],
+        "status": "completed"
+      },
+      {
+        "type": "web_search_call",
+        "id": "ws_call_a5784ae4-6106-4c87-aaf3-e612dc9f0769",
+        "status": "completed",
+        "action": {
+          "type": "find_in_page",
+          "url": "https://content.etilize.com/User-Manual/1026674737.pdf",
+          "pattern": "airflow"
+        }
+      },
+      {
+        "type": "web_search_call",
+        "id": "ws_call_c2df3148-8095-4a34-96a9-4611daffdbfe",
+        "status": "completed",
+        "action": {
+          "type": "open_page",
+          "url": "https://content.etilize.com/User-Manual/1026674737.pdf"
+        }
+      },
+      {
+        "type": "reasoning",
+        "id": "rs_6ae090507396cd44f5204714:rs_b8495305-eae4-40d7-9cba-59ccd87fc278",
+        "summary": [],
+        "status": "completed"
+      },
+      {
+        "type": "message",
+        "id": "msg_6bce35cd-9fda-480c-bd2d-7c8873122c33",
+        "role": "assistant",
+        "content": [
+          {
+            "type": "output_text",
+            "text": "{\"height_u\": 3.5, \"depth_mm\": 240, \"power_w_typical\": 600, \"power_w_max\": 800, \"feed_types\": [\"AC\", \"DC\"], \"feed_count\": 2, \"breaker_rating_a\": null, \"airflow\": \"side-to-side\", \"weight_kg\": 14.5, \"sources\": [{\"url\": \"https://content.etilize.com/User-Manual/1026674737.pdf\", \"title\": \"MX104 Universal Routing Platform Hardware Guide - Juniper Networks\"}, {\"url\": \"https://device.report/m/0279a96c6c07bd549944edd4996c4c7ef427ab5bed3e97c578c3af090225d282.pdf\", \"title\": \"MX104 3D Universal Edge Router Datasheet - Juniper Networks\"}]}",
+            "annotations": [],
+            "logprobs": []
+          }
+        ],
+        "status": "completed"
+      }
+    ],
+    "instructions": null,
+    "usage": {
+      "input_tokens": 342839,
+      "input_tokens_details": {
+        "cached_tokens": 212520
+      },
+      "output_tokens": 4125,
+      "output_tokens_details": {
+        "reasoning_tokens": 2555
+      },
+      "total_tokens": 346964
+    },
+    "parallel_tool_calls": true,
+    "store": true
+  },
+  "parsed": {
+    "height_u": 3.5,
+    "depth_mm": 240,
+    "power_w_typical": 600,
+    "power_w_max": 800,
+    "feed_types": [
+      "AC",
+      "DC"
+    ],
+    "feed_count": 2,
+    "breaker_rating_a": null,
+    "airflow": "side-to-side",
+    "weight_kg": 14.5,
+    "sources": [
+      {
+        "url": "https://content.etilize.com/User-Manual/1026674737.pdf",
+        "title": "MX104 Universal Routing Platform Hardware Guide - Juniper Networks"
+      },
+      {
+        "url": "https://device.report/m/0279a96c6c07bd549944edd4996c4c7ef427ab5bed3e97c578c3af090225d282.pdf",
+        "title": "MX104 3D Universal Edge Router Datasheet - Juniper Networks"
+      }
+    ]
+  }
+}

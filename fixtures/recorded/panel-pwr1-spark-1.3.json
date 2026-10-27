@@ -1,0 +1,166 @@
+{
+  "check": "panel",
+  "photo": "PWR1.jpg",
+  "seconds": 8.637830874999999,
+  "request": {
+    "model": "meta-models/muse-spark-open-1026",
+    "max_tokens": 12000,
+    "messages": [
+      {
+        "role": "user",
+        "content": [
+          {
+            "type": "text",
+            "text": "Photo of a power distribution box in a telecom equipment room. Count every breaker module you can see, even when its rating is unreadable (paper labels are blurred on purpose; that is expected). Give each one a position from left to right per row, and set rating_a to null when you cannot read it. Reply with only JSON: {\"boxes\": [{\"breakers\": [{\"position\": number, \"kind\": \"MCB|MCCB|RCD|isolator|unknown\", \"poles\": number|null, \"rating_a\": number|null, \"curve\": \"B|C|D|null\", \"dc\": true|false|null, \"looks_free\": true|false|null}]}], \"free_breakers\": number|null, \"readable\": \"all|some|none\", \"notes\": \"one sentence\"}. Use null when you cannot read it."
+          },
+          {
+            "type": "image_url",
+            "image_url": {
+              "url": "<image>"
+            }
+          }
+        ]
+      }
+    ]
+  },
+  "response": {
+    "top_logprobs": 0,
+    "temperature": 1,
+    "top_p": 1,
+    "service_tier": "auto",
+    "model": "muse-spark-1.3",
+    "reasoning": {
+      "effort": "low"
+    },
+    "background": false,
+    "tools": [],
+    "tool_choice": "auto",
+    "truncation": "disabled",
+    "id": "resp_6ae0918d7088955af0114f5d",
+    "object": "response",
+    "status": "completed",
+    "created_at": 1793102221,
+    "completed_at": 1793102221,
+    "error": null,
+    "incomplete_details": null,
+    "output": [
+      {
+        "type": "reasoning",
+        "id": "rs_6ae0918d7088955af0114f5d:rs_b62d36a3-6756-4752-8005-66922a872fe6",
+        "summary": [],
+        "status": "completed"
+      },
+      {
+        "type": "message",
+        "id": "msg_e19ed5a2-15bb-4f55-87a9-5d107573815a",
+        "role": "assistant",
+        "content": [
+          {
+            "type": "output_text",
+            "text": "{\"boxes\": [{\"breakers\": [{\"position\": 1, \"kind\": \"unknown\", \"poles\": 1, \"rating_a\": null, \"curve\": null, \"dc\": null, \"looks_free\": null}, {\"position\": 2, \"kind\": \"unknown\", \"poles\": 1, \"rating_a\": null, \"curve\": null, \"dc\": null, \"looks_free\": null}, {\"position\": 3, \"kind\": \"unknown\", \"poles\": 1, \"rating_a\": null, \"curve\": null, \"dc\": null, \"looks_free\": null}, {\"position\": 1, \"kind\": \"MCB\", \"poles\": 1, \"rating_a\": null, \"curve\": null, \"dc\": null, \"looks_free\": null}, {\"position\": 2, \"kind\": \"MCB\", \"poles\": 1, \"rating_a\": null, \"curve\": null, \"dc\": null, \"looks_free\": null}, {\"position\": 3, \"kind\": \"MCB\", \"poles\": 1, \"rating_a\": null, \"curve\": null, \"dc\": null, \"looks_free\": null}, {\"position\": 4, \"kind\": \"MCB\", \"poles\": 1, \"rating_a\": null, \"curve\": null, \"dc\": null, \"looks_free\": null}, {\"position\": 5, \"kind\": \"MCB\", \"poles\": 1, \"rating_a\": null, \"curve\": null, \"dc\": null, \"looks_free\": null}]}], \"free_breakers\": null, \"readable\": \"none\", \"notes\": \"Distant blurred view through closed cover prevents reading any ratings or determining spare status.\"}",
+            "annotations": [],
+            "logprobs": []
+          }
+        ],
+        "status": "completed"
+      }
+    ],
+    "instructions": null,
+    "usage": {
+      "input_tokens": 2637,
+      "input_tokens_details": {
+        "cached_tokens": 0
+      },
+      "output_tokens": 1631,
+      "output_tokens_details": {
+        "reasoning_tokens": 1238
+      },
+      "total_tokens": 4268
+    },
+    "parallel_tool_calls": true,
+    "store": true
+  },
+  "parsed": {
+    "boxes": [
+      {
+        "breakers": [
+          {
+            "position": 1,
+            "kind": "unknown",
+            "poles": 1,
+            "rating_a": null,
+            "curve": null,
+            "dc": null,
+            "looks_free": null
+          },
+          {
+            "position": 2,
+            "kind": "unknown",
+            "poles": 1,
+            "rating_a": null,
+            "curve": null,
+            "dc": null,
+            "looks_free": null
+          },
+          {
+            "position": 3,
+            "kind": "unknown",
+            "poles": 1,
+            "rating_a": null,
+            "curve": null,
+            "dc": null,
+            "looks_free": null
+          },
+          {
+            "position": 1,
+            "kind": "MCB",
+            "poles": 1,
+            "rating_a": null,
+            "curve": null,
+            "dc": null,
+            "looks_free": null
+          },
+          {
+            "position": 2,
+            "kind": "MCB",
+            "poles": 1,
+            "rating_a": null,
+            "curve": null,
+            "dc": null,
+            "looks_free": null
+          },
+          {
+            "position": 3,
+            "kind": "MCB",
+            "poles": 1,
+            "rating_a": null,
+            "curve": null,
+            "dc": null,
+            "looks_free": null
+          },
+          {
+            "position": 4,
+            "kind": "MCB",
+            "poles": 1,
+            "rating_a": null,
+            "curve": null,
+            "dc": null,
+            "looks_free": null
+          },
+          {
+            "position": 5,
+            "kind": "MCB",
+            "poles": 1,
+            "rating_a": null,
+            "curve": null,
+            "dc": null,
+            "looks_free": null
+          }
+        ]
+      }
+    ],
+    "free_breakers": null,
+    "readable": "none",
+    "notes": "Distant blurred view through closed cover prevents reading any ratings or determining spare status."
+  }
+}
