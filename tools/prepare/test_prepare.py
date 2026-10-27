@@ -84,6 +84,27 @@ class PaperOnRack(unittest.TestCase):
         self.assertEqual(prepare.paper_boxes(img), [])
 
 
+class SmallMarks(unittest.TestCase):
+    def test_finds_a_logo_sized_mark_on_a_dark_panel(self):
+        img = np.full((850, 478, 3), 20, np.uint8)
+        img[400:430, 200:222] = 200
+        boxes = prepare.mark_boxes(img)
+        self.assertEqual(len(boxes), 1)
+        x0, y0, x1, y1 = boxes[0]
+        self.assertTrue(x0 <= 200 and y0 <= 400 and x1 >= 222 and y1 >= 430)
+        self.assertLess((x1 - x0) * (y1 - y0), 60 * 60)  # just the mark, not the panel
+
+    def test_skips_large_bright_areas(self):
+        img = np.full((850, 478, 3), 20, np.uint8)
+        img[100:300, 100:300] = 200
+        self.assertEqual(prepare.mark_boxes(img), [])
+
+    def test_marks_ranges_are_switched_on_by_name(self):
+        self.assertTrue(prepare.marks_on({"14.8-20.2": "marks"}, 18.0))
+        self.assertFalse(prepare.marks_on({"14.8-20.2": "marks"}, 21.0))
+        self.assertEqual(prepare.manual_boxes({"14.8-20.2": "marks"}, 18.0, 100, 100), [])
+
+
 class Blur(unittest.TestCase):
     def test_changes_only_inside_boxes(self):
         img = np.random.default_rng(1).integers(0, 255, (100, 200, 3), dtype=np.uint8)

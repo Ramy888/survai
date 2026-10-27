@@ -13,6 +13,8 @@ Usage:
 Detection misses small text on low-resolution phone video, so every output is reviewed by eye. Anything
 missed goes in a boxes file: {"<frame time s, time range "a-b", or photo name>": [[x0, y0, x1, y1], ...]},
 fractions of the frame with the origin top-left, then the command is re-run. Clip times count from --start.
+For a clip, a range set to "marks" ({"14.8-20.2": "marks"}) blurs every small bright mark on a dark panel
+(logos, badges, label strips) in those seconds, so the box follows each logo instead of covering an area.
 """
 import argparse
 import json
@@ -31,6 +33,7 @@ from Foundation import NSData
 MAX_SIDE = 1280
 PAD = 0.15  # grow each detected box by 15% so edges of logos and faces are covered
 CLIP_HOLD = 6  # frames: reuse a box on neighbouring frames so a missed detection never flashes clear
+MARK_HOLD = 2  # small marks are found on nearly every frame; a longer hold smears them across a pan
 MAX_COVER = 0.4  # a key frame blurred over more than this shows nothing useful; take the next sharpest
 
 
@@ -74,9 +77,14 @@ def manual_boxes(boxes, key, width, height):
     if isinstance(key, str):
         rows = boxes.get(key, [])
     else:
-        rows = [b for k, v in boxes.items() if _covers(k, key) for b in v]
+        rows = [b for k, v in boxes.items() if isinstance(v, list) and _covers(k, key) for b in v]
     return [(math.floor(x0 * width), math.floor(y0 * height), math.ceil(x1 * width), math.ceil(y1 * height))
             for x0, y0, x1, y1 in rows]
+
+
+def marks_on(boxes, t):
+    """A range set to "marks" turns on small-mark blurring for those clip seconds."""
+    return any(v == "marks" and _covers(k, t) for k, v in boxes.items())
 
 
 def _covers(k, t):
@@ -131,6 +139,27 @@ def paper_boxes(bgr):
         inner = hsv[y:y + bh, x:x + bw, 2].mean()  # lit mesh panels pass the mask but average ~90
         if ring_px and ring / ring_px < 105 and inner > 140:
             found.append((max(0, x - 3), max(0, y - 3), min(w, x + bw + 3), min(h, y + bh + 3)))
+    return found
+
+
+def mark_boxes(bgr, lo=85, ring_max=70):
+    """Small bright marks on a dark panel: vendor emblems, badges, label strips (also cable tags).
+    Graphic logos are not text, so Vision misses them; used only on ranges the reviewer switches on."""
+    h, w = bgr.shape[:2]
+    v = cv2.cvtColor(bgr, cv2.COLOR_BGR2HSV)[..., 2]
+    mask = cv2.morphologyEx((v > lo).astype(np.uint8), cv2.MORPH_CLOSE, np.ones((3, 3), np.uint8))
+    n, _, stats, _ = cv2.connectedComponentsWithStats(mask)
+    found = []
+    for x, y, bw, bh, area in stats[1:n]:
+        if not 25 <= area <= 0.0025 * w * h or bw > 0.15 * w or bh > 0.06 * h or not 0.2 <= bw / bh <= 5:  # logo-sized only
+            continue
+        m = max(5, max(bw, bh) // 3)
+        X0, Y0, X1, Y1 = max(0, x - m), max(0, y - m), min(w, x + bw + m), min(h, y + bh + m)
+        win = v[Y0:Y1, X0:X1].astype(float)
+        ring = np.ones(win.shape, bool)
+        ring[y - Y0:y - Y0 + bh, x - X0:x - X0 + bw] = False
+        if win[ring].mean() < ring_max:
+            found.append((int(X0), int(Y0), int(X1), int(Y1)))
     return found
 
 
@@ -264,7 +293,8 @@ def cmd_clip(video, out, start=0.0, boxes=None):
         frame = fit(frame)
         h, w = frame.shape[:2]
         t = len(per_frame) / fps
-        per_frame.append([to_pixels(b, w, h) for b in detect(frame)] + paper_boxes(frame) + manual_boxes(boxes or {}, t, w, h))
+        marks = mark_boxes(frame) if marks_on(boxes or {}, t) else []
+        per_frame.append(([to_pixels(b, w, h) for b in detect(frame)] + paper_boxes(frame) + manual_boxes(boxes or {}, t, w, h), marks))
     cap.release()
 
     with tempfile.TemporaryDirectory() as tmp:
@@ -279,8 +309,9 @@ def cmd_clip(video, out, start=0.0, boxes=None):
             frame = fit(frame)
             if writer is None:
                 writer = cv2.VideoWriter(str(silent), cv2.VideoWriter_fourcc(*"mp4v"), fps, frame.shape[1::-1])
-            near = per_frame[max(0, i - CLIP_HOLD): i + CLIP_HOLD + 1]
-            writer.write(blur_boxes(frame, [b for boxes in near for b in boxes]))
+            held = [b for wide, _ in per_frame[max(0, i - CLIP_HOLD): i + CLIP_HOLD + 1] for b in wide]
+            held += [b for _, marks in per_frame[max(0, i - MARK_HOLD): i + MARK_HOLD + 1] for b in marks]
+            writer.write(blur_boxes(frame, held))
             i += 1
         cap.release()
         writer.release()
@@ -288,7 +319,7 @@ def cmd_clip(video, out, start=0.0, boxes=None):
         subprocess.run(["ffmpeg", "-v", "error", "-y", "-i", str(silent), "-ss", f"{skip / fps:.3f}", "-i", str(video), "-map", "0:v", "-map", "1:a?",
                         "-c:v", "libx264", "-crf", "23", "-pix_fmt", "yuv420p", "-c:a", "aac", "-map_metadata", "-1",
                         "-movflags", "+faststart", str(out)], check=True)
-    print(f"{i} frames, {sum(map(len, per_frame))} boxes -> {out}")
+    print(f"{i} frames, {sum(len(a) + len(b) for a, b in per_frame)} boxes -> {out}")
 
 
 def cmd_photo(image, out, panel, boxes):
