@@ -1,0 +1,34 @@
+/* The report sheet is paper: always the light palette, ruled cells, A4 when printed. */
+.report{padding:16px 0 48px;display:grid;gap:16px}
+.report-actions{display:flex;gap:10px;justify-content:flex-end;flex-wrap:wrap}
+.report-actions a{text-decoration:none}
+.sheet{--surface:#FFFFFF;--ink:#14191C;--muted:#56636B;--rule:#D9E0E2;--primary:#0B6770;--primary-soft:#E2F0F1;--cable:#12A9B4;
+  --approve:#1C7A3E;--approve-bg:#E3F2E7;--object:#B8261B;--object-bg:#FBE6E3;--question:#9A5B00;--question-bg:#FCEFD8;
+  background:#fff;color:#14191C;border:1px solid var(--rule);border-radius:6px;padding:20px 16px;font-size:.9rem;overflow-x:auto}
+.sheet-head{display:flex;justify-content:space-between;align-items:baseline;gap:12px;flex-wrap:wrap}
+.sheet-head h1{font-size:1.6rem}
+.sheet h2{font-size:1.05rem;margin:16px 0 6px}
+.form{width:100%;border-collapse:collapse;margin-top:12px}
+.form th,.form td{border:1px solid #9AA6AC;padding:6px 8px;text-align:left;vertical-align:top;overflow-wrap:anywhere}
+.form th{font:600 .78rem/1.25 var(--display);text-transform:uppercase;letter-spacing:.04em;background:#F2F4F4;width:34%}
+.form thead th{width:auto}
+.form caption{caption-side:top;text-align:left;font:600 1.05rem/1 var(--display);padding:14px 0 6px}
+.form .num{width:56px;white-space:nowrap}
+.chip{font:600 .72rem/1 var(--body);text-transform:uppercase;letter-spacing:.04em;padding:4px 6px;border-radius:6px;display:inline-block}
+.v-approve{background:var(--approve-bg);color:var(--approve)}
+.v-object,.v-unavailable{background:var(--object-bg);color:var(--object)}
+.v-question{background:var(--question-bg);color:var(--question)}
+.plan-fig{margin:0}
+.plan-fig svg{width:100%;height:auto;display:block;max-width:720px}
+.legend{display:flex;flex-wrap:wrap;gap:6px 14px;margin-top:8px;font-size:.8rem;color:var(--muted)}
+.legend i{display:inline-block;width:18px;border-top:3px solid var(--cable);vertical-align:middle;margin-right:4px}
+.legend .lg-power{border-top-style:dashed}
+.legend .lg-reserved{color:var(--primary)}
+@media print{
+  @page{size:A4;margin:14mm}
+  body{background:#fff}
+  .top,.actions,.no-print{display:none!important}
+  .wrap{max-width:none;padding:0}
+  .sheet{border:0;padding:0;overflow:visible;font-size:9.5pt}
+  .form,.plan-section{break-inside:avoid}
+}

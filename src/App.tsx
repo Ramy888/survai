@@ -4,8 +4,10 @@ import { Shell } from "./components/Shell";
 import { DeviceStep } from "./steps/DeviceStep";
 import { SurveyStep } from "./steps/SurveyStep";
 import { UploadStep } from "./steps/UploadStep";
+import { ReportPage } from "./report/ReportPage";
 
-const surveyIdFromPath = () => location.pathname.match(/^\/survey\/([0-9a-f-]{36})$/)?.[1] ?? null;
+const surveyIdFromPath = () => location.pathname.match(/^\/survey\/([0-9a-f-]{36})(\/report)?$/)?.[1] ?? null;
+const isReport = () => location.pathname.endsWith("/report");
 
 export function App() {
   const [id, setId] = useState(surveyIdFromPath);
@@ -15,6 +17,7 @@ export function App() {
     return () => removeEventListener("popstate", onPop);
   }, []);
 
+  if (id && isReport()) return <ReportPage id={id} />;
   if (!id) return <SurveyStep onCreated={(newId) => { history.pushState(null, "", `/survey/${newId}`); setId(newId); }} />;
   return <SurveyView id={id} />;
 }
@@ -48,8 +51,9 @@ function SurveyView({ id }: { id: string }) {
               </>
             ) : (
               <>
-                <div><h1>Check the layout</h1><p className="muted">{survey.quantity} × {survey.device_model}</p></div>
-                <p className="note ok">The draft layout is ready. The layout screen comes next.</p>
+                <div><h1>{survey.status === "layout_review" ? "Check the layout" : "The meeting"}</h1><p className="muted">{survey.quantity} × {survey.device_model}</p></div>
+                <p className="note ok">{survey.status === "layout_review" ? "The draft layout is ready. The layout screen comes next." : "The departments are meeting. The meeting screen comes next."}</p>
+                <a className="btn btn-secondary" href={`/survey/${survey.id}/report`}>Open the report</a>
               </>
             )}
           </>

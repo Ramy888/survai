@@ -2,6 +2,7 @@
 import { Hono } from "hono";
 import { z } from "zod";
 import { requirePasscode } from "../passcode";
+import { buildReport } from "../report";
 import type { AppEnv } from "../types";
 
 export const AGENTS = ["space", "power", "cooling", "execution", "room_manager", "transmission"] as const;
@@ -58,4 +59,9 @@ surveys.get("/:id", async (c) => {
   const device = spec && (({ survey_id: _, sources_json, confirmed, ...rest }) =>
     ({ ...rest, sources: JSON.parse(String(sources_json ?? "[]")), confirmed: confirmed === 1 }))(spec);
   return c.json({ ...survey, reps: reps.results.map((r) => r.agent), rooms: rooms.results.map((r) => r.role), device: device ?? null });
+});
+
+surveys.get("/:id/report", async (c) => {
+  const report = await buildReport(c.env.DB, c.req.param("id"));
+  return report ? c.json(report) : c.json({ error: "Survey not found" }, 404);
 });
