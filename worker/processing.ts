@@ -122,9 +122,10 @@ async function writeDraft(
     statements.push(db.prepare("DELETE FROM layout_items WHERE room_id = ?1 AND source = 'ai'").bind(r.roomId));
     for (const it of inv?.items ?? []) {
       const [w, d] = DEFAULT_SIZE[it.kind];
+      // A door's swing side is inferred later from the wall it sits on: "facing" is where it faces, not where it swings.
       const props = it.kind === "rack"
         ? { height_u: 42, free_blocks: [], is_target: false, off_limits: false, top_height_m: 2.0, contents: it.contents ?? "unknown", frames: it.frames, notes: it.notes ?? null }
-        : it.kind === "door" ? { swing_m: 0.9, side: it.facing ?? null, frames: it.frames } : { frames: it.frames, notes: it.notes ?? null };
+        : it.kind === "door" ? { swing_m: 0.9, side: null, frames: it.frames } : { frames: it.frames, notes: it.notes ?? null };
       statements.push(db.prepare(
         `INSERT INTO layout_items (id, room_id, kind, label, x_tiles, y_tiles, w_tiles, d_tiles, facing, props_json, source)
          VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, 'ai')`,

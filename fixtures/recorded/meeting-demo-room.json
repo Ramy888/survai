@@ -1,0 +1,238 @@
+{
+ "recorded": "2026-10-27, live local meeting on the demo room (run 2: answers given, 3 rounds in 63 s); reply texts per round and agent",
+ "replies": [
+  {
+   "round": 1,
+   "agent": "power",
+   "model": "muse-spark-open",
+   "text": "{\"verdict\":\"approve\",\"statement\":\"Power approved: two DC feeds have free 16A breakers available and the underfloor power route from R5 is fully separated from the overhead fibre route to the transmission room with adequate length and no stretch.\",\"items\":[{\"kind\":\"approved\",\"text\":\"2x DC feeds on free 16A breakers for Juniper MX104\",\"quantity\":2,\"unit\":null}],\"rule_refs\":[\"R3\",\"R11\"],\"evidence\":[{\"calc\":\"24fe80a0-86be-43f8-9a2e-150a13b86406\"},{\"calc\":\"9354e8e0-54ed-45bf-8bd9-9995db19f6e3\"}],\"question\":null}"
+  },
+  {
+   "round": 1,
+   "agent": "cooling",
+   "model": "muse-spark-open",
+   "text": "{\"verdict\":\"approve\",\"statement\":\"Added heat load for 1x MX104 is ~2729.6 BTU/h against 6000 BTU/h spare capacity, so R10 is satisfied. No A/C position conflict or airflow blockage identified for R5; request's query on adjacent rack ownership does not affect cooling.\",\"items\":[{\"kind\":\"measurement\",\"text\":\"Added heat load - 1x Juniper MX104\",\"quantity\":2729.6,\"unit\":\"BTU/h\"},{\"kind\":\"measurement\",\"text\":\"Spare A/C capacity in devices hall\",\"quantity\":6000,\"unit\":\"BTU/h\"}],\"rule_refs\":[\"R10\"],\"evidence\":[{\"calc\":\"dffba3b0-abbd-48de-b5e4-4824c86661b4\"}],\"question\":null}"
+  },
+  {
+   "round": 1,
+   "agent": "space",
+   "model": "muse-spark-open",
+   "text": "{\"verdict\":\"approve\",\"statement\":\"Target rack R5 has 21U free in block U10-U30, ample for the 6U required for the 1x Juniper MX104 under the two existing devices as requested. No new rack footprint is needed so R4 alignment and R5 facing are not triggered and aisle/space checks pass.\",\"items\":[{\"kind\":\"approved\",\"text\":\"1x Juniper MX104 (3.5U, needs 6U with spacing) in R5 free block U10-U30 (21U available)\",\"quantity\":1,\"unit\":null}],\"rule_refs\":[],\"evidence\":[{\"frame\":5},{\"frame\":13},{\"calc\":\"8bc7d828-08fb-4b3e-932c-9ba397635c29\"},{\"calc\":\"77c74a3a-a4f6-4a56-b748-18b0aa543ffc\"}],\"question\":null}"
+  },
+  {
+   "round": 1,
+   "agent": "room_manager",
+   "model": "muse-spark-open",
+   "text": "{\"verdict\":\"object\",\"statement\":\"Object per R1/R2: wooden stepladder left on floor (F1) and loose yellow jumpers plus white bundle atop rack (F5,13,22,30) must be removed/dressed and room left tidy. Noting request data: installation correctly targets R5 (10-30U) with door zone D1 clear per calc, and adjacent R3 is confirmed customer off-limits per engineer and must not be used.\",\"items\":[],\"rule_refs\":[\"R1\",\"R2\",\"R6\",\"R7\"],\"evidence\":[{\"frame\":1},{\"frame\":5},{\"frame\":13},{\"frame\":22},{\"frame\":30},{\"calc\":\"77c74a3a-a4f6-4a56-b748-18b0aa543ffc\"}],\"question\":null}"
+  },
+  {
+   "round": 1,
+   "agent": "execution",
+   "model": "muse-spark-open",
+   "text": "{\"verdict\":\"approve\",\"statement\":\"R5 target free block U10-30 (21U) accommodates 1× Juniper MX104 (3.5U) with R8 2U clearance - 6U needed - confirmed by calc. New cables exit from rack top onto overhead ladder L1 (F1,18,22 / 2.6m high) and run north-south to transmission room Rack 40 per request, not using off-limits customer rack R3.\",\"items\":[{\"kind\":\"approved\",\"text\":\"Install 1× Juniper MX104 in R5 within free block U10-30 (3.5U + 2U top clearance)\",\"quantity\":1,\"unit\":null},{\"kind\":\"material\",\"text\":\"Single-mode fiber via overhead ladder to Rack 40 transmission room\",\"quantity\":2,\"unit\":\"pcs\"},{\"kind\":\"material\",\"text\":\"DC power 2 feeds from wall box P1 to free 16A breakers pos.3-4\",\"quantity\":2,\"unit\":\"feeds\"},{\"kind\":\"measurement\",\"text\":\"Overhead run on ladder L1 to room exit\",\"quantity\":2.75,\"unit\":\"m\"},{\"kind\":\"measurement\",\"text\":\"Total estimated cable length incl. drops/slack\",\"quantity\":5,\"unit\":\"m\"}],\"rule_refs\":[\"R8\",\"R9\"],\"evidence\":[{\"calc\":\"8bc7d828-08fb-4b3e-932c-9ba397635c29\"},{\"frame\":1},{\"frame\":18},{\"frame\":22},{\"calc\":\"a5dfec5a-af6e-4223-8143-ffc2789b0d0d\"},{\"calc\":\"a2a0909e-b2d1-4bea-8b7b-b7e02d18f5f7\"}],\"question\":null}"
+  },
+  {
+   "round": 1,
+   "agent": "lead",
+   "model": "muse-wonder-1.0",
+   "text": "{\"round\": 1, \"placement\": {\"target\": \"rack:R5\", \"reason\": \"All placement-specific departments approve R5: its U10-U30 free block provides 21U for the 6U required under R8, cooling spare capacity passes R10, and two DC feeds are available under R11. R3 is off-limits and no other rack has a suitable free block, so no new reserved rack is needed.\"}, \"propose_items\": [], \"conflicts\": [{\"agents\": [\"room_manager\", \"cooling\", \"execution\", \"power\", \"space\"], \"resolution\": \"Placement in R5 is retained because the room manager's R1/R2 objection concerns housekeeping, not rack suitability. The wooden stepladder must be removed and the loose yellow jumpers and white bundle dressed or removed before installation, with the room left tidy; this outstanding objection prevents final closure this round.\"}], \"summary\": \"The Juniper MX104 is placed in R5, supported by passing space, cooling, power, and execution checks and the existing underfloor power and overhead fibre routes. The room manager's housekeeping objection remains outstanding and must be cleared before installation. Placement therefore proceeds to another round.\", \"next\": \"another_round\"}"
+  },
+  {
+   "round": 2,
+   "agent": "cooling",
+   "model": "muse-spark-open",
+   "text": "{\"verdict\":\"approve\",\"statement\":\"Cooling approves per R10: the 1x Juniper MX104 adds 2729.6 BTU/h, well within the confirmed 6000 BTU/h spare A/C capacity with margin remaining. This aligns with execution, power and space approvals for R5 placement; the room manager's R1/R2 housekeeping objection (stepladder/loose fibers) does not affect thermal compliance.\",\"items\":[],\"rule_refs\":[\"R10\"],\"evidence\":[{\"calc\":\"f6722efa-2b0c-4fbb-b50d-8d3f19f1e648\"}],\"question\":null}"
+  },
+  {
+   "round": 2,
+   "agent": "power",
+   "model": "muse-spark-open",
+   "text": "{\"verdict\":\"approve\",\"statement\":\"Power approves: R11 is satisfied by calc with 2x DC feeds requiring 2 breakers matched to 2x free 16A DC breakers at positions 3 and 4. R3 is also satisfied as DC power from the wall box/board P1 runs via its separate conduits/underfloor route and does not share the overhead ladder L1 (F1,18,22) used for single-mode fibre to Rack 40, with no cable stretch; we concur with cooling, execution and space that R5 is suitable and note the room manager's R1/R2 housekeeping objection must still be cleared.\",\"items\":[{\"kind\":\"approved\",\"text\":\"1x Juniper MX104 in R5 (U10-30) dual DC feed\",\"quantity\":1,\"unit\":null},{\"kind\":\"spec\",\"text\":\"Free DC breakers 16A positions 3 and 4 for dual feeds\",\"quantity\":2,\"unit\":null}],\"rule_refs\":[\"R11\",\"R3\"],\"evidence\":[{\"calc\":\"ed64e0d5-d714-4184-82b0-d0a2e46abe41\"},{\"frame\":26},{\"frame\":1},{\"frame\":18},{\"frame\":22}],\"question\":null}"
+  },
+  {
+   "round": 2,
+   "agent": "execution",
+   "model": "muse-spark-open",
+   "text": "{\"verdict\":\"approve\",\"statement\":\"R8 passes: R5 provides 21U in U10-U30 for the 6U required (3.5U device + 2U clearance) under the two existing devices per request. R9 passes: new single-mode fiber and DC exit from top of R5 to overhead ladder L1 to transmission Rack 40 per surveyed route, consistent with power's separated overhead fibre route; noting room manager's R1/R2 housekeeping must be cleared before install with no impact on fit.\",\"items\":[{\"kind\":\"approved\",\"text\":\"1x Juniper MX104 in R5 block U10-U30 (3.5U + 2U clearance = 6U)\",\"quantity\":1,\"unit\":\"pcs\"},{\"kind\":\"material\",\"text\":\"Single-mode fiber patch cords to Rack 40\",\"quantity\":2,\"unit\":\"pcs\"},{\"kind\":\"measurement\",\"text\":\"Vertical exit from top of R5 (2.0m) to ladder L1 (2.6m)\",\"quantity\":0.6,\"unit\":\"m\"}],\"rule_refs\":[\"R8\",\"R9\"],\"evidence\":[{\"calc\":\"dd9eb940-ff79-4104-acc9-21291f5493a3\"},{\"frame\":1},{\"frame\":22}],\"question\":null}"
+  },
+  {
+   "round": 2,
+   "agent": "space",
+   "model": "muse-spark-open",
+   "text": "{\"verdict\":\"approve\",\"statement\":\"Space concurs with cooling, execution and power: R5 free block U10-30 provides 21U for the 6U required (3.5U + clearance) per calc and D1 door zone remains clear per calc with no new floor rack needed, so R4/R5 are not triggered and existing rows R1/R3/R5 (east) and R2/R4/R6 (west) remain correctly aligned and facing. I support the room manager's outstanding R1/R2 housekeeping (stepladder/jumpers tidy) as a pre-install task that does not affect space, and confirm off-limits R3 adjacent to R5 will not be used per engineer.\",\"items\":[{\"kind\":\"approved\",\"text\":\"1x Juniper MX104 in existing rack R5 free block U10-30 (21U available, 6U required incl. 2U clearance)\",\"quantity\":1,\"unit\":null}],\"rule_refs\":[\"R4\",\"R5\",\"R8\",\"R6\"],\"evidence\":[{\"calc\":\"dd9eb940-ff79-4104-acc9-21291f5493a3\"},{\"calc\":\"e94018bd-58d7-40a5-b330-f9a584105482\"},{\"frame\":1},{\"frame\":5}],\"question\":null}"
+  },
+  {
+   "round": 2,
+   "agent": "room_manager",
+   "model": "muse-spark-open",
+   "text": "{\"verdict\":\"object\",\"statement\":\"I note cooling, power, space and execution approvals for placement in R5 and confirm per engineer clarification that off-limits customer rack R3 will not be used, with door zone R6 clear. I maintain objection under R1/R2 due to the wooden stepladder left on the floor (F1) and loose yellow jumpers/white bundle atop racks (F5,13,22,30) which must be removed/dressed and the room left tidy before installation.\",\"items\":[],\"rule_refs\":[\"R1\",\"R2\"],\"evidence\":[{\"frame\":1},{\"frame\":5},{\"frame\":13},{\"frame\":22},{\"frame\":30}],\"question\":null}"
+  },
+  {
+   "round": 2,
+   "agent": "lead",
+   "model": "muse-wonder-1.0",
+   "text": "{\"round\": 2, \"placement\": {\"target\": \"rack:R5\", \"reason\": \"R5 is the engineer target rack with a 21U free block U10-U30 satisfying R8 for the 6U required, with cooling R10, power R11/R3 and space R6/R4/R5 all approving; off-limits R3 is not used and no new rack is required.\"}, \"propose_items\": [{\"kind\": \"cable_path\", \"props\": {\"cable_type\": \"fibre\", \"route\": \"overhead\", \"points\": [[1.3, 8.3], [4.4, 8.3], [4.4, 2.0], [4.4, 0.0]], \"leaves_room\": true}}, {\"kind\": \"cable_path\", \"props\": {\"cable_type\": \"power\", \"route\": \"underfloor\", \"points\": [[1.3, 8.3], [1.3, 10.5], [4.0, 10.5], [4.0, 11.7]], \"leaves_room\": false}}], \"conflicts\": [{\"agents\": [\"room_manager\", \"cooling\", \"execution\", \"power\", \"space\"], \"resolution\": \"Placement is resolved in favour of the cooling, execution, power and space approvals for R5. The room manager's R1/R2 objection is not a rejection of R5 itself, as confirmed in their statement, but a pre-install housekeeping requirement to remove the stepladder and dress/remove loose jumpers and leave the room tidy; placement can be fixed now while that objection remains outstanding before installation.\"}], \"summary\": \"The device is placed in existing rack R5, whose U10-U30 block meets the space requirement with thermal, power and routing compliance confirmed. Fibre is routed overhead via ladder L1 out of the room and DC power separately underfloor from P1, keeping the routes separated. The room manager's housekeeping objection remains to be cleared before installation, so a further round is required.\", \"next\": \"another_round\"}"
+  },
+  {
+   "round": 2,
+   "agent": "lead",
+   "model": "muse-wonder-1.0",
+   "text": "{\"round\": 2, \"placement\": {\"target\": \"rack:R5\", \"reason\": \"R8 calc passes: R5 free U10-U30 gives 21U for 6U needed (3.5U device + clearance). Cooling (R10), power (R11/R3) and space (R6) approve R5; off-limits R3 is not used.\"}, \"propose_items\": [{\"kind\": \"cable_path\", \"x_tiles\": 1.4, \"y_tiles\": 8.3, \"props\": {\"cable_type\": \"fibre\", \"route\": \"overhead\", \"points\": [[1.4, 8.3], [4.4, 8.3], [4.4, 11.0]], \"leaves_room\": true}}, {\"kind\": \"cable_path\", \"x_tiles\": 1.4, \"y_tiles\": 8.3, \"props\": {\"cable_type\": \"power\", \"route\": \"underfloor\", \"points\": [[1.4, 8.3], [1.4, 11.0], [4.0, 11.7]], \"leaves_room\": false}}], \"conflicts\": [{\"agents\": [\"room_manager\", \"cooling\", \"execution\", \"power\", \"space\"], \"resolution\": \"R5 placement stands on technical approvals; room manager's R1/R2 objection is retained unchanged as a pre-install housekeeping condition (remove stepladder, dress loose jumpers) and does not change placement.\"}], \"summary\": \"Device placed in existing rack R5, which satisfies space, cooling and power calculations. Fibre uses the overhead ladder separately from the underfloor DC route from P1. Room manager objection remains outstanding pending housekeeping, so another round is required.\", \"next\": \"another_round\"}"
+  },
+  {
+   "round": 3,
+   "agent": "cooling",
+   "model": "muse-spark-open",
+   "text": "{\"verdict\":\"approve\",\"statement\":\"Cooling approves: R10 passes per calc with 2729.6 BTU/h added heat within 6000 BTU/h spare capacity for 1x MX104 in R5, with no A/C positions blocked and airflow maintained. I concur with execution, power and space on R5 suitability and note the room manager's R1/R2 housekeeping objection remains as a pre-install condition with no impact on cooling.\",\"items\":[],\"rule_refs\":[\"R10\"],\"evidence\":[{\"calc\":\"85134318-6a5c-4627-85c2-9b08ffa825e7\"}],\"question\":null}"
+  },
+  {
+   "round": 3,
+   "agent": "space",
+   "model": "muse-spark-open",
+   "text": "{\"verdict\":\"approve\",\"statement\":\"Space approves: R8 calc confirms R5 provides 21U in U10-U30 for the 6U required (3.5U device + clearance) under the two existing devices per surveyed route, with door aisle R6 clear, and no new rack is required so R4 alignment and R5 facing are satisfied by existing row. We concur with cooling, execution and power that R5 is suitable and that room manager's R1/R2 housekeeping (F1 stepladder, F5/13/22/30 jumpers) is a pre-install condition that does not affect space compliance and respects off-limits R3.\",\"items\":[{\"kind\":\"approved\",\"text\":\"placement of 1x Juniper MX104 in existing rack R5 U10-U30 (21U free for 6U required)\",\"quantity\":1,\"unit\":null},{\"kind\":\"measurement\",\"text\":\"door aisle zone R6 clear - no blocking\",\"quantity\":null,\"unit\":null}],\"rule_refs\":[\"R4\",\"R5\",\"R8\",\"R6\"],\"evidence\":[{\"frame\":1},{\"frame\":5},{\"frame\":13},{\"calc\":\"5f459332-b559-4e3e-9079-d0fc6fa64a10\"},{\"calc\":\"8d0bbd72-59bc-45e5-ad40-a33be3bfc481\"}],\"question\":null}"
+  },
+  {
+   "round": 3,
+   "agent": "room_manager",
+   "model": "muse-spark-open",
+   "text": "{\"verdict\":\"object\",\"statement\":\"I note Execution, Power, Cooling and Space approvals for R5 placement (U10-30 for 6U) and that the wall-box DC route is separated from the fibre overhead ladder, with D1 door zone clear per calc and off-limits R3 confirmed not to be used. I maintain objection per R1 for the wooden stepladder left on the floor in F1 and per R2 for loose yellow jumpers/white bundle atop racks in F5,13,22,30 which must be removed and dressed before install; R7 will be respected by prohibiting any use of R3.\",\"items\":[],\"rule_refs\":[\"R1\",\"R2\",\"R6\",\"R7\"],\"evidence\":[{\"frame\":1},{\"frame\":5},{\"frame\":22},{\"frame\":30},{\"calc\":\"8d0bbd72-59bc-45e5-ad40-a33be3bfc481\"}],\"question\":null}"
+  },
+  {
+   "round": 3,
+   "agent": "power",
+   "model": "muse-spark-open",
+   "text": "{\"verdict\":\"approve\",\"statement\":\"Power approves per R11: 2 DC feeds required for the 1x Juniper MX104 in R5 are matched by 2 free 16A DC breakers at P1 (positions 3-4). Per R3 the underfloor DC route from P1 to R5 is fully separated from the overhead single-mode fibre on L1 and is not stretched (5m with slack), concurring with cooling, space and execution approvals for R5; the room manager's outstanding R1/R2 housekeeping (stepladder/jumpers) does not impact power.\",\"items\":[{\"kind\":\"spec\",\"text\":\"Free DC breaker 16A at P1 for MX104 feeds\",\"quantity\":2,\"unit\":null},{\"kind\":\"material\",\"text\":\"DC power cable underfloor route P1 to R5\",\"quantity\":5,\"unit\":\"m\"},{\"kind\":\"approved\",\"text\":\"DC feeds for 1x Juniper MX104 in R5\",\"quantity\":2,\"unit\":null}],\"rule_refs\":[\"R3\",\"R11\"],\"evidence\":[{\"calc\":\"863cb4df-3161-4e80-b659-d480c4258fec\"},{\"calc\":\"fa37bce8-4aae-4930-b42e-02fd5fddbb21\"},{\"calc\":\"c1940878-d7c7-4c08-a17a-19614e75d308\"},{\"frame\":26}],\"question\":null}"
+  },
+  {
+   "round": 3,
+   "agent": "execution",
+   "model": "muse-spark-open",
+   "text": "{\"verdict\":\"approve\",\"statement\":\"Execution approves 1x Juniper MX104 in R5 per R8 calc (6U needed within 21U free block U10-30) with new cables exiting from the rack top per R9 (fibre to overhead ladder L1 to Rack 40, DC power via separate underfloor conduits from P1 per R3). We concur with cooling/power/space and support the room manager's outstanding R1/R2 housekeeping (stepladder F1 and loose jumpers/white bundle F5,13,22,30) as a pre-install condition that does not affect fit.\",\"items\":[{\"kind\":\"approved\",\"text\":\"Install 1x Juniper MX104 (3.5U) in R5 free block U10-30 (6U with 2U clearance)\",\"quantity\":1,\"unit\":null},{\"kind\":\"material\",\"text\":\"Single-mode fibre to transmission Rack 40 via overhead ladder L1\",\"quantity\":6,\"unit\":\"m\"},{\"kind\":\"material\",\"text\":\"2x DC power feeds from wall board P1 via separate underfloor route (not sharing L1)\",\"quantity\":5,\"unit\":\"m\"},{\"kind\":\"measurement\",\"text\":\"Ladder run utilized on L1 plus drops to rack top with no missing duct\",\"quantity\":3.42,\"unit\":\"m\"}],\"rule_refs\":[\"R8\",\"R9\"],\"evidence\":[{\"calc\":\"5f459332-b559-4e3e-9079-d0fc6fa64a10\"},{\"calc\":\"71689b12-8b47-4443-ac90-3674689f72f4\"},{\"calc\":\"c1940878-d7c7-4c08-a17a-19614e75d308\"},{\"frame\":1},{\"frame\":18},{\"frame\":22},{\"frame\":5}],\"question\":null}"
+  },
+  {
+   "round": 3,
+   "agent": "lead",
+   "model": "muse-wonder-1.0",
+   "text": "{\"round\": 3, \"placement\": {\"target\": \"rack:R5\", \"reason\": \"R5 is the engineer target rack with R8 pass: 6U needed within 21U free block U10-30; cooling R10, power R11 (2 DC feeds matched at P1), space, and execution all approve R5, respecting off-limits R3 and clear D1 door zone.\"}, \"propose_items\": [], \"conflicts\": [{\"agents\": [\"room_manager\", \"cooling\", \"execution\", \"power\", \"space\"], \"resolution\": \"R5 placement is accepted by cooling, execution, power and space; the room manager's R1/R2 objection for the F1 stepladder and loose jumpers/white bundle in F5,13,22,30 is retained unchanged as a pre-install housekeeping condition to be cleared before install, and does not change the R5 placement. Existing fibre overhead and power underfloor cable paths, separated per R3, are retained.\"}], \"summary\": \"All technical departments approve 1x Juniper MX104 in R5 (U10-30), with separated overhead fibre and underfloor DC power routes. The room manager's housekeeping objection remains outstanding as a pre-install condition, so a further round is required until it is cleared.\", \"next\": \"another_round\"}"
+  }
+ ],
+ "calcs": [
+  {
+   "id": "8bc7d828-08fb-4b3e-932c-9ba397635c29",
+   "round": 1,
+   "rule": "R8",
+   "pass": true
+  },
+  {
+   "id": "dffba3b0-abbd-48de-b5e4-4824c86661b4",
+   "round": 1,
+   "rule": "R10",
+   "pass": true
+  },
+  {
+   "id": "24fe80a0-86be-43f8-9a2e-150a13b86406",
+   "round": 1,
+   "rule": "R11",
+   "pass": true
+  },
+  {
+   "id": "77c74a3a-a4f6-4a56-b748-18b0aa543ffc",
+   "round": 1,
+   "rule": "R6",
+   "pass": true
+  },
+  {
+   "id": "9354e8e0-54ed-45bf-8bd9-9995db19f6e3",
+   "round": 1,
+   "rule": "R3",
+   "pass": true
+  },
+  {
+   "id": "a5dfec5a-af6e-4223-8143-ffc2789b0d0d",
+   "round": 1,
+   "rule": "LEN",
+   "pass": true
+  },
+  {
+   "id": "a2a0909e-b2d1-4bea-8b7b-b7e02d18f5f7",
+   "round": 1,
+   "rule": "LEN",
+   "pass": true
+  },
+  {
+   "id": "dd9eb940-ff79-4104-acc9-21291f5493a3",
+   "round": 2,
+   "rule": "R8",
+   "pass": true
+  },
+  {
+   "id": "f6722efa-2b0c-4fbb-b50d-8d3f19f1e648",
+   "round": 2,
+   "rule": "R10",
+   "pass": true
+  },
+  {
+   "id": "ed64e0d5-d714-4184-82b0-d0a2e46abe41",
+   "round": 2,
+   "rule": "R11",
+   "pass": true
+  },
+  {
+   "id": "e94018bd-58d7-40a5-b330-f9a584105482",
+   "round": 2,
+   "rule": "R6",
+   "pass": true
+  },
+  {
+   "id": "5f459332-b559-4e3e-9079-d0fc6fa64a10",
+   "round": 3,
+   "rule": "R8",
+   "pass": true
+  },
+  {
+   "id": "85134318-6a5c-4627-85c2-9b08ffa825e7",
+   "round": 3,
+   "rule": "R10",
+   "pass": true
+  },
+  {
+   "id": "863cb4df-3161-4e80-b659-d480c4258fec",
+   "round": 3,
+   "rule": "R11",
+   "pass": true
+  },
+  {
+   "id": "8d0bbd72-59bc-45e5-ad40-a33be3bfc481",
+   "round": 3,
+   "rule": "R6",
+   "pass": true
+  },
+  {
+   "id": "fa37bce8-4aae-4930-b42e-02fd5fddbb21",
+   "round": 3,
+   "rule": "R3",
+   "pass": true
+  },
+  {
+   "id": "71689b12-8b47-4443-ac90-3674689f72f4",
+   "round": 3,
+   "rule": "LEN",
+   "pass": true
+  },
+  {
+   "id": "c1940878-d7c7-4c08-a17a-19614e75d308",
+   "round": 3,
+   "rule": "LEN",
+   "pass": true
+  }
+ ],
+ "racks": [
+  "R1",
+  "R2",
+  "R3",
+  "R4",
+  "R5",
+  "R6"
+ ],
+ "frames": 30
+}

@@ -54,7 +54,7 @@ export function buildAgentPrompt(agent: Agent, input: MeetingInput) {
   ].join("\n\n");
 }
 
-function replySchema(agent: Agent, input: MeetingInput) {
+export function replySchema(agent: Agent, input: MeetingInput) {
   const owned = OWNED_RULES[agent];
   const frames = new Set(input.frames.map((f) => f.n));
   const calcs = new Set(input.calcs.map((c) => c.id));

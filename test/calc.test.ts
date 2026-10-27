@@ -110,3 +110,32 @@ describe("clearance arrows", () => {
     ]);
   });
 });
+
+describe("door swing side", () => {
+  it("opens away from the wall the door sits on", async () => {
+    const { swingSide } = await import("../worker/meeting");
+    const size = { w: 9, d: 12 };
+    expect(swingSide({ label: "D", x: 1.5, y: 0, w: 1.5, d: 0.2 }, size)).toBe("south");
+    expect(swingSide({ label: "D", x: 3, y: 11.8, w: 1.5, d: 0.2 }, size)).toBe("north");
+    expect(swingSide({ label: "D", x: 0, y: 5, w: 0.2, d: 1.5 }, size)).toBe("east");
+    expect(swingSide({ label: "D", x: 8.8, y: 5, w: 0.2, d: 1.5 }, size)).toBe("west");
+    expect(swingSide({ label: "D", x: 4, y: 4, w: 1, d: 0.2 }, null)).toBe("south");
+  });
+});
+
+describe("cable length leaving the room", () => {
+  it("is unknown, not 0 m, when the distance to the other room is unknown", async () => {
+    const { computeCalcs } = await import("../worker/meeting");
+    const path = (leaves_room: boolean) => ({ id: "p", kind: "cable_path", label: "fibre-1", x: 1, y: 1, w: null, d: null, facing: null,
+      props: { cable_type: "fibre", route: "overhead", points: [[1, 1], [4, 1]], leaves_room } });
+    const input = (leaves: boolean, inter: number | null) => ({
+      round: 1, quantity: 1, device: { model: "M", height_u: 1, power_w: 100, feed_type: "DC" as const, feed_count: 1, breaker_rating_a: null }, request: null,
+      rooms: [{ role: "devices_hall", size_tiles: null, facts: { ladder_height_m: 2.6, inter_room_m: inter }, observations: [], items: [path(leaves)] }],
+      frames: [], calcs: [], previous: [], lead: null, answers: [],
+    });
+    const len = (leaves: boolean, inter: number | null) => computeCalcs(input(leaves, inter)).find((c) => c.rule === "LEN")!;
+    expect(len(true, null)).toMatchObject({ pass: null, result: { missing: ["inter_room_m"] } });
+    expect(len(true, 10).result).toMatchObject({ length_m: 15 }); // (1.8 + 1.2 + 10) x 1.1 = 14.3 -> 15
+    expect(len(false, null).result).toMatchObject({ length_m: 4 }); // (1.8 + 1.2) x 1.1 = 3.3 -> 4
+  });
+});

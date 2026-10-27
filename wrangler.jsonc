@@ -13,6 +13,9 @@
     { "binding": "DB", "database_name": "survai", "database_id": "aa6238a0-88bd-49ba-98eb-863e42c331da", "migrations_dir": "migrations" }
   ],
   "r2_buckets": [{ "binding": "MEDIA", "bucket_name": "survai-media" }],
-  "workflows": [{ "name": "survai-process", "binding": "PROCESS", "class_name": "ProcessSurvey" }],
+  "workflows": [
+    { "name": "survai-process", "binding": "PROCESS", "class_name": "ProcessSurvey" },
+    { "name": "survai-round", "binding": "ROUND", "class_name": "MeetingRound" }
+  ],
   "vars": { "SAM_DAILY_CAP": "600", "MODEL_DAILY_CAP": "1500" }
 }
