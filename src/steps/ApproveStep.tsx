@@ -11,6 +11,8 @@ export function ApproveStep({ survey, onBack, onApproved }: { survey: Survey; on
   const [specs, setSpecs] = useState("");
   const [problems, setProblems] = useState<string[]>([]);
   const [busy, setBusy] = useState(false);
+  const [issue, setIssue] = useState(true);
+  const [links, setLinks] = useState<{ agent: string; token: string }[] | null>(null);
   const passcode = savedPasscode();
   useEffect(() => { getTimeline(survey.id).then(setT, (e: Error) => setProblems([e.message])); }, [survey.id]);
 
@@ -22,13 +24,40 @@ export function ApproveStep({ survey, onBack, onApproved }: { survey: Survey; on
   async function submit() {
     setBusy(true); setProblems([]);
     try {
-      await approveSurvey(survey.id, { tech_specs: specs, overrides: Object.fromEntries(blocking.map((f) => [f.id, reasons[f.id] ?? ""])) }, passcode);
-      onApproved();
+      const r = await approveSurvey(survey.id, { tech_specs: specs, issue_links: issue, overrides: Object.fromEntries(blocking.map((f) => [f.id, reasons[f.id] ?? ""])) }, passcode);
+      // Links are shown once; stay here until the engineer has copied them.
+      if (r.links.length) setLinks(r.links); else onApproved();
     } catch (e) {
       setProblems(e instanceof ApiError && e.problems?.length ? e.problems : [(e as Error).message]);
     } finally {
       setBusy(false);
     }
+  }
+
+  if (links) {
+    const url = (token: string) => `${location.origin}/s#${token}`;
+    const copy = (text: string) => void navigator.clipboard?.writeText(text);
+    return (
+      <Shell step={5} surveyCode={survey.site}
+        actions={<><button className="btn btn-secondary" onClick={() => copy(links.map((l) => `${NAME[l.agent] ?? l.agent}: ${url(l.token)}`).join("\n"))}>Copy all links</button>
+          <button className="btn btn-primary" onClick={onApproved}>Open the report</button></>}>
+        <div className="stack narrow">
+          <div>
+            <h1>Survey approved</h1>
+            <p className="muted">Send each department its link. The links are shown only once: copy them before you leave this page.</p>
+          </div>
+          <section className="panel links" aria-label="Sign-off links">
+            {links.map((l) => (
+              <div className="r" key={l.agent}>
+                <span className="tag">{TAG[l.agent] ?? l.agent}</span>
+                <div className="grow">{NAME[l.agent] ?? l.agent}<span className="sub mono" style={{ overflowWrap: "anywhere" }}>{url(l.token)}</span></div>
+                <button className="btn btn-secondary" onClick={() => copy(url(l.token))} aria-label={`Copy the ${NAME[l.agent] ?? l.agent} link`}>Copy</button>
+              </div>
+            ))}
+          </section>
+        </div>
+      </Shell>
+    );
   }
 
   return (
@@ -65,6 +94,10 @@ export function ApproveStep({ survey, onBack, onApproved }: { survey: Survey; on
             <textarea id="specs" rows={2} maxLength={1000} placeholder="Cable type, connectors, power cable size" value={specs} onChange={(e) => setSpecs(e.target.value)} />
           </div>
         </section>
+        <label className="r panel" style={{ minHeight: 0 }}>
+          <span className="grow">Create sign-off links for the {last?.findings.length ?? 0} departments<span className="sub">Each representative approves or objects from their phone.</span></span>
+          <input type="checkbox" className="check" checked={issue} onChange={(e) => setIssue(e.target.checked)} />
+        </label>
         {problems.length > 0 && <div className="note error" role="alert">{problems.map((p) => <p key={p}>{p}</p>)}</div>}
       </div>
     </Shell>

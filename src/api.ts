@@ -102,5 +102,24 @@ export const getTimeline = (id: string) => call<Timeline>(`/api/surveys/${id}/ti
 export const answerQuestion = (qid: string, answer: string, passcode: string) =>
   call<{ answered: string; next_round: number | null }>(`/api/questions/${qid}/answer`, withPasscode(passcode, "POST", { answer }));
 export const startMeeting = (id: string, passcode: string) => call<{ run: number }>(`/api/surveys/${id}/deliberate`, withPasscode(passcode, "POST"));
-export const approveSurvey = (id: string, body: { tech_specs: string; overrides: Record<string, string> }, passcode: string) =>
-  call<{ status: string }>(`/api/surveys/${id}/approve`, withPasscode(passcode, "POST", body));
+export const approveSurvey = (id: string, body: { tech_specs: string; overrides: Record<string, string>; issue_links: boolean }, passcode: string) =>
+  call<{ status: string; links: { agent: string; token: string }[] }>(`/api/surveys/${id}/approve`, withPasscode(passcode, "POST", body));
+
+export interface SignoffPage {
+  agent: string; site: string; project: string; device: string; status: string; verdict: string; statement: string;
+  override_reason: string | null; forced_rules: string[]; rules: { id: string; text: string | null }[];
+  items: { kind?: string; text: string; quantity?: number | null; unit?: string | null }[]; frames: number;
+  decision: { rep_name: string; decision: "approve" | "object"; comment: string | null; decided_at: string } | null;
+}
+const withToken = (token: string, method = "GET", body?: unknown): RequestInit => ({
+  method, headers: { "Content-Type": "application/json", "X-Signoff-Token": token }, body: body === undefined ? undefined : JSON.stringify(body),
+});
+export const getSignoff = (token: string) => call<SignoffPage>("/api/signoff", withToken(token));
+export const sendSignoff = (token: string, body: { rep_name: string; decision: "approve" | "object"; comment: string }) =>
+  call<{ decision: string }>("/api/signoff", withToken(token, "POST", body));
+/** Evidence images need the token header, so they load as blob URLs. */
+export async function signoffFrame(token: string, n: number) {
+  const res = await fetch(`/api/signoff/frames/${n}`, withToken(token));
+  if (!res.ok) throw new ApiError("Frame unavailable", res.status);
+  return URL.createObjectURL(await res.blob());
+}

@@ -16,7 +16,7 @@ type Report = {
   cable_lengths: { path: string; cable_type: string; route: string; length_m: number | null }[];
   objections: { agent: string; rules: string[]; override_reason: string | null }[];
   lead: { summary: string; placement: { target: string; reason: string }; model: string; fell_back: boolean } | null;
-  signoffs: { agent: string; rep_name: string; decision: string; decided_at: string }[];
+  signoffs: { agent: string; rep_name: string; decision: string; comment: string | null; decided_at: string }[];
   tech_specs: { text: string } | null;
   plan: { size: { w: number; d: number } | null; items: PlanItem[]; lengths: Record<string, number | null>; clearances: { to: string; m: number; from: [number, number]; at: [number, number] }[] };
 };
@@ -112,7 +112,8 @@ export function ReportPage({ id }: { id: string }) {
           <thead><tr><th>Department</th><th>Name</th><th>Decision</th><th>Date</th></tr></thead>
           <tbody>{r.statements.map((s) => {
             const so = r.signoffs.find((x) => x.agent === s.agent);
-            return <tr key={s.agent}><td><span className="tag">{TAG[s.agent] ?? s.agent}</span></td><td>{show(so?.rep_name)}</td><td>{show(so?.decision)}</td><td className="mono">{show(so?.decided_at?.slice(0, 10))}</td></tr>;
+            return <tr key={s.agent}><td><span className="tag">{TAG[s.agent] ?? s.agent}</span></td><td>{show(so?.rep_name)}</td>
+              <td className={so?.decision === "object" ? "objected" : undefined}>{show(so?.decision)}{so?.comment ? `: ${so.comment}` : ""}</td><td className="mono">{show(so?.decided_at?.slice(0, 10))}</td></tr>;
           })}</tbody>
         </table>
       </article>

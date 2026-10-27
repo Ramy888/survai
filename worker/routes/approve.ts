@@ -5,12 +5,14 @@ import { approveGate } from "../approve";
 import { requirePasscode } from "../passcode";
 import { transition, type State } from "../state";
 import type { AppEnv } from "../types";
+import { newToken, tokenHash } from "./signoff";
 
 export const approve = new Hono<AppEnv>();
 
 const Body = z.object({
   tech_specs: z.string().trim().max(1000).default(""),
   overrides: z.record(z.string().max(64), z.string().trim().max(500)).default({}),
+  issue_links: z.boolean().default(false),
 });
 
 approve.post("/:id/approve", requirePasscode, async (c) => {
@@ -40,6 +42,9 @@ approve.post("/:id/approve", requirePasscode, async (c) => {
   });
   if (problems.length) return c.json({ error: problems[0], problems }, 409);
 
+  // One sign-off link per department of the last round; the raw tokens are returned once and never stored.
+  const links = body.data.issue_links && c.env.SIGNOFF_ENABLED !== "0" ? findings.map((f) => ({ agent: f.agent, token: newToken() })) : [];
+  const hashes = await Promise.all(links.map((l) => tokenHash(l.token)));
   const overridden = findings.filter((f) => f.verdict === "object" || f.verdict === "unavailable");
   // The status move is conditional on the version the gate checked, so a layout saved in between (or a second
   // approve) loses: the batch is one transaction and the reasons only land when the survey is approved.
@@ -48,7 +53,9 @@ approve.post("/:id/approve", requirePasscode, async (c) => {
       .bind(transition(s.status, "approved"), JSON.stringify({ text: body.data.tech_specs }), id, s.layout_version),
     ...overridden.map((f) => db.prepare("UPDATE findings SET override_reason = ?1 WHERE id = ?2 AND (SELECT status FROM surveys WHERE id = ?3) = 'approved'")
       .bind(body.data.overrides[f.id].trim(), f.id, id)),
+    ...links.map((l, k) => db.prepare("INSERT INTO signoffs (survey_id, agent, token_hash) SELECT ?1, ?2, ?3 WHERE (SELECT status FROM surveys WHERE id = ?1) = 'approved'")
+      .bind(id, l.agent, hashes[k])),
   ]);
   if (!moved[0].meta.changes) return c.json({ error: "The survey changed while approving. Reload and try again." }, 409);
-  return c.json({ status: "approved" });
+  return c.json({ status: "approved", links });
 });

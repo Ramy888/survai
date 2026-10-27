@@ -32,3 +32,4 @@
   .sheet{border:0;padding:0;overflow:visible;font-size:9.5pt}
   .form,.plan-section{break-inside:avoid}
 }
+.objected{color:var(--object);font-weight:600}

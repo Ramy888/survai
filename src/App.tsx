@@ -8,6 +8,7 @@ import { LayoutStep } from "./steps/LayoutStep";
 import { MeetingStep } from "./steps/MeetingStep";
 import { ApproveStep } from "./steps/ApproveStep";
 import { ReportPage } from "./report/ReportPage";
+import { Signoff } from "./signoff/Signoff";
 
 const surveyIdFromPath = () => location.pathname.match(/^\/survey\/([0-9a-f-]{36})(\/report)?$/)?.[1] ?? null;
 const isReport = () => location.pathname.endsWith("/report");
@@ -20,6 +21,8 @@ export function App() {
     return () => removeEventListener("popstate", onPop);
   }, []);
 
+  // Department links keep the token in the fragment, so it never reaches a server log or a Referer.
+  if (location.pathname === "/s") return <Signoff token={location.hash.slice(1)} />;
   if (id && isReport()) return <ReportPage id={id} />;
   if (!id) return <SurveyStep onCreated={(newId) => { history.pushState(null, "", `/survey/${newId}`); setId(newId); }} />;
   return <SurveyView id={id} />;
