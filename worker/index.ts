@@ -1,11 +1,13 @@
 import { Hono } from "hono";
 import { BudgetExceeded, createModels } from "./clients/models";
+import { answer } from "./routes/answer";
 import { deliberate } from "./routes/deliberate";
 import { device } from "./routes/device";
 import { startRoundWorkflow } from "./workflows/round";
 import { files } from "./routes/files";
 import { layout } from "./routes/layout";
 import { surveys } from "./routes/surveys";
+import { timeline } from "./routes/timeline";
 import { StateConflict } from "./state";
 import type { AppEnv, StartProcessing, StartRound } from "./types";
 
@@ -36,6 +38,8 @@ export function createApp(deps: { fetch?: typeof fetch; sleep?: (ms: number) => 
   app.route("/api/surveys", files);
   app.route("/api/surveys", deliberate);
   app.route("/api/surveys", layout);
+  app.route("/api/surveys", timeline);
+  app.route("/api/questions", answer);
 
   app.onError((err, c) => {
     if (err instanceof StateConflict) return c.json({ error: err.message, state: err.state }, 409);

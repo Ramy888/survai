@@ -95,7 +95,9 @@ function forcedStatement(c: Calc) {
 export async function runAgent(models: ReturnType<typeof createModels>, agent: Agent, input: MeetingInput, ctx: { survey?: string } = {}) {
   const mine = input.calcs.filter((c) => OWNED_RULES[agent].includes(c.rule));
   const failed = mine.filter((c) => c.pass === false);
-  const missing = mine.flatMap((c) => (c.pass === null ? ((c.result as { missing?: string[] }).missing ?? []) : [])).find((m) => MISSING_QUESTIONS[m]);
+  const missing = mine.flatMap((c) => (c.pass === null ? ((c.result as { missing?: string[] }).missing ?? []) : []))
+    // Once the engineer has answered it, the answer is in the meeting input; asking again would loop forever.
+    .find((m) => MISSING_QUESTIONS[m] && !input.answers.some((a) => a.question === MISSING_QUESTIONS[m].text));
   const forcedQuestion: Question | null = missing ? { ...MISSING_QUESTIONS[missing], target_item_id: null } : null;
 
   let model: ModelFinding | null = null;

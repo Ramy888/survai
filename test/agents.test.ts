@@ -79,6 +79,14 @@ describe("runAgent", () => {
     expect(f.question).toMatchObject({ answer_kind: "number", target_fact: "spare_ac_btu" });
   });
 
+  it("does not ask a missing-input question again once the engineer has answered it", async () => {
+    const { models } = fakeModels([reply({ verdict: "approve", statement: "Breakers noted from the answer." })]);
+    const answers = [{ question: "Which breakers on the panel are free, and what are their type and rating?", answer: "3 and 4, 16 A DC" }];
+    const f = await runAgent(models, "power", input({ answers, calcs: [calc("c_r11", "R11", null, { missing: ["breakers_confirmed"] })] }));
+    expect(f.verdict).toBe("approve");
+    expect(f.question).toBeNull();
+  });
+
   it("retries an objection with another department's rule, then accepts a valid one", async () => {
     const bad = reply({ verdict: "object", statement: "No space.", rule_refs: ["R8"], evidence: [{ frame: 9 }] });
     const good = reply({ verdict: "object", statement: "Power runs beside the fibre.", rule_refs: ["R3"], evidence: [{ frame: 9 }] });

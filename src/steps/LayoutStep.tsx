@@ -18,7 +18,7 @@ function parseBlocks(t: string): { from_u: number; to_u: number }[] | null {
   return out;
 }
 
-export function LayoutStep({ survey, onSaved }: { survey: Survey; onSaved: () => void }) {
+export function LayoutStep({ survey, onSaved, onBack }: { survey: Survey; onSaved: () => void; onBack?: () => void }) {
   const roles = survey.rooms.slice().sort().reverse(); // devices_hall first
   const [role, setRole] = useState(roles[0]);
   const [data, setData] = useState<RoomLayout | null>(null);
@@ -94,7 +94,8 @@ export function LayoutStep({ survey, onSaved }: { survey: Survey; onSaved: () =>
   const req = data?.request;
   return (
     <Shell step={3} surveyCode={survey.site}
-      actions={<button className="btn btn-primary" disabled={!data || busy || badFree.length > 0 || !passcode} onClick={save}>{busy ? "Saving…" : label}</button>}>
+      actions={<>{onBack && <button className="btn btn-secondary" onClick={onBack}>Back to meeting</button>}
+        <button className="btn btn-primary" disabled={!data || busy || badFree.length > 0 || !passcode} onClick={save}>{busy ? "Saving…" : label}</button></>}>
       <div className="stack layout-grid">
         <div className="full">
           <h1>Check the layout</h1>

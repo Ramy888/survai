@@ -83,3 +83,22 @@ export interface RoomLayout {
 export const getLayout = (id: string, role: string) => call<RoomLayout>(`/api/surveys/${id}/rooms/${role}/layout`);
 export const saveLayout = (id: string, role: string, body: { layout_version: number; items: LayoutItem[]; facts: Record<string, unknown> }, passcode: string) =>
   call<{ layout_version: number; status: string; meeting_started: boolean }>(`/api/surveys/${id}/rooms/${role}/layout`, withPasscode(passcode, "PUT", body));
+
+export interface Question { id: string; text: string; answer_kind: "yes_no" | "number" | "text"; answer: string | null }
+export interface Finding {
+  id: string; agent: string; verdict: "approve" | "object" | "question" | "unavailable"; statement: string; model: string | null;
+  forced_rules: string[]; rules: { id: string; text: string | null }[];
+  evidence: ({ frame: number | null; file_id: string } | { calc_id: string })[]; question: Question | null;
+}
+export interface Round {
+  round: number; findings: Finding[]; calcs: { id: string; rule: string; pass: boolean | null; result: Record<string, unknown> }[];
+  lead: { summary: string; placement: { target: string; reason: string }; conflicts: { agents: string[]; resolution: string }[]; model: string; fell_back: boolean; outcome: "next" | "waiting" | "done" } | null;
+}
+export interface Timeline {
+  status: string; layout_version: number; deliberated_layout_version: number | null; run: number | null;
+  reps: string[]; request_questions: Question[]; rounds: Round[];
+}
+export const getTimeline = (id: string) => call<Timeline>(`/api/surveys/${id}/timeline`);
+export const answerQuestion = (qid: string, answer: string, passcode: string) =>
+  call<{ answered: string; next_round: number | null }>(`/api/questions/${qid}/answer`, withPasscode(passcode, "POST", { answer }));
+export const startMeeting = (id: string, passcode: string) => call<{ run: number }>(`/api/surveys/${id}/deliberate`, withPasscode(passcode, "POST"));

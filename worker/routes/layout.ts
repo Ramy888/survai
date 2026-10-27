@@ -26,7 +26,7 @@ const Item = z.discriminatedUnion("kind", [
   z.object({ ...base, kind: z.literal("cable_path"), props: z.object({ cable_type: z.enum(["power", "data", "fibre"]), route: z.enum(["overhead", "underfloor"]), points: z.array(Point).min(2).max(20), leaves_room: z.boolean().default(false) }) }),
   ...(["ac", "panel", "column", "ladder", "reserved"] as const).map((k) => z.object({ ...base, kind: z.literal(k), props: z.record(z.string(), z.unknown()).default({}) })),
 ]);
-const Facts = z.object({
+export const Facts = z.object({
   size_tiles: z.object({ w: z.number().int().min(2).max(200), d: z.number().int().min(2).max(200) }).nullish(),
   spare_ac_btu: z.number().min(0).max(1_000_000).nullish(),
   ac_count: z.number().int().min(0).max(50).nullish(),

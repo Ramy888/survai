@@ -106,6 +106,19 @@ describe("runRound", () => {
     expect(started).toEqual([]);
   });
 
+  it("moves on, not waits, when the engineer answers while the Lead is still thinking", async () => {
+    const { id } = await seed({ spare_ac_btu: null });
+    const base = fakeFetch({ lead: () => ({ round: 1, placement: { target: "none", reason: "x" }, propose_items: [], conflicts: [], summary: "s", next: "another_round" }) });
+    const answerFirst = (async (url: string, init: RequestInit) => {
+      if (String(init.body).includes("You are the Survey Lead")) await env.DB.prepare("UPDATE questions SET answer = '6000' WHERE answer IS NULL").run();
+      return base(url, init);
+    }) as unknown as typeof fetch;
+    const models = createModels({ env, fetch: answerFirst, sleep: async () => {}, log: () => {} });
+    const out = await runRound({ env, models, step, startRound: async (_e, _id, r, n) => void started.push({ run: r, round: n }) }, id, 1, 1);
+    expect(out.outcome).toBe("next");
+    expect(started).toEqual([{ run: 1, round: 2 }]);
+  });
+
   it("ends when the Lead says done, and after round 3 whatever the Lead says", async () => {
     const a = await seed();
     expect((await go(a.id, {})).outcome).toBe("done");

@@ -20,6 +20,12 @@ type Outcome = "next" | "waiting" | "done";
 const STEP = { retries: { limit: 1, delay: "5 seconds" as const } };
 const FRAME_OFFSET: Record<string, number> = { devices_hall: 0, connect_to: 100 }; // connect-to frames are F101...
 
+/** Frame numbers as the agents see them (F1... per room, connect-to from F101), from key frames in upload order. */
+export function numberFrames(frames: { id: string; role: string }[]) {
+  const counters: Record<string, number> = {};
+  return frames.map((f) => ({ n: (FRAME_OFFSET[f.role] ?? 0) + (counters[f.role] = (counters[f.role] ?? 0) + 1), fileId: f.id }));
+}
+
 async function loadMeeting(db: D1Database, surveyId: string, run: number, round: number) {
   const s = await db.prepare("SELECT quantity, device_model, layout_version, request_json FROM surveys WHERE id = ?1").bind(surveyId)
     .first<{ quantity: number; device_model: string; layout_version: number; request_json: string | null }>();
@@ -39,8 +45,7 @@ async function loadMeeting(db: D1Database, surveyId: string, run: number, round:
     db.prepare("SELECT q.text, q.answer FROM questions q JOIN findings f ON f.id = q.finding_id WHERE f.survey_id = ?1 AND q.answer IS NOT NULL").bind(surveyId).all<{ text: string; answer: string }>(),
   ]);
   if (!d) throw new Error(`survey ${surveyId} has no confirmed device`);
-  const counters: Record<string, number> = {};
-  const frameList = frames.results.map((f) => ({ n: (FRAME_OFFSET[f.role] ?? 0) + (counters[f.role] = (counters[f.role] ?? 0) + 1), fileId: f.id }));
+  const frameList = numberFrames(frames.results);
   const leadNote = lead ? (JSON.parse(lead.body_json) as LeadNote) : null;
   const input: MeetingInput = {
     round,
@@ -180,9 +185,7 @@ export async function runRound({ env, models, step, startRound }: Deps, surveyId
   });
 
   const outcome = await step.do("store lead", STEP, async () => {
-    const open = await db.prepare("SELECT COUNT(*) AS n FROM questions q JOIN findings f ON f.id = q.finding_id WHERE f.survey_id = ?1 AND f.run = ?2 AND f.round = ?3 AND q.answer IS NULL")
-      .bind(surveyId, run, round).first<{ n: number }>();
-    const result: Outcome = open?.n ? "waiting" : lead.note.next === "done" || round >= MAX_ROUNDS ? "done" : "next";
+    const result: Outcome = lead.note.next === "done" || round >= MAX_ROUNDS ? "done" : "next";
     const hallId = m.roomIds.devices_hall;
     // The Lead's items of a kind it proposes again are replaced (kinds it does not mention stay); they never bump
     // layout_version, so calculations simply rerun next round.
@@ -192,11 +195,15 @@ export async function runRound({ env, models, step, startRound }: Deps, surveyId
       ...lead.note.propose_items.map((p, k) => db.prepare(
         "INSERT INTO layout_items (id, room_id, kind, label, x_tiles, y_tiles, w_tiles, d_tiles, props_json, source) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, 'lead')",
       ).bind(crypto.randomUUID(), hallId, p.kind, p.kind === "reserved" ? "NEW" : `${p.props.cable_type}-${k + 1}`, p.x_tiles, p.y_tiles, p.w_tiles ?? null, p.d_tiles ?? null, JSON.stringify(p.props))),
-      db.prepare("INSERT OR IGNORE INTO lead_notes (survey_id, run, round, body_json, model, fell_back, outcome, created_at) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8)")
+      // Open questions are checked in the same write that stores the outcome, so an answer arriving mid-round is
+      // either seen here or flips this note from 'waiting' itself (routes/answer.ts); it is never lost between the two.
+      db.prepare(`INSERT OR IGNORE INTO lead_notes (survey_id, run, round, body_json, model, fell_back, outcome, created_at)
+        SELECT ?1, ?2, ?3, ?4, ?5, ?6, CASE WHEN EXISTS (SELECT 1 FROM questions q JOIN findings f ON f.id = q.finding_id
+          WHERE f.survey_id = ?1 AND f.run = ?2 AND f.round = ?3 AND q.answer IS NULL) THEN 'waiting' ELSE ?7 END, ?8`)
         .bind(surveyId, run, round, JSON.stringify(lead.note), lead.model, Number(lead.fellBack), result, new Date().toISOString()),
       db.prepare("UPDATE surveys SET deliberated_layout_version = ?1 WHERE id = ?2").bind(m.layoutVersion, surveyId),
     ]);
-    return result;
+    return (await db.prepare("SELECT outcome FROM lead_notes WHERE survey_id = ?1 AND run = ?2 AND round = ?3").bind(surveyId, run, round).first<{ outcome: Outcome }>())!.outcome;
   });
   if (outcome === "next") await step.do("start next round", STEP, async () => { await startRound(env, surveyId, run, round + 1); });
   return { outcome, round };
