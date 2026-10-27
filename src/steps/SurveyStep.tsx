@@ -1,0 +1,110 @@
+import { useState } from "react";
+import { createSurvey, type NewSurvey } from "../api";
+import { Shell } from "../components/Shell";
+
+const DEPARTMENTS = [
+  ["space", "SPC", "Space"],
+  ["power", "PWR", "Power"],
+  ["cooling", "CLG", "Cooling"],
+  ["execution", "EXE", "Execution"],
+  ["room_manager", "RMG", "Room Manager"],
+] as const;
+
+function readPasscode() {
+  try { return sessionStorage.getItem("passcode") ?? ""; } catch { return ""; }
+}
+
+export function SurveyStep({ onCreated }: { onCreated: (id: string) => void }) {
+  const [form, setForm] = useState<NewSurvey>({
+    site: "", project: "", device_model: "", quantity: 1, connects_to: "same_room",
+    reps: DEPARTMENTS.map(([id]) => id),
+  });
+  const [passcode, setPasscode] = useState(readPasscode);
+  const [error, setError] = useState("");
+  const [busy, setBusy] = useState(false);
+  const other = form.connects_to === "other_room";
+  const set = <K extends keyof NewSurvey>(k: K, v: NewSurvey[K]) => setForm((f) => ({ ...f, [k]: v }));
+  const toggleRep = (id: string) =>
+    set("reps", form.reps.includes(id) ? form.reps.filter((r) => r !== id) : [...form.reps, id]);
+  const ready = form.site.trim() && form.project.trim() && form.device_model.trim() && form.reps.length > 0 && passcode;
+
+  async function submit() {
+    setBusy(true);
+    setError("");
+    try {
+      const reps = form.reps.filter((r) => r !== "transmission");
+      const { id } = await createSurvey({ ...form, reps: other ? [...reps, "transmission"] : reps }, passcode);
+      try { sessionStorage.setItem("passcode", passcode); } catch { /* per-tab convenience only */ }
+      onCreated(id);
+    } catch (e) {
+      setError((e as Error).message);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <Shell
+      step={1}
+      actions={
+        <>
+          <button className="btn btn-secondary" disabled>Back</button>
+          <button className="btn btn-primary" disabled={!ready || busy} onClick={submit}>
+            {busy ? "Creating survey…" : "Create survey"}
+          </button>
+        </>
+      }
+    >
+      <form className="stack narrow" onSubmit={(e) => { e.preventDefault(); if (ready) void submit(); }}>
+        <div>
+          <h1>New survey</h1>
+          <p className="muted">What is going in, and who must agree on it.</p>
+        </div>
+        <section className="panel fields" aria-label="Request">
+          <div className="two">
+            <div className="field"><label htmlFor="site">Site code</label>
+              <input id="site" value={form.site} onChange={(e) => set("site", e.target.value)} autoComplete="off" /></div>
+            <div className="field"><label htmlFor="qty">Quantity</label>
+              <input id="qty" type="number" inputMode="numeric" min={1} max={20} value={form.quantity}
+                onChange={(e) => set("quantity", Math.max(1, Math.min(20, Number(e.target.value) || 1)))} /></div>
+          </div>
+          <div className="field"><label htmlFor="project">Project</label>
+            <input id="project" placeholder="Card expansion" value={form.project} onChange={(e) => set("project", e.target.value)} /></div>
+          <div className="field"><label htmlFor="model">Device model</label>
+            <input id="model" placeholder="Juniper MX104" value={form.device_model} onChange={(e) => set("device_model", e.target.value)} /></div>
+          <div className="field">
+            <span className="label" id="connects">Connects to</span>
+            <div className="seg" role="group" aria-labelledby="connects">
+              <button type="button" aria-pressed={!other} onClick={() => set("connects_to", "same_room")}>Same room</button>
+              <button type="button" aria-pressed={other} onClick={() => set("connects_to", "other_room")}>Another room</button>
+            </div>
+          </div>
+        </section>
+        <section className="panel" aria-labelledby="reps-h">
+          <h2 id="reps-h">Representatives attending</h2>
+          <div className="rows">
+            {DEPARTMENTS.map(([id, tag, name]) => (
+              <label className="r" key={id}>
+                <span className="tag">{tag}</span><span className="grow">{name}</span>
+                <input type="checkbox" className="check" checked={form.reps.includes(id)} onChange={() => toggleRep(id)} />
+              </label>
+            ))}
+            {other && (
+              <label className="r">
+                <span className="tag">TRN</span>
+                <span className="grow">Transmission<span className="sub">Joins because the device connects to another room</span></span>
+                <input type="checkbox" className="check" checked disabled />
+              </label>
+            )}
+          </div>
+        </section>
+        <section className="panel fields" aria-label="Access">
+          <div className="field"><label htmlFor="pass">Team passcode</label>
+            <input id="pass" type="password" autoComplete="off" value={passcode} onChange={(e) => setPasscode(e.target.value)}
+              aria-invalid={error.includes("passcode") || undefined} /></div>
+        </section>
+        {error && <p className="note error" role="alert">{error}</p>}
+      </form>
+    </Shell>
+  );
+}
