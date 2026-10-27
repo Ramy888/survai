@@ -9,7 +9,7 @@
 .sheet-head h1{font-size:1.6rem}
 .sheet h2{font-size:1.05rem;margin:16px 0 6px}
 .form{width:100%;border-collapse:collapse;margin-top:12px}
-.form th,.form td{border:1px solid #9AA6AC;padding:6px 8px;text-align:left;vertical-align:top;overflow-wrap:anywhere}
+.form th,.form td{border:1px solid #9AA6AC;padding:6px 8px;text-align:left;vertical-align:top;overflow-wrap:break-word}
 .form th{font:600 .78rem/1.25 var(--display);text-transform:uppercase;letter-spacing:.04em;background:#F2F4F4;width:34%}
 .form thead th{width:auto}
 .form caption{caption-side:top;text-align:left;font:600 1.05rem/1 var(--display);padding:14px 0 6px}
@@ -26,7 +26,7 @@
 .legend .lg-reserved{color:var(--primary)}
 @media print{
   @page{size:A4;margin:14mm}
-  body{background:#fff}
+  html,body,main,.report{background:#fff!important}
   .top,.actions,.no-print{display:none!important}
   .wrap{max-width:none;padding:0}
   .sheet{border:0;padding:0;overflow:visible;font-size:9.5pt}
