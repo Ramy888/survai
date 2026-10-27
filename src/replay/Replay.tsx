@@ -55,6 +55,7 @@ export function Replay({ slug }: { slug: string }) {
         <div className="narrow-intro">
           <h1>A real equipment-room survey, replayed</h1>
           <p className="muted">Six department agents met over prepared, anonymised footage of a real room. Read their meeting and the report, or run the meeting again live.</p>
+          <p className="muted small">In this sample the engineer's part (correcting the drafted layout, answering the departments and approving) was played by the builder; every department statement and the Survey Lead's notes are live model output.</p>
         </div>
         {error && <p className="note error" role="alert">{error}</p>}
         {!p && !error && <p className="muted">Loading the replay…</p>}
