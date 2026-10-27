@@ -21,7 +21,7 @@ tools/prepare/.venv/bin/pip install opencv-python-headless numpy pyobjc-framewor
 ```sh
 P=tools/prepare/.venv/bin/python
 $P tools/prepare/prepare.py frames WALKTHROUGH.mp4 --out tools/prepare/out/devices_hall/frames --boxes BOXES.json
-$P tools/prepare/prepare.py clip   PATH_CLIP.mp4   --out tools/prepare/out/devices_hall/path-clip.mp4
+$P tools/prepare/prepare.py clip   PATH_CLIP.mp4   --out tools/prepare/out/devices_hall/path-clip.mp4 --start 6.5  # skip a selfie intro
 $P tools/prepare/prepare.py photo  PANEL.jpg       --out tools/prepare/out/devices_hall/panel.jpg --panel
 ```
 

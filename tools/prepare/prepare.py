@@ -6,7 +6,7 @@ sharpest key frames, and strips file metadata (GPS, device). On a power-panel ph
 
 Usage:
   prepare.py frames VIDEO --out DIR [--count 30] [--boxes B.json]   key frames + manifest.json + sheet.jpg
-  prepare.py clip   VIDEO --out FILE.mp4                           blurred narrated path clip (audio kept)
+  prepare.py clip   VIDEO --out FILE.mp4 [--start S]               blurred narrated path clip from S seconds (audio kept)
   prepare.py photo  IMAGE --out FILE.jpg [--panel] [--boxes B.json] blurred photo
 
 Detection misses small text on low-resolution phone video, so every output is reviewed by eye. Anything
@@ -223,9 +223,12 @@ def write_sheet(thumbs, path, cols=6):
     cv2.imwrite(str(path), np.vstack(grid), [cv2.IMWRITE_JPEG_QUALITY, 85])
 
 
-def cmd_clip(video, out):
+def cmd_clip(video, out, start=0.0):
     cap = cv2.VideoCapture(str(video))
     fps = cap.get(cv2.CAP_PROP_FPS) or 30
+    skip = round(start * fps)  # read and drop frames: exact, unlike seeking to the nearest keyframe
+    for _ in range(skip):
+        cap.grab()
     per_frame = []
     while True:
         ok, frame = cap.read()
@@ -239,6 +242,8 @@ def cmd_clip(video, out):
     with tempfile.TemporaryDirectory() as tmp:
         silent = Path(tmp) / "silent.mp4"
         cap, writer, i = cv2.VideoCapture(str(video)), None, 0
+        for _ in range(skip):
+            cap.grab()
         while True:
             ok, frame = cap.read()
             if not ok:
@@ -252,7 +257,7 @@ def cmd_clip(video, out):
         cap.release()
         writer.release()
         out.parent.mkdir(parents=True, exist_ok=True)
-        subprocess.run(["ffmpeg", "-v", "error", "-y", "-i", str(silent), "-i", str(video), "-map", "0:v", "-map", "1:a?",
+        subprocess.run(["ffmpeg", "-v", "error", "-y", "-i", str(silent), "-ss", f"{skip / fps:.3f}", "-i", str(video), "-map", "0:v", "-map", "1:a?",
                         "-c:v", "libx264", "-crf", "23", "-pix_fmt", "yuv420p", "-c:a", "aac", "-map_metadata", "-1",
                         "-movflags", "+faststart", str(out)], check=True)
     print(f"{i} frames, {sum(map(len, per_frame))} boxes -> {out}")
@@ -276,6 +281,7 @@ def main():
     f = sub.add_parser("frames"); f.add_argument("video", type=Path); f.add_argument("--out", type=Path, required=True)
     f.add_argument("--count", type=int, default=30); f.add_argument("--boxes", type=Path)
     c = sub.add_parser("clip"); c.add_argument("video", type=Path); c.add_argument("--out", type=Path, required=True)
+    c.add_argument("--start", type=float, default=0.0)
     ph = sub.add_parser("photo"); ph.add_argument("image", type=Path); ph.add_argument("--out", type=Path, required=True)
     ph.add_argument("--panel", action="store_true"); ph.add_argument("--boxes", type=Path)
     a = p.parse_args()
@@ -283,7 +289,7 @@ def main():
     if a.cmd == "frames":
         cmd_frames(a.video, a.out, a.count, boxes)
     elif a.cmd == "clip":
-        cmd_clip(a.video, a.out)
+        cmd_clip(a.video, a.out, a.start)
     else:
         cmd_photo(a.image, a.out, a.panel, boxes)
 
