@@ -9,8 +9,9 @@ const sum = (xs: (number | null)[]) => (xs.some((x) => x == null) || !xs.length 
 export async function buildReport(db: D1Database, surveyId: string) {
   const s = await db.prepare("SELECT * FROM surveys WHERE id = ?1").bind(surveyId).first<Record<string, any>>();
   if (!s) return null;
-  const last = await db.prepare("SELECT run, round, body_json, model, fell_back FROM lead_notes WHERE survey_id = ?1 ORDER BY run DESC, round DESC LIMIT 1")
-    .bind(surveyId).first<{ run: number; round: number; body_json: string; model: string; fell_back: number }>();
+  // An approved survey reports the run the engineer approved, even if a replay rerun added a newer one.
+  const last = await db.prepare("SELECT run, round, body_json, model, fell_back FROM lead_notes WHERE survey_id = ?1 AND (?2 IS NULL OR run = ?2) ORDER BY run DESC, round DESC LIMIT 1")
+    .bind(surveyId, s.approved_run ?? null).first<{ run: number; round: number; body_json: string; model: string; fell_back: number }>();
   const [device, rooms, items, findings, calcs, signoffs] = await Promise.all([
     db.prepare("SELECT * FROM device_specs WHERE survey_id = ?1").bind(surveyId).first<Record<string, any>>(),
     db.prepare("SELECT id, role, name, facts_json FROM rooms WHERE survey_id = ?1 ORDER BY role DESC").bind(surveyId).all<{ id: string; role: string; name: string; facts_json: string | null }>(),

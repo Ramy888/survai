@@ -164,3 +164,4 @@ textarea{font:400 1rem/1.4 var(--body);color:var(--ink);background:var(--surface
 .small{font-size:.85rem}
 .links{display:grid;gap:8px}
 .links .r{cursor:default}
+.narrow-intro{max-width:640px}

@@ -11,11 +11,14 @@ type Evidence = { frame_id?: string; calc_id?: string };
 type Body = { statement: string; rule_refs?: string[]; forced_rules?: string[]; evidence?: Evidence[]; model?: string };
 
 timeline.get("/:id/timeline", async (c) => {
-  const db = c.env.DB;
-  const id = c.req.param("id");
+  const t = await buildTimeline(c.env.DB, c.req.param("id"));
+  return t ? c.json(t) : c.json({ error: "Survey not found" }, 404);
+});
+
+export async function buildTimeline(db: D1Database, id: string) {
   const s = await db.prepare("SELECT status, layout_version, deliberated_layout_version FROM surveys WHERE id = ?1").bind(id)
     .first<{ status: string; layout_version: number; deliberated_layout_version: number | null }>();
-  if (!s) return c.json({ error: "Survey not found" }, 404);
+  if (!s) return null;
   const last = await db.prepare("SELECT MAX(run) AS run FROM (SELECT run FROM findings WHERE survey_id = ?1 AND round > 0 UNION ALL SELECT run FROM lead_notes WHERE survey_id = ?1)")
     .bind(id).first<{ run: number | null }>();
   const run = last?.run ?? null;
@@ -57,10 +60,10 @@ timeline.get("/:id/timeline", async (c) => {
       calcs: calcs.results.filter((k) => k.round === round).map((k) => ({ id: k.id, rule: k.rule, pass: k.pass === -1 ? null : k.pass === 1, result: JSON.parse(k.result_json) })),
     };
   });
-  return c.json({
+  return {
     status: s.status, layout_version: s.layout_version, deliberated_layout_version: s.deliberated_layout_version, run,
     reps: reps.results.map((r) => r.agent),
     request_questions: questions.results.filter((q) => q.round === 0).map((q) => ({ id: q.id, text: q.text, answer_kind: q.answer_kind, answer: q.answer })),
     rounds,
-  });
-});
+  };
+}

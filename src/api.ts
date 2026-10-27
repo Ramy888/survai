@@ -88,7 +88,7 @@ export interface Question { id: string; text: string; answer_kind: "yes_no" | "n
 export interface Finding {
   id: string; agent: string; verdict: "approve" | "object" | "question" | "unavailable"; statement: string; model: string | null;
   forced_rules: string[]; rules: { id: string; text: string | null }[];
-  evidence: ({ frame: number | null; file_id: string } | { calc_id: string })[]; question: Question | null;
+  evidence: ({ frame: number | null; file_id?: string } | { calc_id: string })[]; question: Question | null;
 }
 export interface Round {
   round: number; findings: Finding[]; calcs: { id: string; rule: string; pass: boolean | null; result: Record<string, unknown> }[];

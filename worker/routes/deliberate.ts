@@ -12,10 +12,15 @@ deliberate.post("/:id/deliberate", requirePasscode, async (c) => {
   if (s.status !== "deliberating") return c.json({ error: "The meeting runs once the layout is saved", state: s.status }, 409);
   // The next run number comes from what has run so far; a double click lands on the same run, whose round-1
   // instance already exists, so it starts once.
-  const last = await c.env.DB.prepare(
-    "SELECT MAX(run) AS run FROM (SELECT run FROM findings WHERE survey_id = ?1 AND round > 0 UNION ALL SELECT run FROM lead_notes WHERE survey_id = ?1)",
-  ).bind(id).first<{ run: number | null }>();
-  const run = (last?.run ?? 0) + 1;
+  const run = await nextRun(c.env.DB, id);
   await c.var.startRound(c.env, id, run, 1);
   return c.json({ run });
 });
+
+/** The next meeting run number for a survey, from what has run so far. */
+export async function nextRun(db: D1Database, id: string) {
+  const last = await db.prepare(
+    "SELECT MAX(run) AS run FROM (SELECT run FROM findings WHERE survey_id = ?1 AND round > 0 UNION ALL SELECT run FROM lead_notes WHERE survey_id = ?1)",
+  ).bind(id).first<{ run: number | null }>();
+  return (last?.run ?? 0) + 1;
+}

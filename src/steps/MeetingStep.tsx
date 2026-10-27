@@ -9,7 +9,7 @@ const VERDICT: Record<Finding["verdict"], [string, string]> = { approve: ["ok", 
 const LOCK = <svg viewBox="0 0 12 12" aria-hidden="true"><path fill="currentColor" d="M3 5V3.5a3 3 0 0 1 6 0V5h.5a.5.5 0 0 1 .5.5v5a.5.5 0 0 1-.5.5h-7a.5.5 0 0 1-.5-.5v-5a.5.5 0 0 1 .5-.5zm1.2 0h3.6V3.5a1.8 1.8 0 0 0-3.6 0z" /></svg>;
 
 /** Where the meeting stands: a round in progress, waiting for the engineer, or finished. */
-function phase(t: Timeline) {
+export function phase(t: Timeline) {
   const last = t.rounds.at(-1);
   if (!last) return { state: "running" as const, round: 1, leadThinking: false };
   if (!last.lead) return { state: "running" as const, round: last.round, leadThinking: last.findings.length > 0 };
@@ -17,7 +17,9 @@ function phase(t: Timeline) {
   return { state: last.lead.outcome, round: last.round, leadThinking: false };
 }
 
-function Statement({ f, surveyId, calcRule }: { f: Finding; surveyId: string; calcRule: (id: string) => string }) {
+export type FrameHref = (e: { frame: number | null; file_id?: string }) => string;
+
+function Statement({ f, frameHref, calcRule }: { f: Finding; frameHref: FrameHref; calcRule: (id: string) => string }) {
   const [all, setAll] = useState(false);
   const [cls, label] = VERDICT[f.verdict];
   const forced = f.verdict === "object" && f.forced_rules.length > 0;
@@ -27,9 +29,9 @@ function Statement({ f, surveyId, calcRule }: { f: Finding; surveyId: string; ca
       <div>
         <div className="meta">
           <span className={`chip ${cls}`}>{forced ? <>{LOCK}Forced · {f.forced_rules.join(", ")}</> : label}</span>
-          {f.evidence.map((e, k) => "file_id" in e
-            ? <a key={k} className="ev" href={`/api/surveys/${surveyId}/files/${e.file_id}`} target="_blank" rel="noreferrer">frame {e.frame ?? "?"}</a>
-            : <span key={k} className="ev muted">calc {calcRule(e.calc_id)}</span>)}
+          {f.evidence.map((e, k) => "calc_id" in e
+            ? <span key={k} className="ev muted">calc {calcRule(e.calc_id)}</span>
+            : <a key={k} className="ev" href={frameHref(e)} target="_blank" rel="noreferrer">frame {e.frame ?? "?"}</a>)}
         </div>
         <p className={all ? "" : "clamp"}>{f.statement}</p>
         {f.statement.length > 240 && <button className="more-btn" onClick={() => setAll(!all)}>{all ? "Show less" : "Show all"}</button>}
@@ -39,12 +41,12 @@ function Statement({ f, surveyId, calcRule }: { f: Finding; surveyId: string; ca
   );
 }
 
-function RoundView({ r, t, surveyId, running }: { r: Round; t: Timeline; surveyId: string; running: { round: number; leadThinking: boolean } | null }) {
+export function RoundView({ r, t, frameHref, running }: { r: Round; t: Timeline; frameHref: FrameHref; running: { round: number; leadThinking: boolean } | null }) {
   const calcRule = (id: string) => r.calcs.find((c) => c.id === id)?.rule ?? "";
   const pending = running && running.round === r.round && !running.leadThinking ? t.reps.filter((a) => !r.findings.some((f) => f.agent === a)) : [];
   return (
     <section className="panel" style={{ paddingTop: 2 }} aria-label={`Round ${r.round}`}>
-      {r.findings.map((f) => <Statement key={f.id} f={f} surveyId={surveyId} calcRule={calcRule} />)}
+      {r.findings.map((f) => <Statement key={f.id} f={f} frameHref={frameHref} calcRule={calcRule} />)}
       {pending.map((a) => <p className="st thinking muted" key={a}><span className="tag">{TAG[a]}</span><span>{NAME[a]} is reviewing the room…</span></p>)}
       {r.lead ? (
         <div className="st">
@@ -86,6 +88,7 @@ export function MeetingStep({ survey, onEditLayout, onApprove }: { survey: Surve
   const [shown, setShown] = useState<number | null>(null);
   const [busy, setBusy] = useState(false);
   const passcode = savedPasscode();
+  const frameHref: FrameHref = (e) => `/api/surveys/${survey.id}/files/${e.file_id}`;
   const load = () => getTimeline(survey.id).then((x) => { setT(x); setError(""); }, (e: Error) => setError(e.message));
 
   const p = t && phase(t);
@@ -152,13 +155,13 @@ export function MeetingStep({ survey, onEditLayout, onApprove }: { survey: Surve
         </div>
         {stale && p?.state !== "running" && <p className="note warn full">The layout changed after the last round. Run the meeting again so the departments see it.</p>}
         {t && t.rounds.length > 1 && (
-          <div className="seg full" role="group" aria-label="Round">
+          <div className="seg full" role="group" aria-label="Round" style={{ gridTemplateColumns: `repeat(${t.rounds.length}, 1fr)` }}>
             {t.rounds.map((r) => <button key={r.round} type="button" aria-pressed={r.round === view?.round} onClick={() => setShown(r.round)}>Round {r.round}</button>)}
           </div>
         )}
         <div>
-          {view ? <RoundView r={view} t={t} surveyId={survey.id} running={p?.state === "running" && view === last ? p : null} />
-            : t && <RoundView r={{ round: 1, findings: [], calcs: [], lead: null }} t={t} surveyId={survey.id} running={{ round: 1, leadThinking: false }} />}
+          {view ? <RoundView r={view} t={t} frameHref={frameHref} running={p?.state === "running" && view === last ? p : null} />
+            : t && <RoundView r={{ round: 1, findings: [], calcs: [], lead: null }} t={t} frameHref={frameHref} running={{ round: 1, leadThinking: false }} />}
           {p?.state === "running" && last?.lead && view === last && (
             <section className="panel" style={{ marginTop: 12 }} aria-label={`Round ${p.round}`}>
               {t!.reps.map((a) => <p className="st thinking muted" key={a}><span className="tag">{TAG[a]}</span><span>{NAME[a]} is reviewing round {p.round}…</span></p>)}

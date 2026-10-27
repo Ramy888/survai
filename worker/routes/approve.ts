@@ -55,8 +55,8 @@ approve.post("/:id/approve", requirePasscode, async (c) => {
   // The status move is conditional on the version the gate checked, so a layout saved in between (or a second
   // approve) loses: the batch is one transaction and the reasons only land when the survey is approved.
   const moved = await db.batch([
-    db.prepare("UPDATE surveys SET status = ?1, tech_specs_json = ?2 WHERE id = ?3 AND status = 'deliberating' AND layout_version = ?4")
-      .bind(transition(s.status, "approved"), JSON.stringify({ text: body.data.tech_specs }), id, s.layout_version),
+    db.prepare("UPDATE surveys SET status = ?1, tech_specs_json = ?2, approved_run = ?5 WHERE id = ?3 AND status = 'deliberating' AND layout_version = ?4")
+      .bind(transition(s.status, "approved"), JSON.stringify({ text: body.data.tech_specs }), id, s.layout_version, latest!.run),
     ...overridden.map((f) => db.prepare("UPDATE findings SET override_reason = ?1 WHERE id = ?2 AND (SELECT status FROM surveys WHERE id = ?3) = 'approved'")
       .bind(body.data.overrides[f.id].trim(), f.id, id)),
     ...links.map((l, k) => db.prepare("INSERT INTO signoffs (survey_id, agent, token_hash) SELECT ?1, ?2, ?3 WHERE (SELECT status FROM surveys WHERE id = ?1) = 'approved'")
