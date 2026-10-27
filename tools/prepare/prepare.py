@@ -11,8 +11,8 @@ Usage:
   prepare.py photo  IMAGE --out FILE.jpg [--panel] [--boxes B.json] blurred photo
 
 Detection misses small text on low-resolution phone video, so every output is reviewed by eye. Anything
-missed goes in a boxes file: {"<frame time s or photo name>": [[x0, y0, x1, y1], ...]}, fractions of the
-frame with the origin top-left, then the command is re-run.
+missed goes in a boxes file: {"<frame time s, time range "a-b", or photo name>": [[x0, y0, x1, y1], ...]},
+fractions of the frame with the origin top-left, then the command is re-run. Clip times count from --start.
 """
 import argparse
 import json
@@ -69,20 +69,23 @@ def keep_panel_text(text):
 
 
 def manual_boxes(boxes, key, width, height):
-    """Hand-listed boxes for a frame time (float) or a photo name, as pixel boxes."""
+    """Hand-listed boxes for a frame time (float) or a photo name, as pixel boxes.
+    Time keys are one moment ("94.4") or a range ("16.4-20.0", every clip frame inside it)."""
     if isinstance(key, str):
         rows = boxes.get(key, [])
     else:
-        rows = [b for k, v in boxes.items() if _is_time(k) and abs(float(k) - key) < 0.05 for b in v]
+        rows = [b for k, v in boxes.items() if _covers(k, key) for b in v]
     return [(math.floor(x0 * width), math.floor(y0 * height), math.ceil(x1 * width), math.ceil(y1 * height))
             for x0, y0, x1, y1 in rows]
 
 
-def _is_time(k):
+def _covers(k, t):
     try:
-        float(k)
-        return True
-    except ValueError:
+        if "-" in k:
+            a, b = (float(x) for x in k.split("-"))
+            return a <= t <= b
+        return abs(float(k) - t) < 0.05
+    except ValueError:  # a photo name
         return False
 
 
@@ -247,7 +250,7 @@ def write_sheet(thumbs, path, cols=6):
     cv2.imwrite(str(path), np.vstack(grid), [cv2.IMWRITE_JPEG_QUALITY, 85])
 
 
-def cmd_clip(video, out, start=0.0):
+def cmd_clip(video, out, start=0.0, boxes=None):
     cap = cv2.VideoCapture(str(video))
     fps = cap.get(cv2.CAP_PROP_FPS) or 30
     skip = round(start * fps)  # read and drop frames: exact, unlike seeking to the nearest keyframe
@@ -260,7 +263,8 @@ def cmd_clip(video, out, start=0.0):
             break
         frame = fit(frame)
         h, w = frame.shape[:2]
-        per_frame.append([to_pixels(b, w, h) for b in detect(frame)] + paper_boxes(frame))
+        t = len(per_frame) / fps
+        per_frame.append([to_pixels(b, w, h) for b in detect(frame)] + paper_boxes(frame) + manual_boxes(boxes or {}, t, w, h))
     cap.release()
 
     with tempfile.TemporaryDirectory() as tmp:
@@ -305,7 +309,7 @@ def main():
     f = sub.add_parser("frames"); f.add_argument("video", type=Path); f.add_argument("--out", type=Path, required=True)
     f.add_argument("--count", type=int, default=30); f.add_argument("--boxes", type=Path)
     c = sub.add_parser("clip"); c.add_argument("video", type=Path); c.add_argument("--out", type=Path, required=True)
-    c.add_argument("--start", type=float, default=0.0)
+    c.add_argument("--start", type=float, default=0.0); c.add_argument("--boxes", type=Path)
     ph = sub.add_parser("photo"); ph.add_argument("image", type=Path); ph.add_argument("--out", type=Path, required=True)
     ph.add_argument("--panel", action="store_true"); ph.add_argument("--boxes", type=Path)
     a = p.parse_args()
@@ -313,7 +317,7 @@ def main():
     if a.cmd == "frames":
         cmd_frames(a.video, a.out, a.count, boxes)
     elif a.cmd == "clip":
-        cmd_clip(a.video, a.out, a.start)
+        cmd_clip(a.video, a.out, a.start, boxes)
     else:
         cmd_photo(a.image, a.out, a.panel, boxes)
 

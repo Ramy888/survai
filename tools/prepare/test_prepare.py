@@ -58,6 +58,11 @@ class ManualBoxes(unittest.TestCase):
         self.assertEqual(prepare.manual_boxes(boxes, 94.4, 200, 400), [(100, 0, 200, 100)])
         self.assertEqual(prepare.manual_boxes(boxes, 12.0, 200, 400), [])
 
+    def test_time_range_keys_cover_every_frame_inside(self):
+        boxes = {"16.4-20.0": [[0.0, 0.5, 1.0, 0.7]]}
+        self.assertEqual(prepare.manual_boxes(boxes, 18.2, 100, 100), [(0, 50, 100, 70)])
+        self.assertEqual(prepare.manual_boxes(boxes, 20.1, 100, 100), [])
+
 
 class Coverage(unittest.TestCase):
     def test_union_area_not_double_counted(self):
