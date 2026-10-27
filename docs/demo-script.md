@@ -10,7 +10,8 @@
 5. 2:05-2:35 Report and layout: the mirrored form, hatched reserved area, cable paths with lengths;
    print to PDF.
 6. 2:35-2:50 A department representative approves from a phone link.
-7. 2:50-3:00 Meta models used, and the public replay link with "run the meeting again".
+7. 2:50-3:00 Meta models used, and the replay with "run the meeting again" (shown, but its link is never on screen:
+   judges get it privately).
 
 
 Demo device: Juniper MX104.

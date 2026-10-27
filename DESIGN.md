@@ -135,12 +135,12 @@ label-tape tags, and colour that only ever means approve, object, ask, or "the c
 **Product context:** SurvAI digitises the telecom equipment-room site survey. A field engineer uploads prepared
 footage from a phone, corrects the room layout, and watches six department agents (Space, Power, Cooling,
 Execution, Transmission, Room Manager) and a Survey Lead meet in rounds. The output is a printable survey report
-and floor plan that mirror the company form. An office reviewer audits it later; judges see the public replay.
+and floor plan that mirror the company form. An office reviewer audits it later; judges see the replay (unlisted link, shared with them only).
 
 **Mode per surface:**
 - Capture, layout correction, meeting (phone): Operate.
 - Report and floor plan (A4 print, laptop audit): Read.
-- Public replay `/replay/:slug`: Read, with one Operate button ("Run the meeting again").
+- Replay `/replay/:slug` (unlisted, random slug): Read, with one Operate button ("Run the meeting again").
 
 **Reference sites:** none; built from design knowledge and the real company form and layout (not reproduced).
 

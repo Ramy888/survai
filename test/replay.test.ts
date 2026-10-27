@@ -45,6 +45,7 @@ describe("GET /api/replay/:slug", () => {
     const { id, fid } = await seed();
     const res = await call("/api/replay/sample");
     expect(res.status).toBe(200);
+    expect(res.headers.get("X-Robots-Tag")).toBe("noindex, nofollow"); // unlisted: the link goes to the judges only
     const text = await res.text();
     expect(text).not.toContain(id);
     expect(text).not.toContain(fid(2));

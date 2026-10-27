@@ -30,6 +30,7 @@ export function createApp(deps: { fetch?: typeof fetch; sleep?: (ms: number) => 
     c.set("startRound", deps.startRound ?? startRoundWorkflow);
     await next();
     c.header("Referrer-Policy", "no-referrer");
+    c.header("X-Robots-Tag", "noindex, nofollow");
   });
 
   app.get("/api/health", async (c) => {
