@@ -1,6 +1,7 @@
 """Anonymise survey footage on this Mac before any API sees it.
 
-Blurs faces, whole people and every text region (labels, logos, wordmarks) with macOS Vision, picks the
+Blurs faces, whole people, every text region (labels, logos, wordmarks; macOS Vision) and paper sheets taped on
+dark rack doors (OpenCV), picks the
 sharpest key frames, and strips file metadata (GPS, device). On a power-panel photo, breaker ratings
 (C16, 16A, 2P) stay readable and everything else with text is blurred.
 
@@ -107,6 +108,29 @@ def blur_boxes(img, boxes):
     return out
 
 
+def paper_boxes(bgr):
+    """Taped sheets (port lists, notices): a bright, colourless rectangle framed by a dark rack door.
+    Text on them is too small for Vision at phone resolution; the dark frame keeps the ceiling out."""
+    h, w = bgr.shape[:2]
+    hsv = cv2.cvtColor(bgr, cv2.COLOR_BGR2HSV)
+    mask = ((hsv[..., 2] > 150) & (hsv[..., 1] < 60)).astype(np.uint8)
+    mask = cv2.morphologyEx(mask, cv2.MORPH_CLOSE, np.ones((5, 5), np.uint8))
+    found = []
+    for c in cv2.findContours(mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)[0]:
+        x, y, bw, bh = cv2.boundingRect(c)
+        area = cv2.contourArea(c)
+        if not (0.002 * w * h <= area <= 0.25 * w * h) or area < 0.7 * bw * bh or not 0.4 <= bw / bh <= 2.5:
+            continue
+        mx, my = max(4, bw // 6), max(4, bh // 6)
+        X0, Y0, X1, Y1 = max(0, x - mx), max(0, y - my), min(w, x + bw + mx), min(h, y + bh + my)
+        ring = hsv[Y0:Y1, X0:X1, 2].astype(float).sum() - hsv[y:y + bh, x:x + bw, 2].astype(float).sum()
+        ring_px = (Y1 - Y0) * (X1 - X0) - bw * bh
+        inner = hsv[y:y + bh, x:x + bw, 2].mean()  # lit mesh panels pass the mask but average ~90
+        if ring_px and ring / ring_px < 105 and inner > 140:
+            found.append((max(0, x - 3), max(0, y - 3), min(w, x + bw + 3), min(h, y + bh + 3)))
+    return found
+
+
 def _cgimage(bgr):
     ok, buf = cv2.imencode(".png", bgr)
     data = NSData.dataWithBytes_length_(buf.tobytes(), len(buf))
@@ -154,7 +178,7 @@ def fit(img):
 
 def anonymise(img, panel=False, extra=()):
     h, w = img.shape[:2]
-    boxes = [to_pixels(b, w, h) for b in detect(img, panel)] + list(extra)
+    boxes = [to_pixels(b, w, h) for b in detect(img, panel)] + paper_boxes(img) + list(extra)
     return blur_boxes(img, boxes), boxes
 
 
@@ -236,7 +260,7 @@ def cmd_clip(video, out, start=0.0):
             break
         frame = fit(frame)
         h, w = frame.shape[:2]
-        per_frame.append([to_pixels(b, w, h) for b in detect(frame)])
+        per_frame.append([to_pixels(b, w, h) for b in detect(frame)] + paper_boxes(frame))
     cap.release()
 
     with tempfile.TemporaryDirectory() as tmp:

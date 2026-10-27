@@ -64,6 +64,21 @@ class Coverage(unittest.TestCase):
         self.assertAlmostEqual(prepare.coverage([(0, 0, 50, 100), (0, 0, 50, 100)], 100, 100), 0.5)
 
 
+class PaperOnRack(unittest.TestCase):
+    def test_finds_a_sheet_on_a_dark_door(self):
+        img = np.full((400, 300, 3), 25, np.uint8)
+        img[100:220, 80:200] = 235
+        boxes = prepare.paper_boxes(img)
+        self.assertEqual(len(boxes), 1)
+        x0, y0, x1, y1 = boxes[0]
+        self.assertTrue(x0 <= 80 and y0 <= 100 and x1 >= 200 and y1 >= 220)
+
+    def test_ignores_a_bright_ceiling(self):
+        img = np.full((400, 300, 3), 25, np.uint8)
+        img[:150, :] = 235  # ceiling across the top, not framed by dark
+        self.assertEqual(prepare.paper_boxes(img), [])
+
+
 class Blur(unittest.TestCase):
     def test_changes_only_inside_boxes(self):
         img = np.random.default_rng(1).integers(0, 255, (100, 200, 3), dtype=np.uint8)
