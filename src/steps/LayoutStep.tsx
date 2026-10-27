@@ -190,6 +190,7 @@ export function LayoutStep({ survey, onSaved }: { survey: Survey; onSaved: () =>
                     </div>
                     <input aria-label={`Breaker ${k + 1} rating (A)`} className="mono" inputMode="numeric" placeholder="A" value={b.rating_a} onChange={(e) => setBreakers((xs) => xs.map((x, j) => (j === k ? { ...x, rating_a: e.target.value } : x)))} />
                     <label className="toggle"><input type="checkbox" checked={b.free} onChange={(e) => setBreakers((xs) => xs.map((x, j) => (j === k ? { ...x, free: e.target.checked } : x)))} />Free</label>
+                    <button type="button" className="icon-btn" aria-label={`Remove breaker ${b.position ?? k + 1}`} onClick={() => setBreakers((xs) => xs.filter((_, j) => j !== k))}>×</button>
                   </div>
                 ))}
                 <button className="btn btn-secondary" style={{ marginTop: 10 }} onClick={() => setBreakers((xs) => [...xs, { position: xs.length + 1, dc: true, rating_a: "", free: true }])}>Add breaker</button>
