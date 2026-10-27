@@ -4,6 +4,7 @@ import { Shell } from "./components/Shell";
 import { DeviceStep } from "./steps/DeviceStep";
 import { SurveyStep } from "./steps/SurveyStep";
 import { UploadStep } from "./steps/UploadStep";
+import { LayoutStep } from "./steps/LayoutStep";
 import { ReportPage } from "./report/ReportPage";
 
 const surveyIdFromPath = () => location.pathname.match(/^\/survey\/([0-9a-f-]{36})(\/report)?$/)?.[1] ?? null;
@@ -36,6 +37,7 @@ function SurveyView({ id }: { id: string }) {
 
   if (survey?.status === "draft") return <DeviceStep survey={survey} onConfirmed={load} />;
   if (survey?.status === "uploading") return <UploadStep survey={survey} onStarted={load} />;
+  if (survey?.status === "layout_review") return <LayoutStep survey={survey} onSaved={load} />;
   return (
     <Shell step={survey?.status === "processing" ? 2 : survey ? 3 : 1} surveyCode={survey?.site} actions={<button className="btn btn-primary" disabled>Layout is right, start meeting</button>}>
       <div className="stack narrow">

@@ -71,3 +71,15 @@ export function uploadFile(id: string, role: string, kind: FileKind, file: File,
     xhr.send(file);
   });
 }
+
+export interface LayoutItem {
+  id?: string; kind: string; label: string | null; x_tiles: number; y_tiles: number; w_tiles: number | null; d_tiles: number | null;
+  facing: string | null; props: Record<string, unknown>; source?: string;
+}
+export interface RoomLayout {
+  role: string; name: string; status: string; layout_version: number; items: LayoutItem[];
+  facts: Record<string, any>; request: { source?: string; route?: string; destination?: string; translation_en?: string } | null;
+}
+export const getLayout = (id: string, role: string) => call<RoomLayout>(`/api/surveys/${id}/rooms/${role}/layout`);
+export const saveLayout = (id: string, role: string, body: { layout_version: number; items: LayoutItem[]; facts: Record<string, unknown> }, passcode: string) =>
+  call<{ layout_version: number; status: string; meeting_started: boolean }>(`/api/surveys/${id}/rooms/${role}/layout`, withPasscode(passcode, "PUT", body));

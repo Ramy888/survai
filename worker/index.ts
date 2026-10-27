@@ -4,6 +4,7 @@ import { deliberate } from "./routes/deliberate";
 import { device } from "./routes/device";
 import { startRoundWorkflow } from "./workflows/round";
 import { files } from "./routes/files";
+import { layout } from "./routes/layout";
 import { surveys } from "./routes/surveys";
 import { StateConflict } from "./state";
 import type { AppEnv, StartProcessing, StartRound } from "./types";
@@ -34,6 +35,7 @@ export function createApp(deps: { fetch?: typeof fetch; sleep?: (ms: number) => 
   app.route("/api/surveys", device);
   app.route("/api/surveys", files);
   app.route("/api/surveys", deliberate);
+  app.route("/api/surveys", layout);
 
   app.onError((err, c) => {
     if (err instanceof StateConflict) return c.json({ error: err.message, state: err.state }, 409);
