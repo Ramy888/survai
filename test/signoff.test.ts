@@ -131,3 +131,37 @@ describe("the decision", () => {
     expect((await decide(t, { rep_name: "Power lead", decision: "approve" })).status).toBe(200);
   });
 });
+
+describe("reissuing links", () => {
+  const reissue = (id: string, e: Env = env, passcode = env.DEMO_PASSCODE) =>
+    call(`/api/surveys/${id}/signoff-links`, { method: "POST", headers: { "X-Passcode": passcode } }, e);
+
+  it("gives undecided departments a new link, kills their old one, and leaves decided departments alone", async () => {
+    const { id, token } = await links();
+    const oldPower = token("power");
+    const oldRm = token("room_manager");
+    await call("/api/signoff", withToken(oldRm, { method: "POST", body: JSON.stringify({ rep_name: "Site manager", decision: "approve" }) }));
+    const res = await reissue(id);
+    expect(res.status).toBe(200);
+    const body = await res.json<{ links: { agent: string; token: string }[]; decided: string[] }>();
+    expect(body.links.map((l) => l.agent)).toEqual(["power"]);
+    expect(body.decided).toEqual(["room_manager"]);
+    expect((await call("/api/signoff", withToken(oldPower))).status).toBe(404);
+    expect((await call("/api/signoff", withToken(body.links[0].token))).status).toBe(200);
+    expect(await (await call("/api/signoff", withToken(oldRm))).json()).toMatchObject({ decision: { rep_name: "Site manager" } });
+  });
+
+  it("issues links for a survey approved without them", async () => {
+    const s = await seed();
+    await call(`/api/surveys/${s.id}/approve`, { method: "POST", headers: { "X-Passcode": env.DEMO_PASSCODE }, body: JSON.stringify({ overrides: { [s.ids.room_manager]: "ok" } }) });
+    const body = await (await reissue(s.id)).json<{ links: { agent: string }[] }>();
+    expect(body.links.map((l) => l.agent).sort()).toEqual(["power", "room_manager"]);
+  });
+
+  it("needs the passcode, an approved survey and the flag", async () => {
+    const s = await seed();
+    expect((await reissue(s.id)).status).toBe(409); // still deliberating
+    expect((await reissue(s.id, env, "wrong")).status).toBe(401);
+    expect((await reissue(s.id, { ...env, SIGNOFF_ENABLED: "0" } as Env)).status).toBe(404);
+  });
+});

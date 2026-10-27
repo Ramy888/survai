@@ -15,14 +15,8 @@ const Body = z.object({
   issue_links: z.boolean().default(false),
 });
 
-approve.post("/:id/approve", requirePasscode, async (c) => {
-  const db = c.env.DB;
-  const id = c.req.param("id");
-  const body = Body.safeParse(await c.req.json().catch(() => null));
-  if (!body.success) return c.json({ error: "Check the tech specs and override reasons", issues: body.error.issues }, 400);
-  const s = await db.prepare("SELECT status, layout_version FROM surveys WHERE id = ?1").bind(id).first<{ status: State; layout_version: number }>();
-  if (!s) return c.json({ error: "Survey not found" }, 404);
-
+/** The survey's last meeting round (with how it ended and the layout version it ran on) and its findings. */
+async function latestRound(db: D1Database, id: string) {
   const latest = await db.prepare(
     `SELECT r.run, r.round, (SELECT outcome FROM lead_notes l WHERE l.survey_id = ?1 AND l.run = r.run AND l.round = r.round) AS outcome,
        (SELECT MAX(layout_version) FROM findings f WHERE f.survey_id = ?1 AND f.run = r.run AND f.round = r.round) AS layout_version
@@ -32,6 +26,18 @@ approve.post("/:id/approve", requirePasscode, async (c) => {
   const findings = latest
     ? (await db.prepare("SELECT id, agent, verdict FROM findings WHERE survey_id = ?1 AND run = ?2 AND round = ?3").bind(id, latest.run, latest.round).all<{ id: string; agent: string; verdict: string }>()).results
     : [];
+  return { latest, findings };
+}
+
+approve.post("/:id/approve", requirePasscode, async (c) => {
+  const db = c.env.DB;
+  const id = c.req.param("id");
+  const body = Body.safeParse(await c.req.json().catch(() => null));
+  if (!body.success) return c.json({ error: "Check the tech specs and override reasons", issues: body.error.issues }, 400);
+  const s = await db.prepare("SELECT status, layout_version FROM surveys WHERE id = ?1").bind(id).first<{ status: State; layout_version: number }>();
+  if (!s) return c.json({ error: "Survey not found" }, 404);
+
+  const { latest, findings } = await latestRound(db, id);
   const open = latest
     ? await db.prepare("SELECT COUNT(*) AS n FROM questions q JOIN findings f ON f.id = q.finding_id WHERE f.survey_id = ?1 AND f.run = ?2 AND f.round = ?3 AND q.answer IS NULL")
       .bind(id, latest.run, latest.round).first<{ n: number }>()
@@ -58,4 +64,26 @@ approve.post("/:id/approve", requirePasscode, async (c) => {
   ]);
   if (!moved[0].meta.changes) return c.json({ error: "The survey changed while approving. Reload and try again." }, 409);
   return c.json({ status: "approved", links });
+});
+
+// Fresh links for every department that has not decided yet; their old links stop working. Decided departments keep
+// their record (and their old link still shows it). For a lost tab, a leaked link, or a survey approved without links.
+approve.post("/:id/signoff-links", requirePasscode, async (c) => {
+  const db = c.env.DB;
+  const id = c.req.param("id");
+  if (c.env.SIGNOFF_ENABLED === "0") return c.json({ error: "Sign-off links are switched off" }, 404);
+  const s = await db.prepare("SELECT status FROM surveys WHERE id = ?1").bind(id).first<{ status: string }>();
+  if (!s) return c.json({ error: "Survey not found" }, 404);
+  if (s.status !== "approved") return c.json({ error: "Links are issued once the survey is approved", state: s.status }, 409);
+  const { findings } = await latestRound(db, id);
+  const decided = new Set((await db.prepare("SELECT agent FROM signoffs WHERE survey_id = ?1 AND decision IS NOT NULL").bind(id).all<{ agent: string }>()).results.map((r) => r.agent));
+  const fresh = findings.filter((f) => !decided.has(f.agent)).map((f) => ({ agent: f.agent, token: newToken() }));
+  const hashes = await Promise.all(fresh.map((l) => tokenHash(l.token)));
+  const res = fresh.length ? await db.batch(fresh.map((l, k) => db.prepare(
+    `INSERT INTO signoffs (survey_id, agent, token_hash) VALUES (?1, ?2, ?3)
+     ON CONFLICT (survey_id, agent) DO UPDATE SET token_hash = excluded.token_hash WHERE signoffs.decision IS NULL`,
+  ).bind(id, l.agent, hashes[k]))) : [];
+  // A department that decided in the meantime keeps its record, so its new link is not returned.
+  const links = fresh.filter((_, k) => res[k].meta.changes);
+  return c.json({ links, decided: findings.map((f) => f.agent).filter((a) => !links.some((l) => l.agent === a)).sort() });
 });

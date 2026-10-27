@@ -2,6 +2,8 @@ import { useEffect, useState } from "react";
 import { FloorPlan } from "./FloorPlan";
 import type { PlanItem } from "./plan";
 import "./print.css";
+import { reissueLinks, savedPasscode } from "../api";
+import { copyAll, SignoffLinks, type IssuedLink } from "../signoff/SignoffLinks";
 
 type Report = {
   header: Record<string, string | null>;
@@ -43,6 +45,10 @@ function Fields({ title, data }: { title: string; data: Record<string, unknown> 
 export function ReportPage({ id }: { id: string }) {
   const [r, setR] = useState<Report | null>(null);
   const [error, setError] = useState("");
+  const [links, setLinks] = useState<{ issued: IssuedLink[]; decided: string[] } | null>(null);
+  const [linkError, setLinkError] = useState("");
+  const passcode = savedPasscode();
+  const reissue = () => reissueLinks(id, passcode).then((r) => { setLinks({ issued: r.links, decided: r.decided }); setLinkError(""); }, (e: Error) => setLinkError(e.message));
   useEffect(() => {
     fetch(`/api/surveys/${id}/report`).then(async (res) => (res.ok ? setR(await res.json()) : setError((await res.json()).error ?? "Report unavailable")), () => setError("Report unavailable"));
   }, [id]);
@@ -53,8 +59,21 @@ export function ReportPage({ id }: { id: string }) {
     <main className="wrap report">
       <div className="no-print report-actions">
         {h.status !== "approved" && <a className="btn btn-secondary" href={`/survey/${id}`}>Back to survey</a>}
+        {h.status === "approved" && passcode && <button className="btn btn-secondary" onClick={() => void reissue()}>New sign-off links</button>}
         <button className="btn btn-primary" onClick={() => window.print()}>Print or save as PDF</button>
       </div>
+      {(links || linkError) && (
+        <div className="no-print stack" style={{ marginBottom: 16 }}>
+          {linkError && <p className="note error" role="alert">{linkError}</p>}
+          {links && (
+            <>
+              <p className="muted">{links.issued.length ? "New links for the departments that have not decided. Their old links no longer work." : "Every department has decided; no new links needed."}
+                {links.decided.length > 0 && ` Already decided: ${links.decided.length}.`}</p>
+              {links.issued.length > 0 && <><SignoffLinks links={links.issued} /><button className="btn btn-secondary" onClick={() => copyAll(links.issued)}>Copy all links</button></>}
+            </>
+          )}
+        </div>
+      )}
       <article className="sheet">
         <header className="sheet-head"><h1>Site Survey Report</h1><span className="mono">{h.site} · {h.date} ({h.day})</span></header>
         <table className="form"><tbody>

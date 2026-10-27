@@ -123,3 +123,5 @@ export async function signoffFrame(token: string, n: number) {
   if (!res.ok) throw new ApiError("Frame unavailable", res.status);
   return URL.createObjectURL(await res.blob());
 }
+export const reissueLinks = (id: string, passcode: string) =>
+  call<{ links: { agent: string; token: string }[]; decided: string[] }>(`/api/surveys/${id}/signoff-links`, withPasscode(passcode, "POST"));

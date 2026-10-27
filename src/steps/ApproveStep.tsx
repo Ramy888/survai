@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { ApiError, approveSurvey, getTimeline, savedPasscode, type Survey, type Timeline } from "../api";
 import { Shell } from "../components/Shell";
+import { copyAll, SignoffLinks } from "../signoff/SignoffLinks";
 
 const TAG: Record<string, string> = { space: "SPC", power: "PWR", cooling: "CLG", execution: "EXE", transmission: "TRN", room_manager: "RMG" };
 const NAME: Record<string, string> = { space: "Space", power: "Power", cooling: "Cooling", execution: "Execution", transmission: "Transmission", room_manager: "Room Manager" };
@@ -35,26 +36,16 @@ export function ApproveStep({ survey, onBack, onApproved }: { survey: Survey; on
   }
 
   if (links) {
-    const url = (token: string) => `${location.origin}/s#${token}`;
-    const copy = (text: string) => void navigator.clipboard?.writeText(text);
     return (
       <Shell step={5} surveyCode={survey.site}
-        actions={<><button className="btn btn-secondary" onClick={() => copy(links.map((l) => `${NAME[l.agent] ?? l.agent}: ${url(l.token)}`).join("\n"))}>Copy all links</button>
+        actions={<><button className="btn btn-secondary" onClick={() => copyAll(links)}>Copy all links</button>
           <button className="btn btn-primary" onClick={onApproved}>Open the report</button></>}>
         <div className="stack narrow">
           <div>
             <h1>Survey approved</h1>
-            <p className="muted">Send each department its link. The links are shown only once: copy them before you leave this page.</p>
+            <p className="muted">Send each department its link. Copy them now; if they are lost, issue new ones from the report.</p>
           </div>
-          <section className="panel links" aria-label="Sign-off links">
-            {links.map((l) => (
-              <div className="r" key={l.agent}>
-                <span className="tag">{TAG[l.agent] ?? l.agent}</span>
-                <div className="grow">{NAME[l.agent] ?? l.agent}<span className="sub mono" style={{ overflowWrap: "anywhere" }}>{url(l.token)}</span></div>
-                <button className="btn btn-secondary" onClick={() => copy(url(l.token))} aria-label={`Copy the ${NAME[l.agent] ?? l.agent} link`}>Copy</button>
-              </div>
-            ))}
-          </section>
+          <SignoffLinks links={links} />
         </div>
       </Shell>
     );
