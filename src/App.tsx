@@ -6,6 +6,7 @@ import { SurveyStep } from "./steps/SurveyStep";
 import { UploadStep } from "./steps/UploadStep";
 import { LayoutStep } from "./steps/LayoutStep";
 import { MeetingStep } from "./steps/MeetingStep";
+import { ApproveStep } from "./steps/ApproveStep";
 import { ReportPage } from "./report/ReportPage";
 
 const surveyIdFromPath = () => location.pathname.match(/^\/survey\/([0-9a-f-]{36})(\/report)?$/)?.[1] ?? null;
@@ -27,7 +28,7 @@ export function App() {
 function SurveyView({ id }: { id: string }) {
   const [survey, setSurvey] = useState<Survey | null>(null);
   const [error, setError] = useState("");
-  const [editLayout, setEditLayout] = useState(false);
+  const [view, setView] = useState<"meeting" | "layout" | "approve">("meeting");
   const load = () => getSurvey(id).then(setSurvey, (e: Error) => setError(e.message));
   useEffect(() => { void load(); }, [id]);
   // Processing runs in the background (about a minute); check every 2 s until it moves on.
@@ -39,8 +40,12 @@ function SurveyView({ id }: { id: string }) {
 
   if (survey?.status === "draft") return <DeviceStep survey={survey} onConfirmed={load} />;
   if (survey?.status === "uploading") return <UploadStep survey={survey} onStarted={load} />;
-  if (survey?.status === "layout_review" || (survey?.status === "deliberating" && editLayout)) return <LayoutStep survey={survey} onSaved={() => { setEditLayout(false); void load(); }} onBack={editLayout ? () => setEditLayout(false) : undefined} />;
-  if (survey?.status === "deliberating") return <MeetingStep survey={survey} onEditLayout={() => setEditLayout(true)} />;
+  const meeting = survey?.status === "deliberating";
+  if (survey?.status === "layout_review" || (meeting && view === "layout")) return <LayoutStep survey={survey} onSaved={() => { setView("meeting"); void load(); }} onBack={meeting ? () => setView("meeting") : undefined} />;
+  if (meeting && view === "approve") return <ApproveStep survey={survey} onBack={() => setView("meeting")} onApproved={() => { location.assign(`/survey/${id}/report`); }} />;
+  if (meeting) return <MeetingStep survey={survey} onEditLayout={() => setView("layout")} onApprove={() => setView("approve")} />;
+  // Approved is terminal in v1: the report is the survey from here on.
+  if (survey?.status === "approved") { location.replace(`/survey/${id}/report`); return null; }
   return (
     <Shell step={survey?.status === "processing" ? 2 : survey ? 3 : 1} surveyCode={survey?.site} actions={<button className="btn btn-primary" disabled>Layout is right, start meeting</button>}>
       <div className="stack narrow">

@@ -79,7 +79,7 @@ function Ask({ q, agent, value, onChange }: { q: Question; agent: string; value:
   );
 }
 
-export function MeetingStep({ survey, onEditLayout }: { survey: Survey; onEditLayout: () => void }) {
+export function MeetingStep({ survey, onEditLayout, onApprove }: { survey: Survey; onEditLayout: () => void; onApprove: () => void }) {
   const [t, setT] = useState<Timeline | null>(null);
   const [error, setError] = useState("");
   const [answers, setAnswers] = useState<Record<string, string>>({});
@@ -134,7 +134,7 @@ export function MeetingStep({ survey, onEditLayout }: { survey: Survey; onEditLa
       ? <button className="btn btn-primary" disabled={!ready || busy || !passcode} onClick={send}>{busy ? "Sending…" : `Send ${open.filter(({ q }) => filled(q)).length > 1 ? "answers" : "answer"}${p?.state === "waiting" ? `, ${next}` : ""}`}</button>
       : stale
         ? <button className="btn btn-primary" disabled={busy || !passcode} onClick={rerun}>{busy ? "Starting…" : "Run the meeting again"}</button>
-        : <a className="btn btn-primary" href={`/survey/${survey.id}/report`}>Open the report</a>;
+        : <button className="btn btn-primary" onClick={onApprove}>Continue to approve</button>;
 
   return (
     <Shell step={4} surveyCode={survey.site}

@@ -1,6 +1,7 @@
 import { Hono } from "hono";
 import { BudgetExceeded, createModels } from "./clients/models";
 import { answer } from "./routes/answer";
+import { approve } from "./routes/approve";
 import { deliberate } from "./routes/deliberate";
 import { device } from "./routes/device";
 import { startRoundWorkflow } from "./workflows/round";
@@ -39,6 +40,7 @@ export function createApp(deps: { fetch?: typeof fetch; sleep?: (ms: number) => 
   app.route("/api/surveys", deliberate);
   app.route("/api/surveys", layout);
   app.route("/api/surveys", timeline);
+  app.route("/api/surveys", approve);
   app.route("/api/questions", answer);
 
   app.onError((err, c) => {

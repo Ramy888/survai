@@ -12,15 +12,15 @@ export interface Survey {
 export type NewSurvey = Omit<Survey, "id" | "status" | "rooms" | "device" | "processing_error">;
 
 export class ApiError extends Error {
-  constructor(message: string, readonly status: number, readonly manual = false) {
+  constructor(message: string, readonly status: number, readonly manual = false, readonly problems?: string[]) {
     super(message);
   }
 }
 
 async function call<T>(path: string, init?: RequestInit): Promise<T> {
   const res = await fetch(path, init);
-  const body = (await res.json().catch(() => ({}))) as { error?: string; manual?: boolean };
-  if (!res.ok) throw new ApiError(body.error ?? `Request failed (${res.status})`, res.status, body.manual);
+  const body = (await res.json().catch(() => ({}))) as { error?: string; manual?: boolean; problems?: string[] };
+  if (!res.ok) throw new ApiError(body.error ?? `Request failed (${res.status})`, res.status, body.manual, body.problems);
   return body as T;
 }
 
@@ -102,3 +102,5 @@ export const getTimeline = (id: string) => call<Timeline>(`/api/surveys/${id}/ti
 export const answerQuestion = (qid: string, answer: string, passcode: string) =>
   call<{ answered: string; next_round: number | null }>(`/api/questions/${qid}/answer`, withPasscode(passcode, "POST", { answer }));
 export const startMeeting = (id: string, passcode: string) => call<{ run: number }>(`/api/surveys/${id}/deliberate`, withPasscode(passcode, "POST"));
+export const approveSurvey = (id: string, body: { tech_specs: string; overrides: Record<string, string> }, passcode: string) =>
+  call<{ status: string }>(`/api/surveys/${id}/approve`, withPasscode(passcode, "POST", body));

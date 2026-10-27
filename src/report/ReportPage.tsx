@@ -17,6 +17,7 @@ type Report = {
   objections: { agent: string; rules: string[]; override_reason: string | null }[];
   lead: { summary: string; placement: { target: string; reason: string }; model: string; fell_back: boolean } | null;
   signoffs: { agent: string; rep_name: string; decision: string; decided_at: string }[];
+  tech_specs: { text: string } | null;
   plan: { size: { w: number; d: number } | null; items: PlanItem[]; lengths: Record<string, number | null>; clearances: { to: string; m: number; from: [number, number]; at: [number, number] }[] };
 };
 
@@ -51,7 +52,7 @@ export function ReportPage({ id }: { id: string }) {
   return (
     <main className="wrap report">
       <div className="no-print report-actions">
-        <a className="btn btn-secondary" href={`/survey/${id}`}>Back to survey</a>
+        {h.status !== "approved" && <a className="btn btn-secondary" href={`/survey/${id}`}>Back to survey</a>}
         <button className="btn btn-primary" onClick={() => window.print()}>Print or save as PDF</button>
       </div>
       <article className="sheet">
@@ -83,6 +84,10 @@ export function ReportPage({ id }: { id: string }) {
         </table>
         <section className="plan-section"><h2>Layout</h2><FloorPlan {...r.plan} /></section>
         <table className="form">
+          <caption>Engineer's tech specs</caption>
+          <tbody><tr><td>{show(r.tech_specs?.text)}</td></tr></tbody>
+        </table>
+        <table className="form">
           <caption>Representative statements</caption>
           <tbody>{r.statements.map((s) => (
             <tr key={s.agent}><td className="num"><span className="tag">{TAG[s.agent] ?? s.agent}</span></td>
@@ -91,7 +96,7 @@ export function ReportPage({ id }: { id: string }) {
         </table>
         {r.objections.length > 0 && (
           <table className="form">
-            <caption>Open objections</caption>
+            <caption>{h.status === "approved" ? "Objections overridden by the engineer" : "Open objections"}</caption>
             <thead><tr><th>Department</th><th>Rules</th><th>Override reason</th></tr></thead>
             <tbody>{r.objections.map((o) => <tr key={o.agent}><td><span className="tag">{TAG[o.agent] ?? o.agent}</span></td><td className="mono">{o.rules.join(", ")}</td><td>{show(o.override_reason)}</td></tr>)}</tbody>
           </table>
