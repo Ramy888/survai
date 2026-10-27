@@ -44,3 +44,30 @@ export function savePasscode(p: string) {
 }
 
 export const getSurvey = (id: string) => call<Survey>(`/api/surveys/${id}`);
+
+export type FileKind = "key_frame" | "path_clip" | "panel_photo" | "photo";
+export interface UploadedFile { id: string; kind: FileKind; name: string; bytes: number }
+export interface RoomFiles { files: UploadedFile[]; missing: FileKind[] }
+
+export const listFiles = (id: string) => call<{ rooms: Record<string, RoomFiles> }>(`/api/surveys/${id}/files`);
+export const deleteFile = (id: string, fileId: string, passcode: string) =>
+  call<{ deleted: string }>(`/api/surveys/${id}/files/${fileId}`, withPasscode(passcode, "DELETE"));
+export const startProcessing = (id: string, passcode: string) =>
+  call<{ status: string }>(`/api/surveys/${id}/process`, withPasscode(passcode, "POST"));
+
+/** XHR instead of fetch: fetch cannot report upload progress. */
+export function uploadFile(id: string, role: string, kind: FileKind, file: File, passcode: string, onProgress: (f: number) => void) {
+  return new Promise<UploadedFile>((resolve, reject) => {
+    const xhr = new XMLHttpRequest();
+    xhr.open("POST", `/api/surveys/${id}/rooms/${role}/files?kind=${kind}&name=${encodeURIComponent(file.name)}`);
+    xhr.setRequestHeader("X-Passcode", passcode);
+    xhr.upload.onprogress = (e) => e.lengthComputable && onProgress(e.loaded / e.total);
+    xhr.onload = () => {
+      const body = JSON.parse(xhr.responseText || "{}");
+      if (xhr.status >= 200 && xhr.status < 300) resolve(body);
+      else reject(new ApiError(body.error ?? `Upload failed (${xhr.status})`, xhr.status));
+    };
+    xhr.onerror = () => reject(new ApiError("The upload did not reach the server. Check the connection and try again.", 0));
+    xhr.send(file);
+  });
+}

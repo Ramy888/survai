@@ -93,3 +93,16 @@ input[aria-invalid="true"]{border-color:var(--object)}
 .loading{display:flex;gap:12px;align-items:center;color:var(--muted)}
 .three{display:grid;gap:14px;grid-template-columns:repeat(3,1fr);align-items:end}
 @media (max-width:420px){.three{grid-template-columns:1fr 1fr}}
+.state{width:28px;height:28px;border-radius:50%;display:grid;place-items:center;flex:none}
+.state svg{width:16px;height:16px}
+.state.ok{background:var(--approve-bg);color:var(--approve)}
+.state.todo{background:var(--ground);color:var(--muted)}
+.prog{height:6px;border-radius:3px;background:var(--rule);overflow:hidden;margin-top:6px}
+.prog i{display:block;height:100%;background:var(--primary);border-radius:3px;transition:width .15s}
+.filerow{display:flex;align-items:center;gap:8px;font-size:.85rem;color:var(--muted);min-height:36px}
+.filerow .name{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.link-btn{font:600 .85rem/1 var(--body);color:var(--object);background:none;border:0;padding:10px 4px;cursor:pointer;min-height:36px}
+.link-btn:focus-visible{outline:2px solid var(--primary);outline-offset:2px}
+.fileslot{display:block}
+.r.nohover{cursor:default}
+.sr-only{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}

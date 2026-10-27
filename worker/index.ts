@@ -1,6 +1,7 @@
 import { Hono } from "hono";
 import { BudgetExceeded, createModels } from "./clients/models";
 import { device } from "./routes/device";
+import { files } from "./routes/files";
 import { surveys } from "./routes/surveys";
 import { StateConflict } from "./state";
 import type { AppEnv } from "./types";
@@ -21,6 +22,7 @@ export function createApp(deps: { fetch?: typeof fetch; sleep?: (ms: number) => 
   });
   app.route("/api/surveys", surveys);
   app.route("/api/surveys", device);
+  app.route("/api/surveys", files);
 
   app.onError((err, c) => {
     if (err instanceof StateConflict) return c.json({ error: err.message, state: err.state }, 409);
