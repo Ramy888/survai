@@ -91,9 +91,15 @@ describe("retries and fallbacks", () => {
     expect((await h.models.run("agent", { text: "x" })).model).toBe("muse-spark-1.3");
   });
 
-  it("does not retry or fall back on a 400 (a bug in the request)", async () => {
-    const h = harness({ "muse-wonder-1.0": [{ status: 400, body: { error: { message: "bad" } } }] });
-    await expect(h.models.run("lead", { text: "x" })).rejects.toBeInstanceOf(ModelRequestError);
+  it("does not retry a 400 on the same model but tries the next one (limits differ per model)", async () => {
+    const h = harness({ "meta-models/muse-spark-open-1026": [{ status: 400, body: { error: { message: "Too many images: 12 (max 8)" } } }], "muse-spark-1.3": [metaText("ok")] });
+    expect((await h.models.run("inventory", { text: "x" })).model).toBe("muse-spark-1.3");
+    expect(h.calls.map((c) => c.model)).toEqual(["meta-models/muse-spark-open-1026", "muse-spark-1.3"]);
+  });
+
+  it("fails with ModelRequestError when the last model also rejects the request", async () => {
+    const h = harness({ "muse-spark-1.3": [{ status: 400, body: { error: { message: "bad" } } }] });
+    await expect(h.models.run("reader", { text: "x" })).rejects.toBeInstanceOf(ModelRequestError);
     expect(h.calls).toHaveLength(1);
   });
 

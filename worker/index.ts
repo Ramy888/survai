@@ -4,14 +4,20 @@ import { device } from "./routes/device";
 import { files } from "./routes/files";
 import { surveys } from "./routes/surveys";
 import { StateConflict } from "./state";
-import type { AppEnv } from "./types";
+import type { AppEnv, StartProcessing } from "./types";
 
-/** The Worker app; tests pass a fake fetch and sleep so model calls replay recorded responses. */
-export function createApp(deps: { fetch?: typeof fetch; sleep?: (ms: number) => Promise<void> } = {}) {
+export { ProcessSurvey } from "./workflows/process";
+
+// One instance per processing attempt: a survey can return to uploading and be processed again.
+const startWorkflow: StartProcessing = (env, surveyId) => env.PROCESS.create({ id: `${surveyId}-${Date.now()}`, params: { surveyId } });
+
+/** The Worker app; tests pass a fake fetch, sleep and job starter so nothing reaches a live API. */
+export function createApp(deps: { fetch?: typeof fetch; sleep?: (ms: number) => Promise<void>; startProcessing?: StartProcessing } = {}) {
   const app = new Hono<AppEnv>();
 
   app.use("/api/*", async (c, next) => {
     c.set("models", createModels({ env: c.env, fetch: deps.fetch, sleep: deps.sleep }));
+    c.set("startProcessing", deps.startProcessing ?? startWorkflow);
     await next();
     c.header("Referrer-Policy", "no-referrer");
   });

@@ -6,7 +6,8 @@ import { env } from "cloudflare:workers";
 import { beforeEach, describe, expect, it } from "vitest";
 import { createApp } from "../worker/index";
 
-const app = createApp();
+const started: string[] = [];
+const app = createApp({ startProcessing: async (_env, id) => void started.push(id) });
 const JPEG = new Uint8Array([0xff, 0xd8, 0xff, 0xe0, 0, 0x10, 0x4a, 0x46, 0x49, 0x46]);
 const PNG = new Uint8Array([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 0, 0]);
 const MP4 = new Uint8Array([0, 0, 0, 0x18, 0x66, 0x74, 0x79, 0x70, 0x69, 0x73, 0x6f, 0x6d]);
@@ -116,6 +117,7 @@ describe("POST /api/surveys/:id/process", () => {
     await upload(id, "devices_hall", "panel_photo", JPEG);
     const [a, b] = await Promise.all([req(`/api/surveys/${id}/process`, { method: "POST" }), req(`/api/surveys/${id}/process`, { method: "POST" })]);
     expect([a.status, b.status].sort()).toEqual([200, 409]);
+    expect(started.filter((s) => s === id)).toHaveLength(1);
     expect((await env.DB.prepare("SELECT status FROM surveys WHERE id = ?1").bind(id).first<{ status: string }>())!.status).toBe("processing");
   });
 });

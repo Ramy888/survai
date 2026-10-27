@@ -47,7 +47,7 @@ surveys.post("/", requirePasscode, async (c) => {
 surveys.get("/:id", async (c) => {
   const id = c.req.param("id");
   const survey = await c.env.DB.prepare(
-    "SELECT id, site, project, device_model, quantity, connects_to, status, layout_version, created_at FROM surveys WHERE id = ?1",
+    "SELECT id, site, project, device_model, quantity, connects_to, status, layout_version, processing_error, created_at FROM surveys WHERE id = ?1",
   ).bind(id).first();
   if (!survey) return c.json({ error: "Survey not found" }, 404);
   const [reps, rooms, spec] = await Promise.all([

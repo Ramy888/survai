@@ -7,9 +7,9 @@ export interface DeviceSpec {
 export interface Survey {
   id: string; site: string; project: string; device_model: string; quantity: number;
   connects_to: "same_room" | "other_room"; status: string; reps: string[]; rooms: string[];
-  device: (DeviceSpec & { confirmed: boolean }) | null;
+  device: (DeviceSpec & { confirmed: boolean }) | null; processing_error: string | null;
 }
-export type NewSurvey = Omit<Survey, "id" | "status" | "rooms" | "device">;
+export type NewSurvey = Omit<Survey, "id" | "status" | "rooms" | "device" | "processing_error">;
 
 export class ApiError extends Error {
   constructor(message: string, readonly status: number, readonly manual = false) {

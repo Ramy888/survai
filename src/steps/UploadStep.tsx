@@ -62,6 +62,7 @@ export function UploadStep({ survey, onStarted }: { survey: Survey; onStarted: (
           <h1>Upload footage</h1>
           <p className="muted">Prepare the files on your Mac first. Faces, labels and logos are blurred before anything leaves it.</p>
         </div>
+        {survey.processing_error && <p className="note error" role="alert">{survey.processing_error}</p>}
         {!rooms && !error && <p className="muted">Loading files…</p>}
         {rooms && survey.rooms.slice().sort().reverse().map((role) => (
           <section className="panel" key={role} aria-labelledby={`h-${role}`}>

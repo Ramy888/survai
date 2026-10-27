@@ -1,6 +1,7 @@
 // Model calls: Meta Model API (Muse Spark 1.3, Muse Wonder, SAM 3.1) and Baseten (Muse Spark Open).
 // Each attempt takes from the daily cap first; 429/5xx retry with 1-2-4 s backoff; a route falls back to its next
-// model on timeout, rate limit or refusal. A 4xx other than 429 is a bug in the request and is never retried.
+// model on timeout, rate limit, refusal or a 4xx (limits differ per model: Spark Open takes at most 8 images).
+// A 4xx other than 429 is never retried on the same model.
 import { BudgetExceeded, takeBudget } from "./budget";
 
 export { BudgetExceeded };
@@ -20,6 +21,7 @@ export type ModelId = "muse-spark-open" | "muse-spark-1.3" | "muse-wonder-1.0" |
 
 export const ROUTES = {
   agent: ["muse-spark-open", "muse-spark-1.3"],
+  inventory: ["muse-spark-open", "muse-spark-1.3"],
   lead: ["muse-wonder-1.0", "muse-spark-1.3"],
   reader: ["muse-spark-1.3"],
   panel: ["muse-spark-1.3"], // Day-1: Spark Open refused a panel photo
@@ -30,6 +32,7 @@ export type Route = keyof typeof ROUTES;
 export interface Prompt {
   text: string;
   images?: string[]; // data: or https: URLs
+  videos?: string[]; // MP4 data: or https: URLs (Meta models only; audio is read too)
   reasoning?: "minimal" | "low" | "medium" | "high";
   webSearch?: boolean;
   maxTokens?: number;
@@ -115,6 +118,7 @@ export function createModels({ env, fetch: doFetch = fetch, sleep = (ms) => new 
     const timeoutMs = p.webSearch ? WEB_SEARCH_TIMEOUT_MS : LIMITS[model].timeoutMs;
     let raw: unknown;
     let text: string;
+    if (model === "muse-spark-open" && p.videos?.length) throw new ModelRefusal("video goes to Meta models only", model);
     if (model === "muse-spark-open") {
       raw = await post(model, {
         model: BASETEN_MODEL,
@@ -127,7 +131,11 @@ export function createModels({ env, fetch: doFetch = fetch, sleep = (ms) => new 
         model,
         reasoning: { effort: p.reasoning ?? "low" },
         ...(p.webSearch ? { tools: [{ type: "web_search" }] } : {}),
-        input: [{ role: "user", content: [{ type: "input_text", text: p.text }, ...images.map((image_url) => ({ type: "input_image", image_url }))] }],
+        input: [{ role: "user", content: [
+          { type: "input_text", text: p.text },
+          ...images.map((image_url) => ({ type: "input_image", image_url })),
+          ...(p.videos ?? []).map((video_url) => ({ type: "input_video", video_url })),
+        ] }],
       }, ctx, timeoutMs);
       text = lastMessageText(raw);
     }
@@ -141,9 +149,12 @@ export function createModels({ env, fetch: doFetch = fetch, sleep = (ms) => new 
       const chain = ROUTES[route];
       for (let i = 0; ; i++) {
         try {
-          return { ...(await callModel(chain[i], prompt, ctx)), fellBack: i > 0 };
+          const reply = { ...(await callModel(chain[i], prompt, ctx)), fellBack: i > 0 };
+          // Local only (.env): reply texts become test fixtures. Never set in production.
+          if (env.LOG_RAW === "1") log({ evt: "model_reply", route, model: reply.model, text: reply.text, ...ctx });
+          return reply;
         } catch (err) {
-          const retryable = err instanceof ModelTimeout || err instanceof ModelRateLimited || err instanceof ModelRefusal;
+          const retryable = err instanceof ModelError; // timeout, rate limit, refusal or a request this model rejects
           if (!retryable || i === chain.length - 1) throw err;
           log({ evt: "model_fallback", route, from: chain[i], to: chain[i + 1], reason: err.constructor.name, ...ctx });
         }

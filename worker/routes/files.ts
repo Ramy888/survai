@@ -113,6 +113,7 @@ files.post("/:id/process", requirePasscode, async (c) => {
   if (Object.values(missing).some((m) => m.length)) return c.json({ error: "Some required files are missing", missing }, 409);
   const moved = await c.env.DB.prepare("UPDATE surveys SET status = ?1 WHERE id = ?2 AND status = 'uploading'").bind(next, id).run();
   if (!moved.meta.changes) return c.json({ error: "Processing has already started", state: next }, 409);
-  // T7 starts the ProcessSurvey workflow here.
+  await c.env.DB.prepare("UPDATE surveys SET processing_error = NULL WHERE id = ?1").bind(id).run();
+  await c.var.startProcessing(c.env, id);
   return c.json({ status: next });
 });

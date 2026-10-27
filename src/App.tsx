@@ -24,18 +24,34 @@ function SurveyView({ id }: { id: string }) {
   const [error, setError] = useState("");
   const load = () => getSurvey(id).then(setSurvey, (e: Error) => setError(e.message));
   useEffect(() => { void load(); }, [id]);
+  // Processing runs in the background (about a minute); check every 2 s until it moves on.
+  useEffect(() => {
+    if (survey?.status !== "processing") return;
+    const t = setInterval(() => void load(), 2000);
+    return () => clearInterval(t);
+  }, [survey?.status]);
 
   if (survey?.status === "draft") return <DeviceStep survey={survey} onConfirmed={load} />;
   if (survey?.status === "uploading") return <UploadStep survey={survey} onStarted={load} />;
   return (
-    <Shell step={survey ? 2 : 1} surveyCode={survey?.site} actions={<button className="btn btn-primary" disabled>Check the layout</button>}>
+    <Shell step={survey?.status === "processing" ? 2 : survey ? 3 : 1} surveyCode={survey?.site} actions={<button className="btn btn-primary" disabled>Layout is right, start meeting</button>}>
       <div className="stack narrow">
         {error && <p className="note error" role="alert">{error}</p>}
         {!survey && !error && <p className="muted">Loading survey…</p>}
         {survey && (
           <>
-            <div><h1>Processing footage</h1><p className="muted">{survey.quantity} × {survey.device_model}</p></div>
-            <p className="note ok">All files are in. The models read them next (finding floor tiles, racks, the panel and the path).</p>
+            {survey.status === "processing" ? (
+              <>
+                <div><h1>Processing footage</h1><p className="muted">{survey.quantity} × {survey.device_model}</p></div>
+                <p className="loading" aria-live="polite"><span className="spin" aria-hidden="true" />
+                  Finding floor tiles and racks, drafting the room, reading the panel and the narrated path. About a minute.</p>
+              </>
+            ) : (
+              <>
+                <div><h1>Check the layout</h1><p className="muted">{survey.quantity} × {survey.device_model}</p></div>
+                <p className="note ok">The draft layout is ready. The layout screen comes next.</p>
+              </>
+            )}
           </>
         )}
       </div>
