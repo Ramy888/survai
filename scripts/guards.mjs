@@ -15,3 +15,14 @@ if (bad.length) {
   process.exit(1);
 }
 console.log(`guards: ${files.length} source files, no raw HTML rendering`);
+
+// The static pages' CSP allows the inline scripts in index.html by hash; a changed script must update public/_headers.
+const { createHash } = await import("node:crypto");
+const inline = [...readFileSync("index.html", "utf8").matchAll(/<script>([\s\S]*?)<\/script>/g)].map((m) => `'sha256-${createHash("sha256").update(m[1]).digest("base64")}'`);
+const headers = readFileSync("public/_headers", "utf8");
+const stale = inline.filter((h) => !headers.includes(h));
+if (stale.length) {
+  console.error(`guards: public/_headers CSP is missing ${stale.join(", ")} for the inline scripts in index.html`);
+  process.exit(1);
+}
+console.log(`guards: CSP covers the ${inline.length} inline script(s)`);

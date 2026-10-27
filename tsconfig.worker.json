@@ -19,5 +19,6 @@
     "worker",
     "test",
     "fixtures"
-  ]
+  ],
+  "exclude": ["test/render.test.ts"]
 }

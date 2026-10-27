@@ -1,0 +1,7 @@
+# Headers for the static pages (the Worker sets its own on /api/*). The script hash is the inline theme script in
+# index.html; scripts/guards.mjs fails the build if they drift apart.
+/*
+  Referrer-Policy: no-referrer
+  X-Robots-Tag: noindex, nofollow
+  X-Content-Type-Options: nosniff
+  Content-Security-Policy: default-src 'self'; script-src 'self' 'sha256-V5qJba2Pfl34pHXr5tflSMB61vARUx4poZzLZG+ElkI='; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' blob: data:; connect-src 'self'; object-src 'none'; base-uri 'none'; form-action 'self'; frame-ancestors 'self'

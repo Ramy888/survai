@@ -31,6 +31,7 @@ export function createApp(deps: { fetch?: typeof fetch; sleep?: (ms: number) => 
     await next();
     c.header("Referrer-Policy", "no-referrer");
     c.header("X-Robots-Tag", "noindex, nofollow");
+    c.header("X-Content-Type-Options", "nosniff");
   });
 
   app.get("/api/health", async (c) => {

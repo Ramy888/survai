@@ -9,5 +9,5 @@ export default defineConfig({
       miniflare: { bindings: { TEST_MIGRATIONS: await readD1Migrations(path.join(import.meta.dirname, "migrations")) } },
     })),
   ],
-  test: { setupFiles: ["./test/apply-migrations.ts"] },
+  test: { setupFiles: ["./test/apply-migrations.ts"], deps: { optimizer: { ssr: { enabled: true, include: ["react", "react-dom/server.edge"] } } } },
 });
