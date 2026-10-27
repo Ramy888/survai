@@ -1,0 +1,357 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>SurvAI Prototype</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=Barlow:wght@400;500;600&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --ground:#EEF1F1; --surface:#FFFFFF; --ink:#14191C; --muted:#56636B; --rule:#D9E0E2;
+  --primary:#0B6770; --primary-hover:#08525A; --on-primary:#FFFFFF; --primary-soft:#E2F0F1;
+  --cable:#12A9B4;
+  --approve:#1C7A3E; --approve-bg:#E3F2E7; --object:#B8261B; --object-bg:#FBE6E3;
+  --question:#9A5B00; --question-bg:#FCEFD8;
+  --shadow:0 1px 2px rgba(20,25,28,.05),0 6px 20px rgba(20,25,28,.06);
+  --display:"Barlow Condensed",sans-serif; --body:"Barlow",sans-serif; --mono:"JetBrains Mono",monospace;
+  color-scheme:light;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --ground:#101518; --surface:#182025; --ink:#E7ECEE; --muted:#9AA8B0; --rule:#2B363C;
+  --primary:#3FB7C1; --primary-hover:#5FCAD3; --on-primary:#071518; --primary-soft:#123238; --cable:#3CCFD9;
+  --approve:#5CC27E; --approve-bg:#16301F; --object:#F07468; --object-bg:#3A1A17;
+  --question:#E7A94A; --question-bg:#33260F; --shadow:0 1px 2px rgba(0,0,0,.4),0 6px 20px rgba(0,0,0,.3); color-scheme:dark;
+}}
+:root[data-theme="dark"]{
+  --ground:#101518; --surface:#182025; --ink:#E7ECEE; --muted:#9AA8B0; --rule:#2B363C;
+  --primary:#3FB7C1; --primary-hover:#5FCAD3; --on-primary:#071518; --primary-soft:#123238; --cable:#3CCFD9;
+  --approve:#5CC27E; --approve-bg:#16301F; --object:#F07468; --object-bg:#3A1A17;
+  --question:#E7A94A; --question-bg:#33260F; --shadow:0 1px 2px rgba(0,0,0,.4),0 6px 20px rgba(0,0,0,.3); color-scheme:dark;
+}
+*{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+body{margin:0;background:var(--ground);color:var(--ink);font:400 16px/1.5 var(--body);min-height:100vh}
+h1,h2,h3{font-family:var(--display);font-weight:600;line-height:1.1;margin:0}
+h1{font-size:clamp(1.9rem,6vw,2.5rem)}
+h2{font-size:1.25rem}
+p{margin:0}
+.muted{color:var(--muted)}
+.mono{font-family:var(--mono);font-feature-settings:"tnum";font-size:.875em}
+.label{font-family:var(--display);font-weight:500;font-size:.875rem;text-transform:uppercase;letter-spacing:.05em;color:var(--muted)}
+.wrap{max-width:1040px;margin:0 auto;padding:0 16px}
+
+/* app bar + stepper */
+.top{position:sticky;top:0;z-index:5;background:var(--surface);border-bottom:1px solid var(--rule)}
+.bar{display:flex;align-items:center;justify-content:space-between;height:56px}
+.brand{font-family:var(--display);font-weight:700;font-size:1.4rem}
+.brand b{color:var(--primary)}
+.bar .mono{color:var(--muted)}
+.icon-btn{width:44px;height:44px;border-radius:10px;border:1px solid var(--rule);background:var(--surface);color:var(--ink);display:grid;place-items:center;cursor:pointer}
+.icon-btn svg{width:20px;height:20px}
+.stepper{list-style:none;margin:0 auto;padding:4px 0 14px;display:grid;grid-template-columns:repeat(5,1fr);max-width:640px}
+.stepper li{position:relative;display:flex;flex-direction:column;align-items:center;gap:6px;min-width:0}
+.stepper li+li::before{content:"";position:absolute;top:15px;right:calc(50% + 20px);left:calc(-50% + 20px);height:2px;background:var(--rule);border-radius:1px}
+.stepper li.done+li::before,.stepper li.done+li.done::before{background:var(--primary)}
+.stepper button{all:unset;display:flex;flex-direction:column;align-items:center;gap:6px;cursor:default;min-width:44px}
+.stepper li.done button{cursor:pointer}
+.stepper button:focus-visible .dot{outline:2px solid var(--primary);outline-offset:3px}
+.dot{width:32px;height:32px;border-radius:50%;display:grid;place-items:center;font:600 .8rem/1 var(--mono);border:2px solid var(--rule);color:var(--muted);background:var(--surface);transition:background .2s,border-color .2s,color .2s}
+.dot svg{width:16px;height:16px}
+.stepper li.done .dot{background:var(--primary);border-color:var(--primary);color:var(--on-primary)}
+.stepper li.now .dot{border-color:var(--primary);color:var(--primary);box-shadow:0 0 0 4px var(--primary-soft)}
+.sname{font:500 .8rem/1 var(--body);color:var(--muted);white-space:nowrap}
+.stepper li.now .sname{color:var(--ink);font-weight:600}
+
+/* page */
+main{padding:24px 0 120px}
+.step{display:none;gap:20px}
+.step.on{display:grid;animation:in .2s ease-out}
+@keyframes in{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:none}}
+@media (prefers-reduced-motion:reduce){.step.on{animation:none}}
+.lead{max-width:60ch}
+.panel{background:var(--surface);border:1px solid var(--rule);border-radius:14px;padding:16px}
+.panel h2{margin-bottom:12px}
+.fields{display:grid;gap:14px}
+.field{display:grid;gap:6px}
+.field label{font-weight:500;font-size:.95rem}
+input,textarea{font:400 1rem/1.4 var(--body);color:var(--ink);background:var(--surface);border:1px solid var(--rule);border-radius:10px;padding:12px;width:100%;min-height:48px}
+textarea{min-height:84px;resize:vertical}
+input:focus-visible,textarea:focus-visible{outline:2px solid var(--primary);outline-offset:-1px;border-color:var(--primary)}
+.two{display:grid;gap:14px;grid-template-columns:1fr 1fr;align-items:end}
+button{font:600 1rem/1 var(--body)}
+.btn{min-height:48px;padding:0 18px;border-radius:10px;border:1px solid transparent;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;gap:8px}
+.btn-primary{background:var(--primary);color:var(--on-primary)}
+.btn-primary:hover{background:var(--primary-hover)}
+.btn-secondary{background:var(--surface);color:var(--ink);border-color:var(--rule)}
+.btn-ghost{background:transparent;color:var(--primary);padding:0 8px}
+.btn:focus-visible{outline:2px solid var(--primary);outline-offset:2px}
+.btn:disabled{opacity:.45;cursor:not-allowed}
+.seg{display:grid;grid-template-columns:1fr 1fr;background:var(--ground);border-radius:10px;padding:4px;gap:4px}
+.seg button{min-height:40px;border:0;border-radius:8px;background:transparent;color:var(--muted);cursor:pointer}
+.seg button[aria-pressed="true"]{background:var(--surface);color:var(--ink);box-shadow:var(--shadow)}
+.found{display:flex;flex-wrap:wrap;gap:6px 12px;align-items:center;padding:12px;border-radius:10px;background:var(--approve-bg)}
+.found .mono{color:var(--ink)}
+.found a{color:var(--approve);font-size:.85rem}
+
+/* rows */
+.rows{display:grid}
+.r{display:flex;align-items:center;gap:12px;padding:12px 0;border-top:1px solid var(--rule);min-height:56px}
+.r:first-child{border-top:0;padding-top:0}
+.r .grow{flex:1;min-width:0}
+.r .sub{font-size:.85rem;color:var(--muted)}
+.check{width:24px;height:24px;accent-color:var(--primary);flex:none}
+.tag{font:600 .75rem/1 var(--mono);letter-spacing:.04em;border:1px solid var(--ink);color:var(--ink);background:var(--surface);padding:5px 6px;border-radius:4px;min-width:46px;text-align:center;flex:none}
+.tag.lead{background:var(--ink);color:var(--surface)}
+.chip{font:600 .75rem/1 var(--body);text-transform:uppercase;letter-spacing:.04em;padding:6px 8px;border-radius:6px;display:inline-flex;gap:6px;align-items:center;white-space:nowrap}
+.chip svg{width:12px;height:12px}
+.ok{background:var(--approve-bg);color:var(--approve)}
+.no{background:var(--object-bg);color:var(--object)}
+.q{background:var(--question-bg);color:var(--question)}
+.neutral{background:var(--ground);color:var(--muted)}
+.target{background:var(--primary-soft);color:var(--primary)}
+.state{width:28px;height:28px;border-radius:50%;display:grid;place-items:center;flex:none}
+.state svg{width:16px;height:16px}
+.prog{height:6px;border-radius:3px;background:var(--rule);overflow:hidden;margin-top:6px}
+.prog i{display:block;height:100%;background:var(--primary);border-radius:3px}
+.spin{width:18px;height:18px;border:2px solid var(--rule);border-top-color:var(--primary);border-radius:50%;animation:sp 0.9s linear infinite}
+@keyframes sp{to{transform:rotate(360deg)}}
+.note{padding:12px 14px;border-radius:10px;font-size:.95rem}
+
+/* meeting */
+.rounds{display:flex;gap:4px;margin-top:8px}
+.rounds i{flex:1;height:4px;border-radius:2px;background:var(--rule)}
+.rounds i.d{background:var(--ink)}.rounds i.n{background:var(--primary)}
+.st{display:grid;grid-template-columns:auto 1fr;gap:12px;padding:14px 0;border-top:1px solid var(--rule)}
+.st .tag{align-self:start}
+.st .meta{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-bottom:6px}
+.ev{font:500 .75rem/1 var(--mono);color:var(--primary);text-underline-offset:3px}
+.rt{font-size:.85rem;color:var(--muted);margin-top:4px}
+.ask{background:var(--question-bg);border-radius:14px;padding:16px;display:grid;gap:10px}
+.ask .label{color:var(--question)}
+
+/* plan */
+.plan svg{width:100%;height:auto;display:block}
+@media (max-width:599px){.plan{padding:10px}}
+.legend{display:flex;flex-wrap:wrap;gap:6px 14px;margin-top:10px;font-size:.8rem;color:var(--muted)}
+.legend i{display:inline-block;width:18px;border-top:3px solid var(--cable);vertical-align:middle;margin-right:4px}
+
+/* report sheet */
+.sheet{background:#fff;color:#14191C;border:1px solid var(--rule);border-radius:6px;padding:16px;font-size:.85rem;overflow-x:auto}
+.form{width:100%;border-collapse:collapse;min-width:440px}
+.form th,.form td{border:1px solid #9AA6AC;padding:6px 8px;text-align:left;vertical-align:top}
+.form th{font:600 .75rem/1.2 var(--display);text-transform:uppercase;letter-spacing:.04em;background:#F2F4F4}
+.form caption{caption-side:top;text-align:left;font:600 1rem/1 var(--display);padding:12px 0 6px}
+
+/* action bar */
+.actions{position:fixed;left:0;right:0;bottom:0;z-index:5;background:var(--surface);border-top:1px solid var(--rule);padding:12px 16px calc(12px + env(safe-area-inset-bottom))}
+.actions .wrap{display:flex;gap:10px;padding:0;max-width:640px}
+.actions .btn-primary{flex:1}
+
+@media (min-width:960px){
+  .split{grid-template-columns:1.25fr 1fr;align-items:start}
+  .narrow{max-width:640px;margin:0 auto;width:100%}
+}
+</style>
+</head>
+<body>
+<header class="top">
+  <div class="wrap">
+    <div class="bar">
+      <span class="brand">Surv<b>AI</b></span>
+      <span class="mono">NZA-0412</span>
+      <button class="icon-btn" id="theme" aria-label="Switch to dark theme">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></svg>
+      </button>
+    </div>
+    <ol class="stepper" id="stepper" aria-label="Survey progress"></ol>
+  </div>
+</header>
+
+<main class="wrap">
+  <!-- 1 Survey -->
+  <section class="step narrow" data-step="1">
+    <div><h1>New survey</h1><p class="muted lead">What is going in, and who must agree on it.</p></div>
+    <div class="panel fields">
+      <div class="two">
+        <div class="field"><label for="site">Site code</label><input id="site" value="NZA-0412"></div>
+        <div class="field"><label for="qty">Quantity</label><input id="qty" value="1" inputmode="numeric"></div>
+      </div>
+      <div class="field"><label for="model">Device model</label><input id="model" value="Edge router, 2U"></div>
+      <div class="found"><span class="chip ok">Datasheet found</span><span class="mono">2U · 450 W · DC dual feed · 16 A</span><a href="#">source</a></div>
+      <div class="field"><span style="font-weight:500;font-size:.95rem">Connects to</span>
+        <div class="seg" role="group" aria-label="Connects to"><button aria-pressed="false">Same room</button><button aria-pressed="true">Another room</button></div></div>
+    </div>
+    <div class="panel">
+      <h2>Representatives attending</h2>
+      <div class="rows">
+        <label class="r"><span class="tag">SPC</span><span class="grow">Space</span><input type="checkbox" class="check" checked></label>
+        <label class="r"><span class="tag">PWR</span><span class="grow">Power</span><input type="checkbox" class="check" checked></label>
+        <label class="r"><span class="tag">CLG</span><span class="grow">Cooling</span><input type="checkbox" class="check" checked></label>
+        <label class="r"><span class="tag">EXE</span><span class="grow">Execution</span><input type="checkbox" class="check" checked></label>
+        <label class="r"><span class="tag">RMG</span><span class="grow">Room Manager</span><input type="checkbox" class="check" checked></label>
+        <label class="r"><span class="tag">TRN</span><span class="grow">Transmission<span class="sub" style="display:block">Added because it connects to another room</span></span><input type="checkbox" class="check" checked></label>
+      </div>
+    </div>
+  </section>
+
+  <!-- 2 Upload -->
+  <section class="step narrow" data-step="2">
+    <div><h1>Upload footage</h1><p class="muted lead">Prepare the files on your Mac first. Faces, labels and logos are blurred before anything leaves it.</p></div>
+    <div class="panel">
+      <h2>Main equipment room</h2>
+      <div class="rows">
+        <div class="r"><span class="state ok"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M5 12l5 5L19 7"/></svg></span><div class="grow">Key frames<div class="sub mono">30 of 30 · 41 MB</div></div></div>
+        <div class="r"><span class="spin" aria-label="Uploading"></span><div class="grow">Narrated path clip<div class="sub mono">11.5 of 18 MB</div><div class="prog"><i style="width:64%"></i></div></div></div>
+        <div class="r"><span class="state neutral"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 5v14M5 12h14"/></svg></span><div class="grow">Power panel photo<div class="sub">Needed to read the breakers</div></div><button class="btn btn-secondary">Add</button></div>
+      </div>
+    </div>
+    <div class="panel">
+      <h2>What the models found</h2>
+      <div class="rows">
+        <div class="r"><span class="state ok"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M5 12l5 5L19 7"/></svg></span><div class="grow">47 floor tiles<div class="sub">Room about 10 × 8 tiles (6.0 × 4.8 m)</div></div></div>
+        <div class="r"><span class="state ok"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M5 12l5 5L19 7"/></svg></span><div class="grow">5 racks, overhead ladder, 1 door</div></div>
+        <div class="r"><span class="spin" aria-label="Working"></span><div class="grow muted">Reading the path clip</div></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 3 Layout -->
+  <section class="step split" data-step="3">
+    <div style="grid-column:1/-1"><h1>Check the layout</h1><p class="muted lead">Fix anything the models got wrong. The agents meet on this version.</p></div>
+    <div class="panel plan">
+      <svg viewBox="0 0 440 370" role="img" aria-label="Floor plan: five racks along the top wall, R3 is the target, R5 off limits, cable passage from R3 along the overhead ladder through the right wall">
+        <defs>
+          <pattern id="tile" width="40" height="40" patternUnits="userSpaceOnUse"><path d="M40 0H0V40" fill="none" stroke="var(--rule)"/></pattern>
+          <pattern id="hatch" width="6" height="6" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><line y2="6" stroke="var(--muted)" stroke-width="1.2"/></pattern>
+          <marker id="arr" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0L10 5L0 10z" fill="var(--cable)"/></marker>
+        </defs>
+        <g transform="translate(10,10)">
+          <rect width="400" height="320" fill="url(#tile)"/>
+          <rect width="400" height="320" fill="none" stroke="var(--ink)" stroke-width="3"/>
+          <g font-family="JetBrains Mono" font-size="17" font-weight="600" text-anchor="middle">
+            <rect x="40" y="16" width="40" height="66" fill="var(--surface)" stroke="var(--ink)" stroke-width="1.5"/><text x="60" y="72" fill="var(--ink)">R1</text>
+            <rect x="80" y="16" width="40" height="66" fill="var(--surface)" stroke="var(--ink)" stroke-width="1.5"/><text x="100" y="72" fill="var(--ink)">R2</text>
+            <rect x="120" y="16" width="40" height="66" fill="var(--primary-soft)" stroke="var(--primary)" stroke-width="2.5"/><text x="140" y="72" fill="var(--primary)">R3</text>
+            <rect x="160" y="16" width="40" height="66" fill="var(--surface)" stroke="var(--ink)" stroke-width="1.5"/><text x="180" y="72" fill="var(--ink)">R4</text>
+            <rect x="200" y="16" width="40" height="66" fill="url(#hatch)" stroke="var(--ink)" stroke-width="1.5"/><text x="220" y="72" fill="var(--ink)" paint-order="stroke" stroke="var(--surface)" stroke-width="4">R5</text>
+            <rect x="320" y="200" width="66" height="40" fill="var(--surface)" stroke="var(--ink)" stroke-width="1.5"/><text x="353" y="226" fill="var(--ink)" font-size="14">PNL B</text>
+          </g>
+          <g fill="var(--muted)"><path d="M56 88l4 6 4-6z"/><path d="M96 88l4 6 4-6z"/><path d="M136 88l4 6 4-6z"/><path d="M176 88l4 6 4-6z"/><path d="M216 88l4 6 4-6z"/></g>
+          <g stroke="var(--muted)" stroke-dasharray="6 4" stroke-width="1.4"><line y1="31" x2="400" y2="31"/><line y1="47" x2="400" y2="47"/></g>
+          <text x="248" y="66" font-family="JetBrains Mono" font-size="13" fill="var(--muted)">OVERHEAD LADDER</text>
+          <circle cx="140" cy="39" r="4" fill="var(--cable)"/>
+          <path d="M140 39H418" fill="none" stroke="var(--cable)" stroke-width="3" marker-end="url(#arr)"/>
+          <text x="392" y="96" text-anchor="end" font-family="Barlow" font-weight="600" font-size="16" fill="var(--cable)">cable passage → TX rack 40</text>
+          <line y1="240" y2="300" stroke="var(--surface)" stroke-width="5"/>
+          <path d="M0 240H60A60 60 0 0 1 0 300" fill="none" stroke="var(--muted)" stroke-width="1.2"/>
+          <text x="8" y="312" font-family="JetBrains Mono" font-size="14" fill="var(--muted)">DOOR</text>
+          <g stroke="var(--muted)"><line y1="336" x2="400" y2="336"/><line y1="331" y2="341"/><line x1="400" y1="331" x2="400" y2="341"/></g>
+          <text x="200" y="356" text-anchor="middle" font-family="JetBrains Mono" font-size="15" fill="var(--muted)">6,000 mm</text>
+        </g>
+      </svg>
+      <div class="legend"><span><i></i>Cable passage</span><span>▨ Off limits</span><span>▾ Rack front</span></div>
+    </div>
+    <div class="panel">
+      <h2>Racks</h2>
+      <div class="rows">
+        <div class="r"><span class="tag">R1</span><div class="grow">42U<div class="sub mono">2U free</div></div><span class="chip neutral">In use</span></div>
+        <div class="r"><span class="tag">R2</span><div class="grow">42U<div class="sub mono">0U free</div></div><span class="chip neutral">In use</span></div>
+        <div class="r"><span class="tag">R3</span><div class="grow">42U<div class="sub mono">U 18–21 free</div></div><span class="chip target">Target</span></div>
+        <div class="r"><span class="tag">R4</span><div class="grow">42U<div class="sub mono">6U free</div></div><span class="chip neutral">In use</span></div>
+        <div class="r"><span class="tag">R5</span><div class="grow">Access devices<div class="sub">Customer rack</div></div><span class="chip no">Off limits</span></div>
+      </div>
+      <div class="two" style="margin-top:14px">
+        <div class="field"><label for="btu">Spare BTU/h</label><input id="btu" class="mono" value="4,800"></div>
+        <div class="field"><label for="lad">Ladder height, m</label><input id="lad" class="mono" value="2.6"></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 4 Meeting -->
+  <section class="step split" data-step="4">
+    <div style="grid-column:1/-1">
+      <div style="display:flex;justify-content:space-between;align-items:baseline;gap:12px"><h1>The meeting</h1><span class="mono muted">Round 2 of 3</span></div>
+      <div class="rounds" aria-hidden="true"><i class="d"></i><i class="n"></i><i></i></div>
+    </div>
+    <div class="panel" style="padding-top:2px">
+      <div class="st"><span class="tag">SPC</span><div><div class="meta"><span class="chip ok">Approve</span><a class="ev" href="#">frame 14 · 00:23</a></div><p>R3 has U 18–21 free. The router fits at U 18–19 with 2U clear above.</p><p class="rt"><span class="mono">R8</span> Free U ≥ device U × qty + 2U</p></div></div>
+      <div class="st"><span class="tag">PWR</span><div><div class="meta"><span class="chip no"><svg viewBox="0 0 12 12" aria-hidden="true"><path fill="currentColor" d="M3 5V3.5a3 3 0 0 1 6 0V5h.5a.5.5 0 0 1 .5.5v5a.5.5 0 0 1-.5.5h-7a.5.5 0 0 1-.5-.5v-5a.5.5 0 0 1 .5-.5zm1.2 0h3.6V3.5a1.8 1.8 0 0 0-3.6 0z"/></svg>Forced · R11</span><a class="ev" href="#">panel photo</a></div><p>No free 16 A DC breaker on panel B. The router needs dual feed.</p><p class="rt"><span class="mono">R11</span> Breakers of the right type and rating</p></div></div>
+      <div class="st"><span class="tag">CLG</span><div><div class="meta"><span class="chip ok">Approve</span></div><p>450 W adds <span class="mono">1,535 BTU/h</span>; spare is <span class="mono">4,800</span>.</p></div></div>
+      <div class="st"><span class="tag">EXE</span><div><div class="meta"><span class="chip ok">Approve</span><a class="ev" href="#">path clip 00:12</a></div><p>Cables exit the top of R3 onto the ladder. Fibre run about 18 m.</p></div></div>
+      <div class="st"><span class="tag">TRN</span><div><div class="meta"><span class="chip ok">Approve</span></div><p>Rack 40 in the TX room has 2 free LC ports.</p></div></div>
+      <div class="st"><span class="tag">RMG</span><div><div class="meta"><span class="chip q">Question</span><a class="ev" href="#">frame 22 · 00:41</a></div><p>Does R5 hold access devices? If so it stays off limits.</p></div></div>
+      <div class="st"><span class="tag lead">LEAD</span><div><p>One forced objection (power) and one question. Answer the question; the power gap needs a new breaker or an override reason at approval.</p></div></div>
+    </div>
+    <div class="ask">
+      <span class="label">Room Manager asks</span>
+      <p>Does R5 hold access devices?</p>
+      <input aria-label="Your answer" placeholder="Type your answer">
+    </div>
+  </section>
+
+  <!-- 5 Report -->
+  <section class="step narrow" data-step="5">
+    <div><h1>Approve and report</h1><p class="muted lead">Five departments approve. One objection needs your reason before you can approve.</p></div>
+    <div class="panel">
+      <div class="rows">
+        <div class="r"><span class="tag">PWR</span><div class="grow">No free 16 A DC breaker<div class="sub mono">R11 · forced</div></div><span class="chip no">Object</span></div>
+      </div>
+      <div class="field" style="margin-top:12px"><label for="why">Override reason</label><textarea id="why">Power team adds a 16 A DC breaker on panel B before install (work order raised).</textarea></div>
+      <div class="field" style="margin-top:12px"><label for="spec">Tech specs</label><input id="spec" value="SM fibre LC/LC duplex; DC 2 × 6 mm²"></div>
+      <label class="r" style="margin-top:12px;border-top:1px solid var(--rule);padding-top:12px"><span class="grow">Send sign-off links to the 6 representatives</span><input type="checkbox" class="check" checked></label>
+    </div>
+    <div class="sheet" aria-label="Report preview">
+      <div style="display:flex;justify-content:space-between;gap:12px;align-items:baseline"><strong style="font:600 1.2rem/1 var(--display)">Site Survey Report</strong><span class="mono">NZA-0412 · 27 Oct 2026</span></div>
+      <table class="form">
+        <caption>Approved items</caption>
+        <tr><th>#</th><th>Item</th><th>Evidence</th></tr>
+        <tr><td class="mono">1</td><td>R3 U 18–19 is for the new router; leave 2U above</td><td class="mono">frame 14</td></tr>
+        <tr><td class="mono">2</td><td>Cables exit the top of R3 onto the overhead ladder</td><td class="mono">clip 00:12</td></tr>
+      </table>
+      <table class="form">
+        <caption>Cable lengths</caption>
+        <tr><th>Cable</th><th>Route</th><th>Length</th></tr>
+        <tr><td>SM fibre LC/LC</td><td>R3 → ladder → TX 40</td><td class="mono">18.0 m</td></tr>
+        <tr><td>DC power 2 × 6 mm²</td><td>PNL B → R3</td><td class="mono">7.5 m</td></tr>
+      </table>
+    </div>
+    <button class="btn btn-secondary">Print or save as PDF</button>
+  </section>
+</main>
+
+<nav class="actions" aria-label="Step actions">
+  <div class="wrap">
+    <button class="btn btn-secondary" id="back">Back</button>
+    <button class="btn btn-primary" id="next"></button>
+  </div>
+</nav>
+
+<script>
+const STEPS=[["Survey","Continue to upload"],["Upload","Process footage"],["Layout","Layout is right, start meeting"],["Meeting","Send answer, start round 3"],["Report","Approve survey"]];
+const CHECK='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M5 12l5 5L19 7"/></svg>';
+const ol=document.getElementById('stepper'),next=document.getElementById('next'),back=document.getElementById('back');
+let cur=1;
+function render(){
+  ol.innerHTML=STEPS.map(([n],i)=>{const k=i+1,c=k<cur?'done':k===cur?'now':'';
+    return `<li class="${c}"><button ${k<cur?'':'tabindex="-1"'} data-go="${k}" aria-label="Step ${k}: ${n}"${k===cur?' aria-current="step"':''}><span class="dot">${k<cur?CHECK:k}</span><span class="sname">${n}</span></button></li>`}).join('');
+  document.querySelectorAll('.step').forEach(s=>s.classList.toggle('on',+s.dataset.step===cur));
+  next.textContent=STEPS[cur-1][1]; back.disabled=cur===1;
+  history.replaceState(null,'','#step='+cur+(document.documentElement.dataset.theme?'&theme='+document.documentElement.dataset.theme:''));
+  scrollTo(0,0);
+}
+ol.onclick=e=>{const b=e.target.closest('[data-go]');if(b&&+b.dataset.go<cur){cur=+b.dataset.go;render()}};
+next.onclick=()=>{if(cur<5){cur++;render()}};
+back.onclick=()=>{if(cur>1){cur--;render()}};
+document.querySelectorAll('.seg button').forEach(b=>b.onclick=()=>b.parentNode.querySelectorAll('button').forEach(x=>x.setAttribute('aria-pressed',x===b)));
+const root=document.documentElement,t=document.getElementById('theme');
+const isDark=()=>root.dataset.theme?root.dataset.theme==='dark':matchMedia('(prefers-color-scheme: dark)').matches;
+const lab=()=>t.setAttribute('aria-label',isDark()?'Switch to light theme':'Switch to dark theme');
+t.onclick=()=>{root.dataset.theme=isDark()?'light':'dark';lab();render()};
+const h=new URLSearchParams(location.hash.slice(1));
+if(h.get('theme'))root.dataset.theme=h.get('theme');
+cur=Math.min(5,Math.max(1,+h.get('step')||1));lab();render();
+</script>
+</body>
+</html>

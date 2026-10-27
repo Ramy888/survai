@@ -1,0 +1,35 @@
+# Confidential real-site material: keep local, never push
+*.pdf
+*.mp4
+*.mov
+test-media/
+private/
+
+# Secrets and local tooling
+.env
+.env.*
+.dev.vars
+node_modules/
+.wrangler/
+.DS_Store
+
+# AI instructions and agent notes (local only)
+CLAUDE.md
+AGENTS.md
+.claude/
+.agents/
+.vscode/
+
+# Copyrighted test photos at the root, personal notes, and the spec (holds account details)
+/*.jpg
+/*.jpeg
+meta-global-ai-developer-hackathon.md
+docs/spec-survai.md
+
+# Build and tool output
+dist/
+coverage/
+.gstack/
+tools/prepare/.venv/
+tools/prepare/out/
+__pycache__/
