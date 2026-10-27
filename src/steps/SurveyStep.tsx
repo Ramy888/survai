@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { createSurvey, type NewSurvey } from "../api";
+import { createSurvey, savePasscode, savedPasscode, type NewSurvey } from "../api";
 import { Shell } from "../components/Shell";
 
 const DEPARTMENTS = [
@@ -10,16 +10,12 @@ const DEPARTMENTS = [
   ["room_manager", "RMG", "Room Manager"],
 ] as const;
 
-function readPasscode() {
-  try { return sessionStorage.getItem("passcode") ?? ""; } catch { return ""; }
-}
-
 export function SurveyStep({ onCreated }: { onCreated: (id: string) => void }) {
   const [form, setForm] = useState<NewSurvey>({
     site: "", project: "", device_model: "", quantity: 1, connects_to: "same_room",
     reps: DEPARTMENTS.map(([id]) => id),
   });
-  const [passcode, setPasscode] = useState(readPasscode);
+  const [passcode, setPasscode] = useState(savedPasscode);
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
   const other = form.connects_to === "other_room";
@@ -34,7 +30,7 @@ export function SurveyStep({ onCreated }: { onCreated: (id: string) => void }) {
     try {
       const reps = form.reps.filter((r) => r !== "transmission");
       const { id } = await createSurvey({ ...form, reps: other ? [...reps, "transmission"] : reps }, passcode);
-      try { sessionStorage.setItem("passcode", passcode); } catch { /* per-tab convenience only */ }
+      savePasscode(passcode);
       onCreated(id);
     } catch (e) {
       setError((e as Error).message);

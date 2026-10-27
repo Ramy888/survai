@@ -2,6 +2,7 @@
 import { Hono } from "hono";
 import { z } from "zod";
 import { requirePasscode } from "../passcode";
+import type { AppEnv } from "../types";
 
 export const AGENTS = ["space", "power", "cooling", "execution", "room_manager", "transmission"] as const;
 const DEFAULT_REPS = ["space", "power", "cooling", "execution", "room_manager"] as const;
@@ -20,7 +21,7 @@ const NewSurvey = z
     path: ["reps"],
   });
 
-export const surveys = new Hono<{ Bindings: Env }>();
+export const surveys = new Hono<AppEnv>();
 
 surveys.post("/", requirePasscode, async (c) => {
   const parsed = NewSurvey.safeParse(await c.req.json().catch(() => null));
@@ -49,9 +50,12 @@ surveys.get("/:id", async (c) => {
     "SELECT id, site, project, device_model, quantity, connects_to, status, layout_version, created_at FROM surveys WHERE id = ?1",
   ).bind(id).first();
   if (!survey) return c.json({ error: "Survey not found" }, 404);
-  const [reps, rooms] = await Promise.all([
+  const [reps, rooms, spec] = await Promise.all([
     c.env.DB.prepare("SELECT agent FROM survey_reps WHERE survey_id = ?1 ORDER BY agent").bind(id).all<{ agent: string }>(),
     c.env.DB.prepare("SELECT role FROM rooms WHERE survey_id = ?1 ORDER BY role").bind(id).all<{ role: string }>(),
+    c.env.DB.prepare("SELECT * FROM device_specs WHERE survey_id = ?1").bind(id).first<Record<string, unknown>>(),
   ]);
-  return c.json({ ...survey, reps: reps.results.map((r) => r.agent), rooms: rooms.results.map((r) => r.role) });
+  const device = spec && (({ survey_id: _, sources_json, confirmed, ...rest }) =>
+    ({ ...rest, sources: JSON.parse(String(sources_json ?? "[]")), confirmed: confirmed === 1 }))(spec);
+  return c.json({ ...survey, reps: reps.results.map((r) => r.agent), rooms: rooms.results.map((r) => r.role), device: device ?? null });
 });

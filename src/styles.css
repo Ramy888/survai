@@ -85,3 +85,11 @@ input[aria-invalid="true"]{border-color:var(--object)}
 .actions .btn-primary{flex:1}
 @media (prefers-reduced-motion:no-preference){main>*{animation:in .2s ease-out}}
 @keyframes in{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:none}}
+.found{display:flex;flex-wrap:wrap;gap:6px 12px;align-items:center;padding:12px;border-radius:10px;background:var(--approve-bg);color:var(--approve);font-weight:600;font-size:.95rem}
+.sources{display:grid;gap:4px;margin:0;padding:0;list-style:none;font-size:.85rem}
+.sources a{color:var(--primary);word-break:break-word}
+.spin{width:18px;height:18px;border:2px solid var(--rule);border-top-color:var(--primary);border-radius:50%;animation:sp .9s linear infinite;flex:none}
+@keyframes sp{to{transform:rotate(360deg)}}
+.loading{display:flex;gap:12px;align-items:center;color:var(--muted)}
+.three{display:grid;gap:14px;grid-template-columns:repeat(3,1fr);align-items:end}
+@media (max-width:420px){.three{grid-template-columns:1fr 1fr}}
