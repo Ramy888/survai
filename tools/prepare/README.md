@@ -4,7 +4,8 @@ Anonymises survey footage on the engineer's Mac before anything is uploaded or s
 
 - Blurs faces and whole people (macOS Vision, full body, at 1x and 2x for distant people).
 - Blurs every text region it finds (labels, logos, wordmarks), at 1x, 2x and 3x.
-- On a power-panel photo (`--panel`) keeps breaker ratings readable (C16, 16A, 2P) and blurs brands and words.
+- `--panel` keeps breaker ratings readable (C16, 16A, 2P) and blurs brands and words. SurvAI's demo does not use it:
+  every text on walls and panels is blurred, and hand boxes cover handwriting and panel labels.
 - Picks the 30 sharpest key frames spread across the walk-through (at least 1 s apart); a frame blurred over more
   than 40% is replaced by the next sharpest in its part of the clip.
 - Strips metadata (GPS, device): OpenCV writes no EXIF, ffmpeg runs with `-map_metadata -1`.

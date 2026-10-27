@@ -30,7 +30,13 @@ for (const name of photos) for (const model of ["spark-open", "spark-1.3"]) {
   };
   const r = model === "spark-open" ? await baseten(body) : await spark13(body);
   const { data, seconds } = r;
-  const parsed = firstJson(r.content ?? data.choices[0].message.content);
+  const reply = r.content ?? data.choices[0].message.content;
+  let parsed;
+  try {
+    parsed = firstJson(reply);
+  } catch {
+    parsed = { boxes: [], refused: true, reply: (reply ?? "").slice(0, 500) };  // a refusal is a result too
+  }
   const breakers = (parsed.boxes ?? []).flatMap((b) => b.breakers ?? []);
   const rated = breakers.filter((b) => typeof b.rating_a === "number");
   const path = save(`panel-${name.toLowerCase()}-${model}`, { check: "panel", photo: `${name}.jpg`, seconds, request: body, response: data, parsed });

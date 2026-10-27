@@ -112,7 +112,8 @@ def blur_boxes(img, boxes):
         h, w = roi.shape[:2]
         if h < 2 or w < 2:
             continue
-        small = cv2.resize(roi, (max(1, w // 12), max(1, h // 12)), interpolation=cv2.INTER_AREA)
+        cell = max(6, min(w, h) // 8)  # blocks grow with the box, so thick handwriting cannot survive
+        small = cv2.resize(roi, (max(1, w // cell), max(1, h // cell)), interpolation=cv2.INTER_AREA)
         roi = cv2.resize(small, (w, h), interpolation=cv2.INTER_NEAREST)
         k = max(3, (min(w, h) // 6) | 1)
         out[y0:y1, x0:x1] = cv2.GaussianBlur(roi, (k, k), 0)

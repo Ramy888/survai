@@ -6,13 +6,18 @@ Live calls on the anonymised demo-room footage (`tools/prepare` output). Raw req
 | Check | Model | Result | Time | Decision |
 |---|---|---|---|---|
 | Datasheet lookup, Juniper MX104 | Muse Spark 1.3 + `web_search` | PASS: 3.5U, depth 240 mm, 600 W typical / 800 W max, AC or DC, 2 feeds, side-to-side airflow, 14.5 kg; 2 cited sources (hardware guide, datasheet) | 35 s | ~20 searches and 343K input tokens per lookup (about $0.45): store the result per device model and look each model up once |
-| Power panel PWR1 | Muse Spark Open (Baseten) | PASS: 8 breakers (3 positive, 5 negative pole), ratings unreadable | 17 s | |
-| Power panel PWR1 | Muse Spark 1.3 | PASS: 8 breakers, ratings unreadable | 9 s | |
-| Power panel PWR2 | Muse Spark Open | FAIL: 0 breakers; its reasoning treated breaker counting as possibly sensitive | 10 s | Panel photos go to **Spark 1.3**, not Spark Open |
-| Power panel PWR2 | Muse Spark 1.3 | PASS: 8 breakers, ratings unreadable | 7 s | |
+| Power panel PWR1 | Muse Spark Open (Baseten) | PASS: 3 breakers found (the photo has 8), ratings unreadable | 14 s | |
+| Power panel PWR1 | Muse Spark 1.3 | PASS: 6 breakers found (of 8), ratings unreadable | 8 s | |
+| Power panel PWR2 | Muse Spark Open | FAIL: 0 breakers; says the blurring prevents counting (an earlier run's reasoning also treated breaker counting as possibly sensitive) | 17 s | Panel photos go to **Spark 1.3**, not Spark Open |
+| Power panel PWR2 | Muse Spark 1.3 | PASS: 6 breakers found, ratings unreadable | 5 s | |
 | Survey Lead from canned round-1 findings | Muse Wonder 1.0 | PASS: valid Lead JSON every run; respected the forced R11 objection, carried both questions, changed no verdict | 16-21 s default, **8-11 s at `reasoning.effort: low`**, 6-7 s minimal | Use `low`; 20 s timeout and Spark 1.3 fallback stay |
 
 ## Findings that change the build
+
+- **All text on walls and panels is blurred** in panel photos (owner's rule, Oct 27): handwriting, printed labels,
+  the position numbering under the breakers, and a person reflected in a panel's glass. Before that, with the
+  numbering left readable, both models counted all 8 breakers on PWR1; with it blurred, Spark 1.3 finds 6. The
+  count is therefore a draft that the engineer corrects in the layout step.
 
 - Breaker ratings are not legible in phone photos even before blurring (paper labels also cover parts of the
   breakers). The model gives the count and positions; the engineer confirms ratings and free breakers in the layout
