@@ -120,6 +120,23 @@ describe("POST /api/replay/:slug/rerun", () => {
     expect(started).toEqual([]);
   });
 
+  it("keeps a reserve of the day's model budget for real surveys (CSO-1)", async () => {
+    await seed();
+    await q("INSERT INTO usage_counters (day, kind, count) VALUES (?1, 'model', ?2)", new Date().toISOString().slice(0, 10), Number(env.MODEL_DAILY_CAP) - 200).run();
+    expect((await rerun("203.0.113.97")).status).toBe(429); // 200 left is enough for a meeting, but it is the reserve
+    expect(started).toEqual([]);
+  });
+
+  it("allows at most 10 public reruns a day, whatever the IPs (CSO-1)", async () => {
+    await seed();
+    const day = new Date().toISOString().slice(0, 10);
+    for (let k = 0; k < 10; k++) await q("INSERT INTO rerun_requests (ip, at) VALUES (?1, ?2)", `198.51.100.${k}`, `${day}T00:00:0${k}Z`).run();
+    const res = await rerun("203.0.113.98");
+    expect(res.status).toBe(429);
+    expect(await res.json()).toMatchObject({ error: expect.stringMatching(/today/i) });
+    expect(started).toEqual([]);
+  });
+
   it("is off when the flag is off", async () => {
     await seed();
     const off = { ...env, RERUN_ENABLED: "0" } as Env;

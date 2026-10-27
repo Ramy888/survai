@@ -11,6 +11,10 @@ export const replay = new Hono<AppEnv>();
 
 const WINDOW_MIN = 10; // one rerun per IP per window; a round silent this long counts as crashed
 const MEETING_CALLS = 25; // up to 3 rounds × (6 departments + the Lead), with room for retries
+// Public reruns share the daily model cap with real surveys, so they get their own allowance and never touch a reserve
+// kept for real work (CSO-1: rotating IPs could otherwise spend the whole day's budget).
+const RERUNS_PER_DAY = 10;
+const RESERVE_CALLS = 300;
 
 const sample = (db: D1Database, slug: string) =>
   db.prepare("SELECT id FROM surveys WHERE replay_slug = ?1 AND is_sample = 1").bind(slug).first<{ id: string }>().then((r) => r?.id ?? null);
@@ -71,9 +75,12 @@ replay.post("/:slug/rerun", async (c) => {
   const since = new Date(Date.now() - WINDOW_MIN * 60_000).toISOString();
   const recent = await db.prepare("SELECT COUNT(*) AS n FROM rerun_requests WHERE ip = ?1 AND at > ?2").bind(ip, since).first<{ n: number }>();
   if (recent?.n) return c.json({ error: `One rerun per visitor every ${WINDOW_MIN} minutes. Try again later.` }, 429);
+  const day = new Date().toISOString().slice(0, 10);
+  const today = await db.prepare("SELECT COUNT(*) AS n FROM rerun_requests WHERE at >= ?1").bind(day).first<{ n: number }>();
+  if ((today?.n ?? 0) >= RERUNS_PER_DAY) return c.json({ error: "The meeting has been rerun enough for today. The replay above is the full recorded meeting; try again tomorrow." }, 429);
   // Refuse up front rather than let a run stall half way when the day's model calls run out.
-  const used = await db.prepare("SELECT count FROM usage_counters WHERE day = ?1 AND kind = 'model'").bind(new Date().toISOString().slice(0, 10)).first<{ count: number }>();
-  if (Number(c.env.MODEL_DAILY_CAP) - (used?.count ?? 0) < MEETING_CALLS) return c.json({ error: "Today's model budget is used up. The replay above is still the full recorded meeting; try a rerun tomorrow." }, 429);
+  const used = await db.prepare("SELECT count FROM usage_counters WHERE day = ?1 AND kind = 'model'").bind(day).first<{ count: number }>();
+  if (Number(c.env.MODEL_DAILY_CAP) - (used?.count ?? 0) < MEETING_CALLS + RESERVE_CALLS) return c.json({ error: "Today's model budget is used up. The replay above is still the full recorded meeting; try a rerun tomorrow." }, 429);
   await db.prepare("INSERT INTO rerun_requests (ip, at) VALUES (?1, ?2)").bind(ip, new Date().toISOString()).run();
   const run = await nextRun(db, id);
   await c.var.startRound(c.env, id, run, 1);
