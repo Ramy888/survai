@@ -127,10 +127,10 @@ describe("POST /api/replay/:slug/rerun", () => {
     expect(started).toEqual([]);
   });
 
-  it("allows at most 10 public reruns a day, whatever the IPs (CSO-1)", async () => {
+  it("allows at most 60 public reruns a day, whatever the IPs (CSO-1)", async () => {
     await seed();
     const day = new Date().toISOString().slice(0, 10);
-    for (let k = 0; k < 10; k++) await q("INSERT INTO rerun_requests (ip, at) VALUES (?1, ?2)", `198.51.100.${k}`, `${day}T00:00:0${k}Z`).run();
+    await env.DB.batch(Array.from({ length: 60 }, (_, k) => q("INSERT INTO rerun_requests (ip, at) VALUES (?1, ?2)", `198.51.100.${k}`, `${day}T00:00:00Z`)));
     const res = await rerun("203.0.113.98");
     expect(res.status).toBe(429);
     expect(await res.json()).toMatchObject({ error: expect.stringMatching(/today/i) });

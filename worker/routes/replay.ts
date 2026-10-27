@@ -13,7 +13,7 @@ const WINDOW_MIN = 10; // one rerun per IP per window; a round silent this long 
 const MEETING_CALLS = 25; // up to 3 rounds × (6 departments + the Lead), with room for retries
 // Public reruns share the daily model cap with real surveys, so they get their own allowance and never touch a reserve
 // kept for real work (CSO-1: rotating IPs could otherwise spend the whole day's budget).
-const RERUNS_PER_DAY = 10;
+const RERUNS_PER_DAY = 60;
 const RESERVE_CALLS = 300;
 
 const sample = (db: D1Database, slug: string) =>
