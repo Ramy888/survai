@@ -48,7 +48,8 @@ export function LayoutStep({ survey, onSaved, onBack }: { survey: Survey; onSave
     const confirmed = f.breakers_confirmed as Breaker[] | null | undefined;
     setBreakers(confirmed?.map((b) => ({ ...b, rating_a: b.rating_a == null ? "" : String(b.rating_a) })) ??
       ((f.breakers_draft as { position: number | null; dc?: boolean | null; rating_a?: number | null }[] | undefined) ?? [])
-        .map((b, k) => ({ position: b.position ?? k + 1, dc: b.dc ?? true, rating_a: b.rating_a ? String(b.rating_a) : "", free: false })));
+        // Numbered down the list: the reader's positions restart in every box and photo, so they repeat.
+        .map((b, k) => ({ position: k + 1, dc: b.dc ?? true, rating_a: b.rating_a ? String(b.rating_a) : "", free: false })));
   }
   useEffect(() => { void load(role).catch((e: Error) => setError(e.message)); }, [role]);
 
@@ -194,7 +195,7 @@ export function LayoutStep({ survey, onSaved, onBack }: { survey: Survey; onSave
                     <button type="button" className="icon-btn" aria-label={`Remove breaker ${b.position ?? k + 1}`} onClick={() => setBreakers((xs) => xs.filter((_, j) => j !== k))}>×</button>
                   </div>
                 ))}
-                <button className="btn btn-secondary" style={{ marginTop: 10 }} onClick={() => setBreakers((xs) => [...xs, { position: xs.length + 1, dc: true, rating_a: "", free: true }])}>Add breaker</button>
+                <button className="btn btn-secondary" style={{ marginTop: 10 }} onClick={() => setBreakers((xs) => [...xs, { position: Math.max(0, ...xs.map((x) => x.position ?? 0)) + 1, dc: true, rating_a: "", free: true }])}>Add breaker</button>
               </section>
             )}
             {((data.facts.observations as { rule: string; text: string }[] | undefined)?.length || (data.facts.processing_notes as string[] | undefined)?.length) ? (
