@@ -175,7 +175,7 @@ export function MeetingStep({ survey, onEditLayout, onApprove }: { survey: Surve
             {open.map(({ q, agent }) => <Ask key={q.id} q={q} agent={agent} value={answers[q.id] ?? ""} onChange={(v) => setAnswers((a) => ({ ...a, [q.id]: v }))} />)}
           </div>
         )}
-{askPass && (
+        {askPass && (
           <section className="panel fields full">
             <div className="field"><label htmlFor="pass">Team passcode</label>
               <input id="pass" type="password" autoComplete="off" value={passcode} onChange={(e) => setPasscode(e.target.value)} /></div>

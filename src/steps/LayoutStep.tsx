@@ -208,7 +208,7 @@ export function LayoutStep({ survey, onSaved, onBack }: { survey: Survey; onSave
             ) : null}
           </>
         )}
-{askPass && (
+        {askPass && (
           <section className="panel fields full">
             <div className="field"><label htmlFor="pass">Team passcode</label>
               <input id="pass" type="password" autoComplete="off" value={passcode} onChange={(e) => setPasscode(e.target.value)} /></div>

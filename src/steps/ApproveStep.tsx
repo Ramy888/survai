@@ -87,11 +87,11 @@ export function ApproveStep({ survey, onBack, onApproved }: { survey: Survey; on
             <textarea id="specs" rows={2} maxLength={1000} placeholder="Cable type, connectors, power cable size" value={specs} onChange={(e) => setSpecs(e.target.value)} />
           </div>
         </section>
-        <label className="r panel" style={{ minHeight: 0 }}>
+        <label className="r panel" style={{ minHeight: 0, padding: 16 }}>
           <span className="grow">Create sign-off links for the {last?.findings.length ?? 0} departments<span className="sub">Each representative approves or objects from their phone.</span></span>
           <input type="checkbox" className="check" checked={issue} onChange={(e) => setIssue(e.target.checked)} />
         </label>
-{askPass && (
+        {askPass && (
           <section className="panel fields">
             <div className="field"><label htmlFor="pass">Team passcode</label>
               <input id="pass" type="password" autoComplete="off" value={passcode} onChange={(e) => setPasscode(e.target.value)} /></div>
