@@ -65,9 +65,9 @@ export function SurveyStep({ onCreated }: { onCreated: (id: string) => void }) {
                 onChange={(e) => set("quantity", Math.max(1, Math.min(20, Number(e.target.value) || 1)))} /></div>
           </div>
           <div className="field"><label htmlFor="project">Project</label>
-            <input id="project" placeholder="Card expansion" value={form.project} onChange={(e) => set("project", e.target.value)} /></div>
+            <input id="project" placeholder="e.g. Card expansion" value={form.project} onChange={(e) => set("project", e.target.value)} /></div>
           <div className="field"><label htmlFor="model">Device model</label>
-            <input id="model" placeholder="Juniper MX104" value={form.device_model} onChange={(e) => set("device_model", e.target.value)} /></div>
+            <input id="model" placeholder="e.g. Juniper MX104" value={form.device_model} onChange={(e) => set("device_model", e.target.value)} /></div>
           <div className="field">
             <span className="label" id="connects">Connects to</span>
             <div className="seg" role="group" aria-labelledby="connects">
