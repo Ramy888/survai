@@ -111,7 +111,7 @@ export function LayoutStep({ survey, onSaved, onBack }: { survey: Survey; onSave
         )}
         {req && (req.source || req.destination) && (
           <section className="panel req full" aria-label="Request">
-            <span className="label">Request from the narrated clip</span>
+            <h2>Request from the narrated clip</h2>
             {req.translation_en && <p>{req.translation_en}</p>}
             <p className="muted"><b>Goes in:</b> {req.source ?? "—"} · <b>Route:</b> {req.route ?? "—"} · <b>To:</b> {req.destination ?? "—"}</p>
           </section>
