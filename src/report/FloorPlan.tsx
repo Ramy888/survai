@@ -4,7 +4,7 @@ const T = 40; // px per tile (600 mm)
 const M = 30; // margin
 const px = (n: number) => M + n * T;
 
-function Rack({ s }: { s: Extract<Shape, { type: "rect" }> }) {
+function Rack({ s, labelOnly = false }: { s: Extract<Shape, { type: "rect" }>; labelOnly?: boolean }) {
   const fill = s.hatched === "reserved" ? "url(#hatch-reserved)" : s.hatched === "off_limits" ? "url(#hatch-off)" : s.target ? "var(--primary-soft)" : "var(--surface)";
   const stroke = s.target || s.hatched === "reserved" ? "var(--primary)" : "var(--ink)";
   const cx = px(s.x + s.w / 2);
@@ -14,10 +14,12 @@ function Rack({ s }: { s: Extract<Shape, { type: "rect" }> }) {
     north: [cx, px(s.y) - 6, 180], south: [cx, px(s.y + s.d) + 6, 0], east: [px(s.x + s.w) + 6, cy, -90], west: [px(s.x) - 6, cy, 90],
   };
   const f = s.facing ? front[s.facing] : null;
+  const thin = s.d * T < 20 || s.w * T < 20; // a wall panel: its label goes beside it, into the room, not across the wall
+  const label = <text x={cx} y={thin ? (s.y < 1 ? px(s.y + s.d) + 17 : px(s.y) - 7) : cy + 5} textAnchor="middle" fontFamily="JetBrains Mono" fontSize="15" fontWeight="600" fill={stroke} paintOrder="stroke" stroke="var(--surface)" strokeWidth="4">{s.label}</text>;
+  if (labelOnly) return label;
   return (
     <g>
       <rect x={px(s.x)} y={px(s.y)} width={s.w * T} height={s.d * T} fill={fill} stroke={stroke} strokeWidth={s.target || s.hatched === "reserved" ? 2.5 : 1.5} />
-      <text x={cx} y={cy + 5} textAnchor="middle" fontFamily="JetBrains Mono" fontSize="15" fontWeight="600" fill={stroke} paintOrder="stroke" stroke="var(--surface)" strokeWidth="4">{s.label}</text>
       {f && <path d="M-4 -3 L4 -3 L0 4 Z" transform={`translate(${f[0]} ${f[1]}) rotate(${f[2]})`} fill="var(--muted)" />}
     </g>
   );
@@ -65,11 +67,19 @@ export function FloorPlan(props: PlanInput) {
           }
           if (s.type === "path") {
             const pts = s.points.map(([x, y]) => `${px(x)},${px(y)}`).join(" ");
-            const [lx, ly] = s.points.at(-1) ?? [0, 0];
+            // Label beside a segment's middle, never at the ends (they sit on racks and panels): the longest segment
+            // first, on the first side where the text covers no rack, column or wall.
+            const tw = s.label.length * 7.5;
+            const clear = (x0: number, y: number) => x0 > M && x0 + tw < M + plan.w * T && !plan.shapes.some((r) => r.type === "rect"
+              && x0 < px(r.x + r.w) && x0 + tw > px(r.x) && y - 14 < px(r.y + r.d) && y > px(r.y));
+            const spots = s.points.slice(1).map((b, j) => [s.points[j], b] as const)
+              .sort((g, h) => Math.hypot(h[1][0] - h[0][0], h[1][1] - h[0][1]) - Math.hypot(g[1][0] - g[0][0], g[1][1] - g[0][1]))
+              .flatMap(([a, b]) => { const [mx, y] = [px((a[0] + b[0]) / 2), px((a[1] + b[1]) / 2) - 6]; return [{ x: mx + 8, y, end: false }, { x: mx - 8, y, end: true }]; });
+            const spot = spots.find((p) => clear(p.end ? p.x - tw : p.x, p.y)) ?? spots[0] ?? { x: 0, y: 0, end: false };
             return (
               <g key={k}>
                 <polyline points={pts} fill="none" stroke="var(--cable)" strokeWidth="3" strokeDasharray={s.cable_type === "power" ? "8 5" : undefined} markerEnd="url(#cable-end)" />
-                <text x={px(lx) + 6} y={px(ly) - 6} fontFamily="Barlow" fontWeight="600" fontSize="14" fill="var(--cable)" paintOrder="stroke" stroke="var(--surface)" strokeWidth="4">{s.label}</text>
+                <text x={spot.x} y={spot.y} textAnchor={spot.end ? "end" : "start"} fontFamily="Barlow" fontWeight="600" fontSize="14" fill="var(--cable)" paintOrder="stroke" stroke="var(--surface)" strokeWidth="4">{s.label}</text>
               </g>
             );
           }
@@ -82,6 +92,8 @@ export function FloorPlan(props: PlanInput) {
             </g>
           );
         })}
+        {/* Rack ids go on top: a cable arrow ends inside its rack and would cover the id. */}
+        {plan.shapes.map((s, k) => s.type === "rect" && <Rack key={`l${k}`} s={s} labelOnly />)}
         <g stroke="var(--muted)"><line x1={M} y1={H - 22} x2={M + plan.w * T} y2={H - 22} /><line x1={M} y1={H - 27} x2={M} y2={H - 17} /><line x1={M + plan.w * T} y1={H - 27} x2={M + plan.w * T} y2={H - 17} /></g>
         <text x={W / 2} y={H - 4} textAnchor="middle" fontFamily="JetBrains Mono" fontSize="13" fill="var(--muted)">{(plan.w * 600).toLocaleString("en-US")} mm</text>
       </svg>
