@@ -44,7 +44,6 @@ export function SurveyStep({ onCreated }: { onCreated: (id: string) => void }) {
       step={1}
       actions={
         <>
-          <button className="btn btn-secondary" disabled>Back</button>
           <button className="btn btn-primary" disabled={!ready || busy} onClick={submit}>
             {busy ? "Creating survey…" : "Create survey"}
           </button>
