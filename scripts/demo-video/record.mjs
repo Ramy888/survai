@@ -20,6 +20,13 @@ const b = await launch({ scale: 4 / 3 });
 const cues = [];
 const cue = (text) => { cues.push({ at: b.mark(), text }); console.log(b.mark().toFixed(1), text); };
 const hover = (x, y) => b.moveTo({ x, y });
+// An on-screen label naming the Meta model at work in this beat (the app's own chips say it too, smaller)
+const banner = (text) => b.evaluate(`(() => { document.getElementById("rec-banner")?.remove(); const t = ${JSON.stringify(text ?? "")}; if (!t) return;
+  const d = document.createElement("div"); d.id = "rec-banner"; d.textContent = t;
+  Object.assign(d.style, { position: "fixed", top: "14px", left: "50%", transform: "translateX(-50%)", zIndex: 2147483645, background: "#0B6770", color: "#fff",
+    font: "600 17px/1.3 'JetBrains Mono', monospace", padding: "9px 16px", borderRadius: "8px", boxShadow: "0 4px 14px rgba(20,25,28,.25)", pointerEvents: "none", whiteSpace: "nowrap" });
+  document.documentElement.appendChild(d); })()`);
+const hoverSel = async (sel) => { await scrollTo(sel); await b.moveTo(await rect(sel)); };
 const js = (fn, ...args) => b.evaluate(`(${fn})(...${JSON.stringify(args)})`);
 const rect = async (sel) => {
   for (let i = 0; i < 40; i++) {
@@ -69,17 +76,17 @@ const upload = async (inputId, files) => {
 await b.goto(`${B}/survey/${SAMPLE}/report`, 4000);
 await b.startRec();
 cue("problem: six departments, one equipment room, days of back-and-forth; this is the report SurvAI produces");
-await sleep(2500); await hover(700, 300); await sleep(1500);
-await scrollBy(700); await sleep(1500); await scrollBy(900); await sleep(2500);
+await sleep(1500); await hover(700, 300); await sleep(1000);
+await scrollBy(700); await sleep(1000); await scrollBy(900); await sleep(1500);
 
 // 2. New survey
 b.pause();
 await b.goto(B + "/", 3000);
 await b.resume();
 cue("new survey: site, project, device, and the departments that must agree");
-await fill("#site", "Demo room");
-await fill("#project", "Router install");
-await fill("#model", "Juniper MX104");
+await fill("#site", "Demo room", 30);
+await fill("#project", "Router install", 30);
+await fill("#model", "Juniper MX104", 30);
 await scrollTo("#pass"); await hover(700, 400); await sleep(800);
 await fill("#pass", PASS, 20);
 await press("Create survey");
@@ -87,9 +94,11 @@ await press("Create survey");
 // 3. Device: the datasheet lookup (live), then confirm
 cue("device: Muse Spark looks up the datasheet and cites it");
 b.pause();
-await waitFor(pageHas, 120_000, "Datasheet found");
+await waitFor(pageHas, 120_000, "found the datasheet");
+await banner("Meta Muse Spark 1.3 · found and cited the datasheet");
 await b.resume();
-await sleep(2500); await hover(600, 380); await sleep(2000);
+await sleep(1000); await hoverSel(".found .model"); await sleep(2000); await hoverSel(".sources"); await sleep(1500);
+await banner(null);
 await press("Confirm device");
 
 // 4. Upload the prepared, anonymised footage
@@ -106,18 +115,33 @@ b.pause(); await sleep(1000); await waitFor(() => !document.body.innerText.inclu
 await upload("devices_hall-panel_photo", [`${MEDIA}/photos/PWR1.jpg`, `${MEDIA}/photos/PWR2.jpg`]);
 await upload("devices_hall-photo", [`${MEDIA}/photos/RACK1.jpg`, `${MEDIA}/photos/RACK2.jpg`]);
 b.pause(); await sleep(1000); await waitFor(() => !document.body.innerText.includes("Uploading"), 120_000); await b.resume();
-await sleep(1500);
+cue("the footage that goes to the models: blurred key frames, the narrated path clip, the photos");
+await hoverSel(".preview .frames"); await sleep(2500);
+await scrollTo(".clip"); await b.moveTo(await rect(".clip"));
+await b.evaluate(`(() => { const v = document.querySelector(".clip"); v.currentTime = 3; return v.play().then(() => true, () => false); })()`);
+await sleep(6500);
+await b.evaluate(`document.querySelector(".clip").pause()`);
+await scrollBy(400); await sleep(1500);
 await press("Process footage");
 cue("processing: SAM 3.1 finds racks and floor tiles; Muse reads the panel and the narrated clip");
-await sleep(3500);
+await banner("Meta SAM 3.1 + Meta Muse Spark · processing the footage");
+await sleep(4500);
 b.pause();
 await waitFor(pageHas, 300_000, "Check the layout");
 await sleep(1500);
 await b.resume();
 
-// 5. Layout: the engineer corrects the draft
-cue("layout: the drafted room on the 600 mm tile grid, the request read from the clip");
-await sleep(3000); await hover(500, 600); await sleep(2500);
+// 5. Layout: what the models found, then the engineer corrects the draft
+await banner("Meta Muse Spark 1.3 · read the Arabic narration");
+cue("layout: the request read from the narrated clip");
+await sleep(2000); await hoverSel(".req p"); await sleep(1500);
+await banner("Meta SAM 3.1 · racks and floor tiles in every frame");
+cue("what SAM 3.1 found: racks and floor tiles outlined on every key frame");
+await scrollTo("#sam-h"); await sleep(800); await hoverSel(".frames .frame:nth-child(3)"); await sleep(1800); await hoverSel(".frames .frame:nth-child(7)"); await sleep(1800);
+await banner("Meta Muse Spark · drafted the room on the 600 mm tile grid");
+cue("layout: the drafted room on the 600 mm tile grid");
+await hoverSel(".plan-panel"); await sleep(3000);
+await banner(null);
 const target = await js(() => { const tags = [...document.querySelectorAll(".rack .tag")]; const t = tags.find((e) => e.textContent.trim() === "R3") ?? tags[0]; const row = t?.closest(".rack"); row?.setAttribute("data-rec-target-rack", "1"); return t?.textContent.trim() ?? null; });
 if (!target) throw new Error("no racks drafted");
 cue(`fix: ${target} is the target rack, free from U10 to U30`);
@@ -139,6 +163,7 @@ await press("Layout is right, start meeting");
 // 6. The meeting: rounds run live; the recording waits off camera and cuts to each round's result
 await waitFor(pageHas, 30_000, "The meeting");
 cue("meeting: the department agents review the room in parallel");
+await banner("Meta Muse Spark Open · one agent per department · Meta Muse Wonder 1.0 leads");
 await sleep(3000);
 for (let round = 1; round <= 3; round++) {
   b.pause();
@@ -147,6 +172,7 @@ for (let round = 1; round <= 3; round++) {
   await js(() => window.scrollTo({ top: 0 }));
   await b.resume();
   cue(`round ${round}: statements with rule ids, calculations and evidence frames; the Survey Lead sums up`);
+  if (round > 1) await banner(null);
   await sleep(2500); await hover(400, 520); await sleep(2000);
   await scrollBy(600); await sleep(2500); await scrollBy(700); await sleep(2500);
   if (await js(pageHas, "The meeting is over")) break;
@@ -179,9 +205,10 @@ for (const r of reasons) {
   const text = /Power/.test(r.who) ? "Pre-install work order: free DC breakers of the datasheet rating on the panel before installation."
     : /Room Manager/.test(r.who) ? "Door clearance and rack positions checked on site before installation; the draft position is approximate."
     : "Checked by the site engineer on site before installation.";
-  await fill(`#${r.id}`, text, 12);
+  await fill(`#${r.id}`, text, 7);
 }
-await fill("#specs", "SM fibre LC/LC duplex to the transmission rack; DC 2 x 6 mm2 from the panel", 14);
+await banner(null);
+await fill("#specs", "SM fibre LC/LC duplex to the transmission rack; DC 2 x 6 mm2 from the panel", 8);
 await press("Approve survey");
 await waitFor(pageHas, 30_000, "Open the report");
 cue("sign-off links: one per department, shown once");
@@ -193,7 +220,7 @@ await press("Open the report");
 // 8. The report
 await waitFor(pageHas, 30_000, "Site Survey Report");
 cue("report: the survey form mirrored, approved items, rules, the floor plan with cable lengths, A4 print");
-await sleep(3000); await scrollBy(800); await sleep(2500); await scrollBy(900); await sleep(3000); await scrollBy(900); await sleep(2500);
+await sleep(2000); await scrollBy(800); await sleep(2000); await scrollBy(900); await sleep(2500); await scrollBy(900); await sleep(2000);
 await js(() => window.scrollTo({ top: 0, behavior: "smooth" })); await sleep(1200);
 if (await markButton("Print or save as PDF")) { await b.moveTo(await rect(button("Print or save as PDF"))); await sleep(1500); }
 

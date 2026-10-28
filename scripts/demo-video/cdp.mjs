@@ -24,7 +24,8 @@ export async function launch({ width = 1440, height = 900, scale = 1, port = 934
     else if (m.method) listeners.forEach((f) => f(m));
   });
   // A lost connection or a command Chrome never answers fails the run instead of hanging it forever.
-  ws.addEventListener("close", (e) => { console.error(`CDP connection closed (${e.code} ${e.reason})`); process.exit(3); });
+  let closing = false;
+  ws.addEventListener("close", (e) => { if (closing) return; console.error(`CDP connection closed (${e.code} ${e.reason})`); process.exit(3); });
   const send = (method, params = {}) => new Promise((r, reject) => {
     const i = ++id; const t = setTimeout(() => { pending.delete(i); reject(new Error(`CDP ${method} timed out`)); }, 60_000);
     pending.set(i, (m) => { clearTimeout(t); r(m); }); ws.send(JSON.stringify({ id: i, method, params }));
@@ -164,5 +165,5 @@ export async function launch({ width = 1440, height = 900, scale = 1, port = 934
   };
 
   return { send, evaluate, find, click, clickAt, moveTo, wheel, type, goto, shot, labels, startRec, stopRec, pause, resume, mark, elapsed, ensureCursor,
-    close: () => { ws.close(); chrome.kill(); } };
+    close: () => { closing = true; ws.close(); chrome.kill(); } };
 }
