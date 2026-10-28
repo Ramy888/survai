@@ -29,9 +29,9 @@ function Statement({ f, frameHref, calcRule }: { f: Finding; frameHref: FrameHre
       <div>
         <div className="meta">
           <span className={`chip ${cls}`}>{forced ? <>{LOCK}Forced · {f.forced_rules.join(", ")}</> : label}</span>
-          {f.evidence.map((e, k) => "calc_id" in e
-            ? <span key={k} className="ev muted">calc {calcRule(e.calc_id)}</span>
-            : <a key={k} className="ev" href={frameHref(e)} target="_blank" rel="noreferrer">frame {e.frame ?? "?"}</a>)}
+          {/* One chip per calculation rule: two cable paths give two LEN calculations, read as one. */}
+          {[...new Set(f.evidence.flatMap((e) => "calc_id" in e ? [calcRule(e.calc_id)] : []))].map((rule) => <span key={rule} className="ev muted">calc {rule}</span>)}
+          {f.evidence.map((e, k) => "calc_id" in e ? null : <a key={k} className="ev" href={frameHref(e)} target="_blank" rel="noreferrer">frame {e.frame ?? "?"}</a>)}
         </div>
         <p className={all ? "" : "clamp"}>{f.statement}</p>
         {f.statement.length > 240 && <button className="more-btn" onClick={() => setAll(!all)}>{all ? "Show less" : "Show all"}</button>}
