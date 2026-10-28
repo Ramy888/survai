@@ -104,7 +104,8 @@ export function MeetingStep({ survey, onEditLayout, onApprove }: { survey: Surve
   const last = t?.rounds.at(-1);
   const open = [
     ...(p?.state === "waiting" && last ? last.findings.filter((f) => f.question && !f.question.answer).map((f) => ({ q: f.question!, agent: f.agent })) : []),
-    ...(t?.request_questions.filter((q) => !q.answer).map((q) => ({ q, agent: "request" })) ?? []),
+    // The clip's optional questions are context for the meeting; once it has ended they would only be clutter.
+    ...(p?.state === "done" ? [] : t?.request_questions.filter((q) => !q.answer).map((q) => ({ q, agent: "request" })) ?? []),
   ];
   const stale = t != null && t.deliberated_layout_version != null && t.layout_version > t.deliberated_layout_version;
   const view = t && (t.rounds.find((r) => r.round === shown) ?? last);
@@ -175,7 +176,7 @@ export function MeetingStep({ survey, onEditLayout, onApprove }: { survey: Surve
             {open.map(({ q, agent }) => <Ask key={q.id} q={q} agent={agent} value={answers[q.id] ?? ""} onChange={(v) => setAnswers((a) => ({ ...a, [q.id]: v }))} />)}
           </div>
         )}
-        {askPass && (
+        {askPass && (open.length > 0 || stale) && (
           <section className="panel fields full">
             <div className="field"><label htmlFor="pass">Team passcode</label>
               <input id="pass" type="password" autoComplete="off" value={passcode} onChange={(e) => setPasscode(e.target.value)} /></div>
