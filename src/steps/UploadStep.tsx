@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState } from "react";
 import {
-  deleteFile, listFiles, savedPasscode, startProcessing, uploadFile, type FileKind, type RoomFiles, type Survey,
+  deleteFile, listFiles, savedPasscode, startProcessing, uploadFile, type FileKind, type RoomFiles, type Survey, type UploadedFile,
 } from "../api";
+import { Clip, FrameGrid } from "../components/Footage";
 import { Shell } from "../components/Shell";
 
 const ROOM_NAME: Record<string, string> = { devices_hall: "Devices hall", connect_to: "Connect-to room" };
@@ -81,6 +82,7 @@ export function UploadStep({ survey, onStarted }: { survey: Survey; onStarted: (
                   disabled={!!progress || !passcode} onAdd={(l) => add(role, k.kind, l)} onRemove={remove} />
               ))}
             </div>
+            <Preview surveyId={survey.id} files={rooms[role].files} />
           </section>
         ))}
         {error && <p className="note error" role="alert">{error}</p>}
@@ -128,6 +130,21 @@ function Slot({ role, k, files, missing, progress, disabled, onAdd, onRemove }: 
           <button className="link-btn" onClick={() => onRemove(files.at(-1)!.id)} disabled={disabled}>Remove last</button>
         </div>
       )}
+    </div>
+  );
+}
+
+/** What is about to go to the models: the frames, the narrated clip and the photos, as uploaded. */
+function Preview({ surveyId, files }: { surveyId: string; files: UploadedFile[] }) {
+  const of = (kind: FileKind) => files.filter((f) => f.kind === kind);
+  const clip = of("path_clip")[0];
+  const photos = [...of("panel_photo"), ...of("photo")];
+  if (!files.length) return null;
+  return (
+    <div className="preview">
+      {of("key_frame").length > 0 && <><span className="label">Key frames</span><FrameGrid surveyId={surveyId} files={of("key_frame")} /></>}
+      {clip && <><span className="label">Narrated path clip</span><Clip surveyId={surveyId} f={clip} /></>}
+      {photos.length > 0 && <><span className="label">Photos</span><FrameGrid surveyId={surveyId} files={photos} /></>}
     </div>
   );
 }

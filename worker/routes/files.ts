@@ -79,15 +79,16 @@ files.post("/:id/rooms/:role/files", requirePasscode, async (c) => {
 files.get("/:id/files", async (c) => {
   const id = c.req.param("id");
   const rows = await c.env.DB.prepare(
-    `SELECT r.role, f.id, f.kind, f.name, f.bytes FROM rooms r LEFT JOIN files f ON f.room_id = r.id
+    `SELECT r.role, f.id, f.kind, f.name, f.bytes, f.masks_json FROM rooms r LEFT JOIN files f ON f.room_id = r.id
      WHERE r.survey_id = ?1 ORDER BY f.created_at`,
-  ).bind(id).all<{ role: Role; id: string | null; kind: Kind; name: string; bytes: number }>();
+  ).bind(id).all<{ role: Role; id: string | null; kind: Kind; name: string; bytes: number; masks_json: string | null }>();
   if (!rows.results.length) return c.json({ error: "Survey not found" }, 404);
   const missing = await missingFiles(c.env.DB, id);
   const rooms: Record<string, { files: object[]; missing: Kind[] }> = {};
   for (const r of rows.results) {
     rooms[r.role] ??= { files: [], missing: missing[r.role] };
-    if (r.id) rooms[r.role].files.push({ id: r.id, kind: r.kind, name: r.name, bytes: r.bytes });
+    // masks: what SAM 3.1 found on a key frame (racks, floor tiles), once processing has run
+    if (r.id) rooms[r.role].files.push({ id: r.id, kind: r.kind, name: r.name, bytes: r.bytes, ...(r.masks_json ? { masks: JSON.parse(r.masks_json) } : {}) });
   }
   return c.json({ rooms });
 });

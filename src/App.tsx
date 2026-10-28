@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { getSurvey, type Survey } from "./api";
+import { ModelChip } from "./components/Footage";
 import { Shell } from "./components/Shell";
 import { DeviceStep } from "./steps/DeviceStep";
 import { SurveyStep } from "./steps/SurveyStep";
@@ -62,8 +63,13 @@ function SurveyView({ id }: { id: string }) {
             {survey.status === "processing" ? (
               <>
                 <div><h1>Processing footage</h1><p className="muted">{survey.quantity} × {survey.device_model}</p></div>
-                <p className="loading" aria-live="polite"><span className="spin" aria-hidden="true" />
-                  Finding floor tiles and racks, drafting the room, reading the panel and the narrated path. About a minute.</p>
+                <p className="loading" aria-live="polite"><span className="spin" aria-hidden="true" />About a minute. The models are working on your footage:</p>
+                <ul className="stages">
+                  <li>Racks and floor tiles in every key frame <ModelChip model="sam-3.1" /></li>
+                  <li>The room drafted from the frames <ModelChip model="Muse Spark" /></li>
+                  <li>The power panel photos read <ModelChip model="muse-spark-1.3" /></li>
+                  <li>The narrated path clip transcribed and translated <ModelChip model="muse-spark-1.3" /></li>
+                </ul>
               </>
             ) : (
               <>

@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { answerQuestion, getTimeline, savePasscode, savedPasscode, startMeeting, type Finding, type Question, type Round, type Survey, type Timeline } from "../api";
+import { ModelChip } from "../components/Footage";
 import { Shell } from "../components/Shell";
 
 const MAX_ROUNDS = 3;
@@ -29,6 +30,7 @@ function Statement({ f, frameHref, calcRule }: { f: Finding; frameHref: FrameHre
       <div>
         <div className="meta">
           <span className={`chip ${cls}`}>{forced ? <>{LOCK}Forced · {f.forced_rules.join(", ")}</> : label}</span>
+          {f.model && <ModelChip model={f.model} />}
           {/* One chip per calculation rule: two cable paths give two LEN calculations, read as one. */}
           {[...new Set(f.evidence.flatMap((e) => "calc_id" in e ? [calcRule(e.calc_id)] : []))].map((rule) => <span key={rule} className="ev muted">calc {rule}</span>)}
           {f.evidence.map((e, k) => "calc_id" in e ? null : <a key={k} className="ev" href={frameHref(e)} target="_blank" rel="noreferrer">frame {e.frame ?? "?"}</a>)}
@@ -52,7 +54,7 @@ export function RoundView({ r, t, frameHref, running }: { r: Round; t: Timeline;
         <div className="st">
           <span className="tag lead">LEAD</span>
           <div>
-            <p>{r.lead.summary}</p>
+            <p>{r.lead.summary} <ModelChip model={r.lead.model} /></p>
             {r.lead.conflicts.map((c, k) => <p className="rt" key={k}>{c.agents.map((a) => NAME[a] ?? a).join(" vs ")}: {c.resolution}</p>)}
             {r.lead.placement.target !== "none" && <p className="rt">Placement: <span className="mono">{r.lead.placement.target.replace("rack:", "rack ")}</span>. {r.lead.placement.reason}</p>}
             {r.lead.model === "unavailable" ? <p className="rt">The Survey Lead was unavailable this round.</p>

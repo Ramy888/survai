@@ -99,6 +99,18 @@ describe("files list and delete", () => {
     expect(await count("SELECT COUNT(*) AS n FROM files")).toBe(0);
     expect(await env.MEDIA.head(key)).toBeNull();
   });
+
+  it("lists what SAM found on each key frame, so the layout step can draw it", async () => {
+    const id = await surveyIn("uploading");
+    const f = await (await upload(id, "devices_hall", "key_frame", JPEG, "frame-01.jpg")).json<{ id: string }>();
+    await upload(id, "devices_hall", "key_frame", JPEG, "frame-02.jpg");
+    const masks = { tiles: [{ x1: 1, y1: 2, x2: 30, y2: 40, c: 0.9 }], racks: [] };
+    await env.DB.prepare("UPDATE files SET masks_json = ?1 WHERE id = ?2").bind(JSON.stringify(masks), f.id).run();
+    const list = await (await req(`/api/surveys/${id}/files`)).json<{ rooms: Record<string, { files: { id: string; masks?: unknown }[] }> }>();
+    const [a, b] = list.rooms.devices_hall.files;
+    expect(a).toMatchObject({ id: f.id, masks });
+    expect(b.masks).toBeUndefined(); // not processed yet
+  });
 });
 
 describe("POST /api/surveys/:id/process", () => {

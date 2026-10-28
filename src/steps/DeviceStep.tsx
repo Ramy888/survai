@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { ApiError, confirmDevice, lookupDevice, savePasscode, savedPasscode, type DeviceSpec, type Survey } from "../api";
+import { ModelChip } from "../components/Footage";
 import { Shell } from "../components/Shell";
 
 type Fields = Record<"height_u" | "power_w" | "feed_count" | "breaker_rating_a" | "depth_mm" | "weight_kg" | "airflow", string>;
@@ -70,7 +71,7 @@ export function DeviceStep({ survey, onConfirmed }: { survey: Survey; onConfirme
           {phase === "looking" && (
             <p className="loading"><span className="spin" aria-hidden="true" />Reading the {survey.device_model} datasheet. This takes about 30 seconds.</p>
           )}
-          {phase === "found" && <p className="found">Datasheet found. Check the values before confirming.</p>}
+          {phase === "found" && <p className="found"><ModelChip model="muse-spark-1.3" what="found the datasheet" /> Check the values before confirming.</p>}
           {phase === "manual" && note && <p className="note error">{note}</p>}
           <div className="three">
             {input("height_u", "Height (U)")}

@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useState } from "react";
-import { ApiError, getLayout, saveLayout, savePasscode, savedPasscode, type LayoutItem, type RoomLayout, type Survey } from "../api";
+import { ApiError, getLayout, listFiles, saveLayout, savePasscode, savedPasscode, type LayoutItem, type RoomLayout, type Survey, type UploadedFile } from "../api";
 import { Shell } from "../components/Shell";
 import { FloorPlan } from "../report/FloorPlan";
+import { FrameGrid, ModelChip } from "../components/Footage";
 
 type Breaker = { position: number | null; dc: boolean; rating_a: string; free: boolean };
 const ROOM: Record<string, string> = { devices_hall: "Devices hall", connect_to: "Connect-to room" };
@@ -53,6 +54,8 @@ export function LayoutStep({ survey, onSaved, onBack }: { survey: Survey; onSave
         .map((b, k) => ({ position: k + 1, dc: b.dc ?? true, rating_a: b.rating_a ? String(b.rating_a) : "", free: false })));
   }
   useEffect(() => { void load(role).catch((e: Error) => setError(e.message)); }, [role]);
+  const [frames, setFrames] = useState<UploadedFile[]>([]);
+  useEffect(() => { void listFiles(survey.id).then((r) => setFrames(r.rooms[role]?.files.filter((f) => f.kind === "key_frame") ?? []), () => setFrames([])); }, [survey.id, role]);
 
   const set = (id: string, patch: Partial<LayoutItem> | ((i: LayoutItem) => LayoutItem)) =>
     setItems((xs) => xs.map((i) => (i.id === id ? (typeof patch === "function" ? patch(i) : { ...i, ...patch }) : i)));
@@ -111,15 +114,23 @@ export function LayoutStep({ survey, onSaved, onBack }: { survey: Survey; onSave
         )}
         {req && (req.source || req.destination) && (
           <section className="panel req full" aria-label="Request">
-            <h2>Request from the narrated clip</h2>
+            <div className="title-row"><h2>Request from the narrated clip</h2><ModelChip model="muse-spark-1.3" what="transcribed and translated" /></div>
             {req.translation_en && <p>{req.translation_en}</p>}
             <p className="muted"><b>Goes in:</b> {req.source ?? "—"} · <b>Route:</b> {req.route ?? "—"} · <b>To:</b> {req.destination ?? "—"}</p>
+          </section>
+        )}
+        {frames.some((f) => f.masks) && (
+          <section className="panel full" aria-labelledby="sam-h">
+            <div className="title-row"><h2 id="sam-h">What the models found in your frames</h2><ModelChip model="sam-3.1" what="racks and floor tiles" /></div>
+            <p className="muted sam-key"><i className="k-rack" />Rack <i className="k-tile" />Floor tile · {frames.reduce((n, f) => n + (f.masks?.racks.length ?? 0), 0)} racks and {frames.reduce((n, f) => n + (f.masks?.tiles.length ?? 0), 0)} tiles found in {frames.length} frames</p>
+            <FrameGrid surveyId={survey.id} files={frames} withMasks />
           </section>
         )}
         {!data && !error && <p className="muted">Loading layout…</p>}
         {data && (
           <>
             <section className="panel plan-panel" aria-label="Floor plan">
+              <div className="plan-by"><ModelChip model="Muse Spark" what="drafted from the frames; correct it below" /></div>
               <FloorPlan size={num(facts.w) && num(facts.d) ? { w: num(facts.w)!, d: num(facts.d)! } : null} items={planItems} lengths={{}} clearances={[]} />
             </section>
             <div className="stack">
@@ -185,7 +196,7 @@ export function LayoutStep({ survey, onSaved, onBack }: { survey: Survey; onSave
             {role === "devices_hall" && (
               <section className="panel" aria-labelledby="brk-h">
                 <h2 id="brk-h">Breakers</h2>
-                <p className="muted" style={{ marginBottom: 8 }}>Ratings could not be read from the photo. Confirm each breaker on site.</p>
+                <p className="muted" style={{ marginBottom: 8 }}><ModelChip model="muse-spark-1.3" what="read the panel photo" /> Ratings it could not read (the photo is blurred) are blank. Confirm each breaker on site.</p>
                 {breakers.map((b, k) => (
                   <div className="brk" key={k}>
                     <span className="tag">{b.position ?? k + 1}</span>

@@ -46,7 +46,9 @@ export function savePasscode(p: string) {
 export const getSurvey = (id: string) => call<Survey>(`/api/surveys/${id}`);
 
 export type FileKind = "key_frame" | "path_clip" | "panel_photo" | "photo";
-export interface UploadedFile { id: string; kind: FileKind; name: string; bytes: number }
+export interface SamBox { x1: number; y1: number; x2: number; y2: number }
+export interface SamMasks { tiles: SamBox[]; racks: SamBox[] }
+export interface UploadedFile { id: string; kind: FileKind; name: string; bytes: number; masks?: SamMasks }
 export interface RoomFiles { files: UploadedFile[]; missing: FileKind[] }
 
 export const listFiles = (id: string) => call<{ rooms: Record<string, RoomFiles> }>(`/api/surveys/${id}/files`);
