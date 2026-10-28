@@ -64,6 +64,13 @@ export function UploadStep({ survey, onStarted }: { survey: Survey; onStarted: (
         </div>
         {survey.processing_error && <p className="note error" role="alert">{survey.processing_error}</p>}
         {!rooms && !error && <p className="muted">Loading files…</p>}
+        {/* First, because adding files needs it. */}
+        {!savedPasscode() && (
+          <section className="panel fields">
+            <div className="field"><label htmlFor="pass">Team passcode</label>
+              <input id="pass" type="password" autoComplete="off" value={passcode} onChange={(e) => setPasscode(e.target.value)} /></div>
+          </section>
+        )}
         {rooms && survey.rooms.slice().sort().reverse().map((role) => (
           <section className="panel" key={role} aria-labelledby={`h-${role}`}>
             <h2 id={`h-${role}`}>{ROOM_NAME[role]}</h2>
@@ -76,12 +83,6 @@ export function UploadStep({ survey, onStarted }: { survey: Survey; onStarted: (
             </div>
           </section>
         ))}
-        {!savedPasscode() && (
-          <section className="panel fields">
-            <div className="field"><label htmlFor="pass">Team passcode</label>
-              <input id="pass" type="password" autoComplete="off" value={passcode} onChange={(e) => setPasscode(e.target.value)} /></div>
-          </section>
-        )}
         {error && <p className="note error" role="alert">{error}</p>}
       </div>
     </Shell>
