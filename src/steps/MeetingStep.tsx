@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { answerQuestion, getTimeline, savedPasscode, startMeeting, type Finding, type Question, type Round, type Survey, type Timeline } from "../api";
+import { answerQuestion, getTimeline, savePasscode, savedPasscode, startMeeting, type Finding, type Question, type Round, type Survey, type Timeline } from "../api";
 import { Shell } from "../components/Shell";
 
 const MAX_ROUNDS = 3;
@@ -87,7 +87,8 @@ export function MeetingStep({ survey, onEditLayout, onApprove }: { survey: Surve
   const [answers, setAnswers] = useState<Record<string, string>>({});
   const [shown, setShown] = useState<number | null>(null);
   const [busy, setBusy] = useState(false);
-  const passcode = savedPasscode();
+  const [passcode, setPasscode] = useState(savedPasscode);
+  const [askPass] = useState(() => !savedPasscode()); // a new tab has no passcode yet; kept visible while typing
   const frameHref: FrameHref = (e) => `/api/surveys/${survey.id}/files/${e.file_id}`;
   const load = () => getTimeline(survey.id).then((x) => { setT(x); setError(""); }, (e: Error) => setError(e.message));
 
@@ -112,6 +113,7 @@ export function MeetingStep({ survey, onEditLayout, onApprove }: { survey: Surve
     setBusy(true); setError("");
     try {
       for (const { q } of open) if (answers[q.id]?.trim()) await answerQuestion(q.id, answers[q.id].trim(), passcode);
+      savePasscode(passcode);
       setAnswers({});
       setShown(null);
     } catch (e) {
@@ -123,7 +125,7 @@ export function MeetingStep({ survey, onEditLayout, onApprove }: { survey: Surve
   }
   async function rerun() {
     setBusy(true); setError("");
-    try { await startMeeting(survey.id, passcode); setShown(null); } catch (e) { setError((e as Error).message); } finally { setBusy(false); await load(); }
+    try { await startMeeting(survey.id, passcode); savePasscode(passcode); setShown(null); } catch (e) { setError((e as Error).message); } finally { setBusy(false); await load(); }
   }
 
   // The departments' questions hold the meeting; the narrated clip's questions are optional context.
@@ -172,6 +174,12 @@ export function MeetingStep({ survey, onEditLayout, onApprove }: { survey: Surve
           <div className="stack">
             {open.map(({ q, agent }) => <Ask key={q.id} q={q} agent={agent} value={answers[q.id] ?? ""} onChange={(v) => setAnswers((a) => ({ ...a, [q.id]: v }))} />)}
           </div>
+        )}
+{askPass && (
+          <section className="panel fields full">
+            <div className="field"><label htmlFor="pass">Team passcode</label>
+              <input id="pass" type="password" autoComplete="off" value={passcode} onChange={(e) => setPasscode(e.target.value)} /></div>
+          </section>
         )}
         {error && <p className="note error full" role="alert">{error} <button className="link-btn" onClick={() => void load()}>Reload</button></p>}
       </div>

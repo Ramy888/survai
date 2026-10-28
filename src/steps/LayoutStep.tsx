@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { ApiError, getLayout, saveLayout, savedPasscode, type LayoutItem, type RoomLayout, type Survey } from "../api";
+import { ApiError, getLayout, saveLayout, savePasscode, savedPasscode, type LayoutItem, type RoomLayout, type Survey } from "../api";
 import { Shell } from "../components/Shell";
 import { FloorPlan } from "../report/FloorPlan";
 
@@ -30,7 +30,8 @@ export function LayoutStep({ survey, onSaved, onBack }: { survey: Survey; onSave
   const [error, setError] = useState("");
   const [stale, setStale] = useState(false);
   const [busy, setBusy] = useState(false);
-  const passcode = savedPasscode();
+  const [passcode, setPasscode] = useState(savedPasscode);
+  const [askPass] = useState(() => !savedPasscode()); // a new tab has no passcode yet; kept visible while typing
 
   async function load(r = role) {
     setError(""); setStale(false);
@@ -81,6 +82,7 @@ export function LayoutStep({ survey, onSaved, onBack }: { survey: Survey; onSave
         },
       };
       const r = await saveLayout(survey.id, role, body, passcode);
+      savePasscode(passcode);
       if (r.status === "deliberating" && (r.meeting_started || survey.status === "deliberating")) onSaved();
       else { const next = roles.find((x) => x !== role); if (next) setRole(next); else await load(); }
     } catch (e) {
@@ -205,6 +207,12 @@ export function LayoutStep({ survey, onSaved, onBack }: { survey: Survey; onSave
               </section>
             ) : null}
           </>
+        )}
+{askPass && (
+          <section className="panel fields full">
+            <div className="field"><label htmlFor="pass">Team passcode</label>
+              <input id="pass" type="password" autoComplete="off" value={passcode} onChange={(e) => setPasscode(e.target.value)} /></div>
+          </section>
         )}
         {error && <p className="note error full" role="alert">{error}{stale && <> <button className="link-btn" onClick={() => void load()}>Reload</button></>}</p>}
       </div>

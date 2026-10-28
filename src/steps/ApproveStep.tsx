@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { ApiError, approveSurvey, getTimeline, savedPasscode, type Survey, type Timeline } from "../api";
+import { ApiError, approveSurvey, getTimeline, savePasscode, savedPasscode, type Survey, type Timeline } from "../api";
 import { Shell } from "../components/Shell";
 import { copyAll, SignoffLinks } from "../signoff/SignoffLinks";
 
@@ -14,7 +14,8 @@ export function ApproveStep({ survey, onBack, onApproved }: { survey: Survey; on
   const [busy, setBusy] = useState(false);
   const [issue, setIssue] = useState(true);
   const [links, setLinks] = useState<{ agent: string; token: string }[] | null>(null);
-  const passcode = savedPasscode();
+  const [passcode, setPasscode] = useState(savedPasscode);
+  const [askPass] = useState(() => !savedPasscode()); // a new tab has no passcode yet; kept visible while typing
   useEffect(() => { getTimeline(survey.id).then(setT, (e: Error) => setProblems([e.message])); }, [survey.id]);
 
   const last = t?.rounds.at(-1);
@@ -26,6 +27,7 @@ export function ApproveStep({ survey, onBack, onApproved }: { survey: Survey; on
     setBusy(true); setProblems([]);
     try {
       const r = await approveSurvey(survey.id, { tech_specs: specs, issue_links: issue, overrides: Object.fromEntries(blocking.map((f) => [f.id, reasons[f.id] ?? ""])) }, passcode);
+      savePasscode(passcode);
       // Links are shown once; stay here until the engineer has copied them.
       if (r.links.length) setLinks(r.links); else onApproved();
     } catch (e) {
@@ -89,6 +91,12 @@ export function ApproveStep({ survey, onBack, onApproved }: { survey: Survey; on
           <span className="grow">Create sign-off links for the {last?.findings.length ?? 0} departments<span className="sub">Each representative approves or objects from their phone.</span></span>
           <input type="checkbox" className="check" checked={issue} onChange={(e) => setIssue(e.target.checked)} />
         </label>
+{askPass && (
+          <section className="panel fields">
+            <div className="field"><label htmlFor="pass">Team passcode</label>
+              <input id="pass" type="password" autoComplete="off" value={passcode} onChange={(e) => setPasscode(e.target.value)} /></div>
+          </section>
+        )}
         {problems.length > 0 && <div className="note error" role="alert">{problems.map((p) => <p key={p}>{p}</p>)}</div>}
       </div>
     </Shell>

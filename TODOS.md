@@ -22,4 +22,4 @@ Deferred during the CEO plan review on Oct 27, 2026. Context: `docs/spec-survai.
 - QR code on the PDF linking to the online evidence. Effort: S / S.
 - Admin page (budget use, failures). Effort: S / S.
 - Per-survey budgets in addition to the daily cap. Effort: S / S.
-- (T18) A survey opened in a new tab has no passcode, so the Layout, Meeting and Approve buttons are greyed out with no reason given. Show a passcode field or a hint. Effort: S / S.
+- (T18) A survey opened in a new tab has no passcode, so the Layout, Meeting and Approve buttons are greyed out with no reason given. Show a passcode field or a hint. Effort: S / S. Fixed by /design-review on main, 2026-10-28: the three steps show the passcode field when the tab has none.
