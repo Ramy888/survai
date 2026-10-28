@@ -155,6 +155,27 @@ describe("runRound", () => {
     expect((await env.DB.prepare("SELECT layout_version FROM surveys WHERE id = ?1").bind(id).first<{ layout_version: number }>())!.layout_version).toBe(3);
     expect((await all<{ rule: string }>("SELECT rule FROM calcs WHERE survey_id = ?1 AND round = 2", id)).map((c) => c.rule)).toContain("CLR");
   });
+
+  const path = (cable_type: string, x: number) => ({ kind: "cable_path", x_tiles: x, y_tiles: 5, props: { cable_type, route: "overhead", points: [[x, 5], [x, 0]] } });
+
+  it("names the Lead's cable paths by type, whatever order it proposes them in, so the round's length calculations still match", async () => {
+    const { id, room } = await seed();
+    await go(id, { lead: () => ({ round: 1, placement: { target: "rack:R3", reason: "x" }, propose_items: [path("power", 1), path("fibre", 2)], conflicts: [], summary: "s", next: "another_round" }) });
+    await go(id, { lead: () => ({ round: 2, placement: { target: "rack:R3", reason: "x" }, propose_items: [path("fibre", 2), path("power", 1)], conflicts: [], summary: "s", next: "done" }) }, 2);
+    const labels = (await all<{ label: string }>("SELECT label FROM layout_items WHERE room_id = ?1 AND kind = 'cable_path' ORDER BY label", room)).map((r) => r.label);
+    const measured = (await all<{ p: string }>("SELECT json_extract(inputs_json, '$.path') p FROM calcs WHERE survey_id = ?1 AND round = 2 AND rule = 'LEN' ORDER BY p", id)).map((r) => r.p);
+    expect(labels).toEqual(["fibre-1", "power-1"]);
+    expect(measured).toEqual(labels);
+  });
+
+  it("leaves an approved survey's layout alone when a replay rerun's Lead proposes items", async () => {
+    const { id, room } = await seed();
+    await go(id, { lead: () => ({ round: 1, placement: { target: "rack:R3", reason: "x" }, propose_items: [path("power", 1)], conflicts: [], summary: "s", next: "done" }) });
+    await env.DB.prepare("UPDATE surveys SET status = 'approved', approved_run = 1 WHERE id = ?1").bind(id).run();
+    await go(id, { lead: () => ({ round: 1, placement: { target: "rack:R3", reason: "x" }, propose_items: [path("power", 7), path("fibre", 8)], conflicts: [], summary: "rerun", next: "done" }) }, 1, 2);
+    expect(await all("SELECT label, x_tiles FROM layout_items WHERE room_id = ?1 AND kind = 'cable_path'", room)).toEqual([{ label: "power-1", x_tiles: 1 }]);
+    expect(await all("SELECT run FROM lead_notes WHERE survey_id = ?1 ORDER BY run", id)).toEqual([{ run: 1 }, { run: 2 }]); // the replay still shows the rerun
+  });
 });
 
 describe("POST /api/surveys/:id/deliberate", () => {

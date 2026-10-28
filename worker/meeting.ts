@@ -189,12 +189,18 @@ export async function runRound({ env, models, step, startRound }: Deps, surveyId
     const hallId = m.roomIds.devices_hall;
     // The Lead's items of a kind it proposes again are replaced (kinds it does not mention stay); they never bump
     // layout_version, so calculations simply rerun next round.
+    // An approved survey's layout is what the report draws, so a replay rerun's Lead never changes it.
     const kinds = [...new Set(lead.note.propose_items.map((p) => p.kind))];
+    const open = "(SELECT status FROM surveys WHERE id = ?3) <> 'approved'";
+    // Numbered within the cable type, so a path keeps its label (and its LEN calculation) whatever order the Lead lists it in.
+    const label = (p: (typeof lead.note.propose_items)[number], k: number) => p.kind === "reserved" ? "NEW"
+      : `${p.props.cable_type}-${lead.note.propose_items.slice(0, k + 1).filter((q) => q.kind === "cable_path" && q.props.cable_type === p.props.cable_type).length}`;
     await db.batch([
-      ...kinds.map((k) => db.prepare("DELETE FROM layout_items WHERE room_id = ?1 AND source = 'lead' AND kind = ?2").bind(hallId, k)),
+      ...kinds.map((k) => db.prepare(`DELETE FROM layout_items WHERE room_id = ?1 AND source = 'lead' AND kind = ?2 AND ${open}`).bind(hallId, k, surveyId)),
       ...lead.note.propose_items.map((p, k) => db.prepare(
-        "INSERT INTO layout_items (id, room_id, kind, label, x_tiles, y_tiles, w_tiles, d_tiles, props_json, source) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, 'lead')",
-      ).bind(crypto.randomUUID(), hallId, p.kind, p.kind === "reserved" ? "NEW" : `${p.props.cable_type}-${k + 1}`, p.x_tiles, p.y_tiles, p.w_tiles ?? null, p.d_tiles ?? null, JSON.stringify(p.props))),
+        `INSERT INTO layout_items (id, room_id, kind, label, x_tiles, y_tiles, w_tiles, d_tiles, props_json, source)
+          SELECT ?1, ?2, ?4, ?5, ?6, ?7, ?8, ?9, ?10, 'lead' WHERE ${open}`,
+      ).bind(crypto.randomUUID(), hallId, surveyId, p.kind, label(p, k), p.x_tiles, p.y_tiles, p.w_tiles ?? null, p.d_tiles ?? null, JSON.stringify(p.props))),
       // Open questions are checked in the same write that stores the outcome, so an answer arriving mid-round is
       // either seen here or flips this note from 'waiting' itself (routes/answer.ts); it is never lost between the two.
       db.prepare(`INSERT OR IGNORE INTO lead_notes (survey_id, run, round, body_json, model, fell_back, outcome, created_at)
