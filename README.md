@@ -1,5 +1,12 @@
 # SurvAI
 
+Telecom equipment-room site surveys, from anonymised footage to a signed report. Meta SAM 3.1 outlines racks and
+floor tiles, Muse Spark drafts the room and reads the engineer's narration, one Muse Spark agent per department
+reviews the plan over up to three rounds, and Muse Wonder leads as Survey Lead. The engineer approves.
+
+**Demo video (2:59):** https://youtu.be/e7pMw10oSwg. The narration is synthetic: a clone of the builder's own voice
+(Cartesia). All footage in it is blurred.
+
 <!-- T21 adds the problem, architecture, Meta models used and how to run. -->
 
 ## Live run (Oct 27, 2026, deployed app)

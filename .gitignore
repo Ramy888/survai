@@ -33,3 +33,6 @@ coverage/
 tools/prepare/.venv/
 tools/prepare/out/
 __pycache__/
+
+# Agent task logs (local only)
+tasks/
