@@ -146,7 +146,7 @@ export function MeetingStep({ survey, onEditLayout, onApprove }: { survey: Surve
       actions={<><button className="btn btn-secondary" onClick={onEditLayout}>Edit layout</button>{primary}</>}>
       <div className="stack layout-grid">
         <div className="full">
-          <div className="title-row"><h1>The meeting</h1>{p && <span className="mono muted">Round {Math.min(p.round, MAX_ROUNDS)} of {MAX_ROUNDS}</span>}</div>
+          <div className="title-row"><h1>The meeting</h1>{p && <span className="mono muted">{p.state === "done" ? `Ended in round ${p.round}` : `Round ${Math.min(p.round, MAX_ROUNDS)} of ${MAX_ROUNDS}`}</span>}</div>
           <div className="rounds" aria-hidden="true">
             {Array.from({ length: MAX_ROUNDS }, (_, k) => k + 1).map((n) => <i key={n} className={p && (n < p.round || (n === p.round && p.state === "done")) ? "d" : p && n === p.round ? "n" : ""} />)}
           </div>
