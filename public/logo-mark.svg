@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 96 96" role="img" aria-label="SurvAI">
+  <rect width="96" height="96" rx="22" fill="#0B6770"/>
+  <path d="M8 32H88M8 56H88M8 80H88M32 8V88M56 8V88M80 8V88" stroke="#FFFFFF" stroke-opacity=".13" stroke-width="1.5"/>
+  <rect x="18" y="38" width="17" height="40" rx="2.5" fill="#FFFFFF"/>
+  <rect x="44.5" y="39.5" width="14" height="37" rx="2" fill="none" stroke="#FFFFFF" stroke-width="3"/>
+  <path d="M51.5 39.5V22H78" fill="none" stroke="#3CCFD9" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/>
+  <circle cx="78" cy="22" r="5.5" fill="#3CCFD9"/>
+</svg>
