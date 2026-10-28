@@ -60,7 +60,7 @@ export function UploadStep({ survey, onStarted }: { survey: Survey; onStarted: (
       <div className="stack narrow">
         <div>
           <h1>Upload footage</h1>
-          <p className="muted">Prepare the files on your Mac first. Faces, labels and logos are blurred before anything leaves it.</p>
+          <p className="muted">Prepare the files on your computer first. Faces, labels and logos are blurred before anything leaves it.</p>
         </div>
         {survey.processing_error && <p className="note error" role="alert">{survey.processing_error}</p>}
         {!rooms && !error && <p className="muted">Loading files…</p>}
@@ -105,7 +105,7 @@ function Slot({ role, k, files, missing, progress, disabled, onAdd, onRemove }: 
         <span className={`state ${files.length ? "ok" : "todo"}`}>{files.length ? CHECK : PLUS}</span>
         <div className="grow">
           {k.label}{missing && <span className="sr-only"> (required)</span>}
-          <span className="sub mono">{sub}</span>
+          <span className={`sub${files.length || progress ? " mono" : ""}`}>{sub}</span>
           {progress && <div className="prog"><i style={{ width: `${Math.round(((progress.done + progress.frac) / progress.total) * 100)}%` }} /></div>}
         </div>
         <input ref={input} type="file" hidden accept={k.accept} multiple={k.limit > 1} id={`${role}-${k.kind}`}
