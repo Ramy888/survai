@@ -37,6 +37,8 @@ p{margin:0}
 .brand b{color:var(--primary)}
 .icon-btn{width:44px;height:44px;border-radius:10px;border:1px solid var(--rule);background:var(--surface);color:var(--ink);display:grid;place-items:center;cursor:pointer}
 .icon-btn svg{width:20px;height:20px}
+/* One focus ring for every link and control without its own (zero specificity, so class rules still win). */
+:where(a,button,select,summary,[tabindex]):focus-visible{outline:2px solid var(--primary);outline-offset:2px}
 .icon-btn:focus-visible{outline:2px solid var(--primary);outline-offset:2px}
 .stepper{list-style:none;margin:0 auto;padding:4px 0 14px;display:grid;grid-template-columns:repeat(5,1fr);max-width:640px}
 .stepper li{position:relative;display:flex;flex-direction:column;align-items:center;min-width:0}
