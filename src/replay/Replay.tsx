@@ -7,7 +7,7 @@ import "../report/print.css";
 import { NAME, phase, RoundView, Thinking } from "../steps/MeetingStep";
 
 type Made = {
-  footage: { frames: number; clip: boolean; photos: number };
+  footage: { frames: number; clip: boolean; photos: number; source: "video" | "prepared"; blurred: boolean };
   sam: { frames: number; rack_frames: number; tile_frames: number } | null;
   drafted: { items: number; breakers: number; observations: number };
   engineer: { added: number; target: string | null; free_u: string | null; free_breakers: number; spare_ac_btu: number | null; ladder_height_m: number | null };
@@ -43,10 +43,12 @@ function HowMade({ slug, made, t }: { slug: string; made: Made; t: Timeline }) {
       <h2 id="made-h">How this survey was made</h2>
       <ol className="made-steps">
         <li>
-          <span className="label">1 · Filmed, blurred on the engineer's computer</span>
+          <span className="label">1 · {f.source === "prepared" ? "Filmed, blurred on the engineer's computer" : f.blurred ? "Filmed, frames picked and blurred in SurvAI" : "Filmed, frames picked in SurvAI"}</span>
           <div className="made-frames">{Array.from({ length: Math.min(6, f.frames) }, (_, k) => (
             <img key={k} src={`/api/replay/${slug}/frames/${k + 1}`} alt={`Key frame ${k + 1}`} loading="lazy" />))}</div>
-          <p>{plural(f.frames, "key frame")}{f.clip ? ", a narrated path clip" : ""}{f.photos ? ` and ${plural(f.photos, "photo")}` : ""}. Faces, labels and logos were blurred before upload.</p>
+          <p>{plural(f.frames, "key frame")}{f.clip ? ", a narrated path clip" : ""}{f.photos ? ` and ${plural(f.photos, "photo")}` : ""}. {f.source === "prepared" ? "Faces, labels and logos were blurred before upload."
+            : f.blurred ? "SurvAI picked the sharpest frames from the walk-through video; Meta SAM 3.1 found the labels to blur and the engineer checked every frame."
+              : "SurvAI picked the sharpest frames from the walk-through video."}</p>
         </li>
         <li>
           <span className="label">2 · Drafted by the models</span>

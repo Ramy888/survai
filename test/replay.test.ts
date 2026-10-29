@@ -71,7 +71,7 @@ describe("GET /api/replay/:slug", () => {
     ]);
     const body = await (await call("/api/replay/sample")).json<Record<string, any>>();
     expect(body.made).toEqual({
-      footage: { frames: 2, clip: false, photos: 1 },
+      footage: { frames: 2, clip: false, photos: 1, source: "prepared", blurred: true },
       sam: { frames: 2, rack_frames: 2, tile_frames: 1 },
       drafted: { items: 2, breakers: 3, observations: 1 },
       engineer: { added: 1, target: "R3", free_u: "10-30", free_breakers: 1, spare_ac_btu: 6000, ladder_height_m: 2.6 },

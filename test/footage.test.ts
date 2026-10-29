@@ -4,6 +4,7 @@
 // (checked end to end with headless Chrome).
 // Type-checked with the app (browser) config, not the Worker one.
 import { describe, expect, it } from "vitest";
+import { coverage, padBox, scaleBoxes } from "../src/footage/blur";
 import { pickSharpest, sharpness } from "../src/footage/pick";
 
 describe("pickSharpest (same rule as tools/prepare)", () => {
@@ -46,5 +47,21 @@ describe("sharpness (variance of the Laplacian on grey pixels)", () => {
     const soft = sharpness(image(40, 30, (x) => x * 6));
     const hard = sharpness(image(40, 30, (x) => (x % 8 < 4 ? 0 : 255)));
     expect(soft).toBeLessThan(hard);
+  });
+});
+
+describe("blur boxes (same padding and coverage as tools/prepare)", () => {
+  it("pads a box by 15% of its size and clamps it to the image", () => {
+    expect(padBox({ x1: 100, y1: 50, x2: 200, y2: 100 }, 400, 300)).toEqual({ x1: 85, y1: 42, x2: 215, y2: 108 });
+    expect(padBox({ x1: 0, y1: 0, x2: 200, y2: 100 }, 200, 100)).toEqual({ x1: 0, y1: 0, x2: 200, y2: 100 });
+  });
+
+  it("measures covered area as a union, never counting an overlap twice", () => {
+    expect(coverage([{ x1: 0, y1: 0, x2: 50, y2: 100 }, { x1: 0, y1: 0, x2: 50, y2: 100 }], 100, 100)).toBeCloseTo(0.5);
+    expect(coverage([{ x1: 0, y1: 0, x2: 50, y2: 50 }, { x1: 25, y1: 0, x2: 75, y2: 50 }], 100, 100)).toBeCloseTo(0.375);
+  });
+
+  it("rescales SAM's boxes from the size it saw to the frame's size", () => {
+    expect(scaleBoxes([{ x1: 10, y1: 20, x2: 30, y2: 40 }], 100, 200, 300, 600)).toEqual([{ x1: 30, y1: 60, x2: 90, y2: 120 }]);
   });
 });

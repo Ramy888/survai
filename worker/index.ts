@@ -6,6 +6,7 @@ import { deliberate } from "./routes/deliberate";
 import { device } from "./routes/device";
 import { startRoundWorkflow } from "./workflows/round";
 import { files } from "./routes/files";
+import { redact } from "./routes/redact";
 import { layout } from "./routes/layout";
 import { replay } from "./routes/replay";
 import { signoff } from "./routes/signoff";
@@ -41,6 +42,7 @@ export function createApp(deps: { fetch?: typeof fetch; sleep?: (ms: number) => 
   app.route("/api/surveys", surveys);
   app.route("/api/surveys", device);
   app.route("/api/surveys", files);
+  app.route("/api/surveys", redact);
   app.route("/api/surveys", deliberate);
   app.route("/api/surveys", layout);
   app.route("/api/surveys", timeline);

@@ -24,8 +24,12 @@ placement. The engineer approves, and the real representatives sign off from a l
 1. **Survey.** The engineer names the site, the device (for example a Juniper MX104) and the departments that must
    agree. Muse Spark 1.3 looks up the device's datasheet on the web and cites it: height, depth, power, feeds,
    breaker rating, airflow.
-2. **Upload.** 30 key frames of the room, a narrated clip walking the cable route, and photos of the power panel.
-   Everything is blurred on the engineer's computer first (`tools/prepare`): no faces, labels or logos leave it.
+2. **Upload.** The walk-through video as filmed: SurvAI scores it in the browser and picks the 30 sharpest frames,
+   one per time slice (the same rule as `tools/prepare`). Optionally, each picked frame goes to Meta SAM 3.1 once to
+   find labels to blur (nothing is kept on the server); the engineer checks every blurred frame, adds or removes a box,
+   and only then are the frames uploaded. Frames already picked and blurred on a Mac with `tools/prepare` (faces,
+   labels and logos never leave it) can be uploaded instead. Then the narrated clip of the cable route and photos of
+   the power panel.
 3. **Processing** (a Cloudflare Workflow, about a minute):
    - SAM 3.1 outlines every rack and floor tile in every frame. The tile grid gives the room size; the outlines are
      kept as evidence the engineer can see.

@@ -21,13 +21,16 @@ const SAM_BATCH = 6;
 const INVENTORY_FRAMES = 8; // Baseten: "Too many images: 12 (max 8)"
 const DEFAULT_SIZE: Record<string, [number, number]> = { rack: [1, 1.7], ac: [1, 1], door: [1.5, 0.2], panel: [1, 0.3], column: [1, 1], ladder: [1, 1] };
 
+export function bytesToDataUrl(bytes: Uint8Array, type: string): string {
+  let bin = "";
+  for (let i = 0; i < bytes.length; i += 0x8000) bin += String.fromCharCode(...bytes.subarray(i, i + 0x8000));
+  return `data:${type};base64,${btoa(bin)}`;
+}
+
 export async function toDataUrl(bucket: R2Bucket, key: string): Promise<string> {
   const obj = await bucket.get(key);
   if (!obj) throw new Error(`missing upload ${key}`);
-  const bytes = new Uint8Array(await obj.arrayBuffer());
-  let bin = "";
-  for (let i = 0; i < bytes.length; i += 0x8000) bin += String.fromCharCode(...bytes.subarray(i, i + 0x8000));
-  return `data:${obj.httpMetadata?.contentType ?? "application/octet-stream"};base64,${btoa(bin)}`;
+  return bytesToDataUrl(new Uint8Array(await obj.arrayBuffer()), obj.httpMetadata?.contentType ?? "application/octet-stream");
 }
 
 const evenly = <T>(xs: T[], n: number) => (xs.length <= n ? xs : Array.from({ length: n }, (_, i) => xs[Math.round((i * (xs.length - 1)) / (n - 1))]));

@@ -54,6 +54,12 @@ export interface RoomFiles { files: UploadedFile[]; missing: FileKind[] }
 export const listFiles = (id: string) => call<{ rooms: Record<string, RoomFiles> }>(`/api/surveys/${id}/files`);
 export const deleteFile = (id: string, fileId: string, passcode: string) =>
   call<{ deleted: string }>(`/api/surveys/${id}/files/${fileId}`, withPasscode(passcode, "DELETE"));
+/** One picked frame to Meta SAM 3.1 to find labels and people to blur; the server stores nothing. */
+export const findToBlur = (id: string, frame: Blob, passcode: string) =>
+  call<{ width: number; height: number; boxes: (SamBox & { concept: string })[] }>(`/api/surveys/${id}/redact`,
+    { method: "POST", headers: { "Content-Type": "image/jpeg", "X-Passcode": passcode }, body: frame });
+export const setFootage = (id: string, role: string, footage: { source: "video" | "prepared"; blurred: boolean }, passcode: string) =>
+  call<{ footage: unknown }>(`/api/surveys/${id}/rooms/${role}/footage`, withPasscode(passcode, "POST", footage));
 export const startProcessing = (id: string, passcode: string) =>
   call<{ status: string }>(`/api/surveys/${id}/process`, withPasscode(passcode, "POST"));
 

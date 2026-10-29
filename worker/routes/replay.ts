@@ -37,7 +37,8 @@ async function howMade(db: D1Database, id: string) {
   const target = items.results.map((i) => ({ ...i, props: JSON.parse(i.props_json ?? "{}") })).find((i) => i.props.is_target);
   const block = target?.props.free_blocks?.[0];
   return {
-    footage: { frames: count("key_frame"), clip: count("path_clip") > 0, photos: count("panel_photo") + count("photo") },
+    // Surveys made before the in-app video path were all prepared and blurred on the engineer's computer.
+    footage: { frames: count("key_frame"), clip: count("path_clip") > 0, photos: count("panel_photo") + count("photo"), source: f.footage?.source ?? "prepared", blurred: f.footage?.blurred ?? true },
     sam: f.sam ? { frames: f.sam.frames ?? perFrame.length, rack_frames: perFrame.filter((x) => x.racks > 0).length, tile_frames: perFrame.filter((x) => x.tiles > 0).length } : null,
     drafted: { items: items.results.filter((i) => i.source === "ai").length, breakers: f.breakers_draft?.length ?? 0, observations: f.observations?.length ?? 0 },
     engineer: {
