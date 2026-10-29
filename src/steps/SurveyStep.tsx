@@ -2,6 +2,8 @@ import { useState } from "react";
 import { createSurvey, savePasscode, savedPasscode, type NewSurvey } from "../api";
 import { Shell } from "../components/Shell";
 
+const DEMO_VIDEO = "https://youtu.be/e7pMw10oSwg";
+
 export const DEPARTMENTS = [
   ["space", "SPC", "Space"],
   ["power", "PWR", "Power"],
@@ -53,12 +55,20 @@ export function SurveyStep({ onCreated }: { onCreated: (id: string) => void }) {
       <form className="stack narrow" onSubmit={(e) => { e.preventDefault(); if (ready) void submit(); }}>
         <div>
           <h1>New survey</h1>
-          <p className="muted">What is going in, and who must agree on it.</p>
+          <p className="muted">SurvAI turns one walk-through of a telecom equipment room into an approved site survey: Meta models read the
+            footage, one AI agent per department reviews the plan, and you approve the report. <a href={DEMO_VIDEO} target="_blank" rel="noopener noreferrer">Watch the 3-minute demo</a></p>
         </div>
+        {/* First: nothing can be created without it, and a visitor should learn that before filling in the form. */}
+        <section className="panel fields" aria-label="Access">
+          <div className="field"><label htmlFor="pass">Team passcode</label>
+            <input id="pass" type="password" autoComplete="off" value={passcode} onChange={(e) => setPasscode(e.target.value)}
+              aria-describedby="pass-hint" aria-invalid={error.includes("passcode") || undefined} />
+            <span className="sub" id="pass-hint">Ask your team lead for it. Creating a survey runs paid models, so it is passcode-only.</span></div>
+        </section>
         <section className="panel fields" aria-label="Request">
           <div className="two">
             <div className="field"><label htmlFor="site">Site code</label>
-              <input id="site" value={form.site} onChange={(e) => set("site", e.target.value)} autoComplete="off" /></div>
+              <input id="site" placeholder="e.g. CAI-104" value={form.site} onChange={(e) => set("site", e.target.value)} autoComplete="off" /></div>
             <div className="field"><label htmlFor="qty">Quantity</label>
               <input id="qty" type="number" inputMode="numeric" min={1} max={20} value={form.quantity}
                 onChange={(e) => set("quantity", Math.max(1, Math.min(20, Number(e.target.value) || 1)))} /></div>
@@ -76,7 +86,8 @@ export function SurveyStep({ onCreated }: { onCreated: (id: string) => void }) {
           </div>
         </section>
         <section className="panel" aria-labelledby="reps-h">
-          <h2 id="reps-h">Representatives attending</h2>
+          <h2 id="reps-h">Departments that must agree</h2>
+          <p className="muted small">One AI agent per ticked department reviews the plan; the real representatives sign off later from a link.</p>
           <div className="rows">
             {DEPARTMENTS.map(([id, tag, name]) => (
               <label className="r" key={id}>
@@ -92,11 +103,6 @@ export function SurveyStep({ onCreated }: { onCreated: (id: string) => void }) {
               </label>
             )}
           </div>
-        </section>
-        <section className="panel fields" aria-label="Access">
-          <div className="field"><label htmlFor="pass">Team passcode</label>
-            <input id="pass" type="password" autoComplete="off" value={passcode} onChange={(e) => setPasscode(e.target.value)}
-              aria-invalid={error.includes("passcode") || undefined} /></div>
         </section>
         {error && <p className="note error" role="alert">{error}</p>}
       </form>

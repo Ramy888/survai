@@ -109,6 +109,7 @@ input[aria-invalid="true"]{border-color:var(--object)}
 .mono-values dd{font-family:var(--mono);font-size:.95rem}
 .sources{display:grid;gap:4px;margin:0;padding:0;list-style:none;font-size:.85rem}
 .sources a{color:var(--primary);word-break:break-word}
+p a{color:var(--primary);text-underline-offset:3px}p a:visited{color:var(--primary-hover)}
 .spin{width:18px;height:18px;border:2px solid var(--rule);border-top-color:var(--primary);border-radius:50%;animation:sp .9s linear infinite;flex:none}
 @keyframes sp{to{transform:rotate(360deg)}}
 .loading{display:flex;gap:12px;align-items:center;color:var(--muted)}
