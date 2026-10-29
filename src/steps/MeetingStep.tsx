@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { answerQuestion, getTimeline, savePasscode, savedPasscode, startMeeting, type Finding, type Question, type Round, type Survey, type Timeline } from "../api";
 import { ModelChip } from "../components/Footage";
 import { Shell } from "../components/Shell";
@@ -20,25 +20,45 @@ export function phase(t: Timeline) {
 
 export type FrameHref = (e: { frame: number | null; file_id?: string }) => string;
 
+/** One agent's turn in the meeting chat: who and how they voted, the statement in a bubble, then its evidence and rules. */
 function Statement({ f, frameHref, calcRule }: { f: Finding; frameHref: FrameHref; calcRule: (id: string) => string }) {
   const [all, setAll] = useState(false);
   const [cls, label] = VERDICT[f.verdict];
   const forced = f.verdict === "object" && f.forced_rules.length > 0;
+  // One chip per calculation rule: two cable paths give two LEN calculations, read as one.
+  const calcs = [...new Set(f.evidence.flatMap((e) => "calc_id" in e ? [calcRule(e.calc_id)] : []))];
+  const frames = f.evidence.flatMap((e) => "calc_id" in e ? [] : [e]);
   return (
-    <div className="st">
+    <article className="msg">
       <span className="tag" title={NAME[f.agent]}>{TAG[f.agent] ?? f.agent}</span>
-      <div>
-        <div className="meta">
+      <div className="msg-body">
+        <div className="msg-head">
+          <b className="who">{NAME[f.agent] ?? f.agent}</b>
           <span className={`chip ${cls}`}>{forced ? <>{LOCK}Forced · {f.forced_rules.join(", ")}</> : label}</span>
           {f.model && <ModelChip model={f.model} />}
-          {/* One chip per calculation rule: two cable paths give two LEN calculations, read as one. */}
-          {[...new Set(f.evidence.flatMap((e) => "calc_id" in e ? [calcRule(e.calc_id)] : []))].map((rule) => <span key={rule} className="ev muted">calc {rule}</span>)}
-          {f.evidence.map((e, k) => "calc_id" in e ? null : <a key={k} className="ev" href={frameHref(e)} target="_blank" rel="noreferrer">frame {e.frame ?? "?"}</a>)}
         </div>
-        <p className={all ? "" : "clamp"}>{f.statement}</p>
-        {f.statement.length > 240 && <button className="more-btn" onClick={() => setAll(!all)}>{all ? "Show less" : "Show all"}</button>}
+        <div className="bubble">
+          <p className={all ? "" : "clamp"}>{f.statement}</p>
+          {f.statement.length > 240 && <button className="more-btn" onClick={() => setAll(!all)}>{all ? "Show less" : "Show all"}</button>}
+        </div>
+        {(calcs.length > 0 || frames.length > 0) && (
+          <div className="msg-foot">
+            {calcs.map((rule) => <span key={rule} className="ev muted">calc {rule}</span>)}
+            {frames.map((e, k) => <a key={k} className="ev" href={frameHref(e)} target="_blank" rel="noreferrer">frame {e.frame ?? "?"}</a>)}
+          </div>
+        )}
         {f.rules.map((r) => <p className="rt" key={r.id}><span className="mono">{r.id}</span> {r.text}</p>)}
       </div>
+    </article>
+  );
+}
+
+/** A department (or the Lead) still working: a typing bubble in the chat. */
+export function Thinking({ agent, text }: { agent: string; text: string }) {
+  return (
+    <div className="msg thinking">
+      <span className={agent === "lead" ? "tag lead" : "tag"}>{agent === "lead" ? "LEAD" : TAG[agent] ?? agent}</span>
+      <div className="msg-body"><div className="bubble"><span className="dots" aria-hidden="true"><i /><i /><i /></span><span className="muted">{text}</span></div></div>
     </div>
   );
 }
@@ -46,22 +66,34 @@ function Statement({ f, frameHref, calcRule }: { f: Finding; frameHref: FrameHre
 export function RoundView({ r, t, frameHref, running }: { r: Round; t: Timeline; frameHref: FrameHref; running: { round: number; leadThinking: boolean } | null }) {
   const calcRule = (id: string) => r.calcs.find((c) => c.id === id)?.rule ?? "";
   const pending = running && running.round === r.round && !running.leadThinking ? t.reps.filter((a) => !r.findings.some((f) => f.agent === a)) : [];
+  const log = useRef<HTMLDivElement>(null);
+  const count = r.findings.length + (r.lead ? 1 : 0);
+  // Follow new statements while a round runs, unless the reader has scrolled up to read an earlier one.
+  const near = useRef(true);
+  useEffect(() => {
+    const el = log.current;
+    if (el && running && near.current) el.scrollTo({ top: el.scrollHeight, behavior: "smooth" });
+  }, [count, running]);
   return (
-    <section className="panel" style={{ paddingTop: 2 }} aria-label={`Round ${r.round}`}>
-      {r.findings.map((f) => <Statement key={f.id} f={f} frameHref={frameHref} calcRule={calcRule} />)}
-      {pending.map((a) => <p className="st thinking muted" key={a}><span className="tag">{TAG[a]}</span><span>{NAME[a]} is reviewing the room…</span></p>)}
-      {r.lead ? (
-        <div className="st">
-          <span className="tag lead">LEAD</span>
-          <div>
-            <p>{r.lead.summary} <ModelChip model={r.lead.model} /></p>
-            {r.lead.conflicts.map((c, k) => <p className="rt" key={k}>{c.agents.map((a) => NAME[a] ?? a).join(" vs ")}: {c.resolution}</p>)}
-            {r.lead.placement.target !== "none" && <p className="rt">Placement: <span className="mono">{r.lead.placement.target.replace("rack:", "rack ")}</span>. {r.lead.placement.reason}</p>}
-            {r.lead.model === "unavailable" ? <p className="rt">The Survey Lead was unavailable this round.</p>
-              : r.lead.fell_back && <p className="rt">The Survey Lead ran on {r.lead.model} because Muse Wonder did not answer in time.</p>}
-          </div>
-        </div>
-      ) : running?.round === r.round && running.leadThinking && <p className="st thinking muted"><span className="tag lead">LEAD</span><span>The Survey Lead is reading the statements…</span></p>}
+    <section className="panel chat-panel" aria-label={`Round ${r.round}`}>
+      <div className="chat" key={r.round} ref={log} role="log" tabIndex={0} aria-label={`Round ${r.round} statements`}
+        onScroll={(e) => { const el = e.currentTarget; near.current = el.scrollHeight - el.scrollTop - el.clientHeight < 120; }}>
+        {r.findings.map((f) => <Statement key={f.id} f={f} frameHref={frameHref} calcRule={calcRule} />)}
+        {pending.map((a) => <Thinking key={a} agent={a} text={`${NAME[a]} is reviewing the room`} />)}
+        {r.lead ? (
+          <article className="msg">
+            <span className="tag lead">LEAD</span>
+            <div className="msg-body">
+              <div className="msg-head"><b className="who">Survey Lead</b><ModelChip model={r.lead.model} /></div>
+              <div className="bubble lead"><p>{r.lead.summary}</p></div>
+              {r.lead.conflicts.map((c, k) => <p className="rt" key={k}>{c.agents.map((a) => NAME[a] ?? a).join(" vs ")}: {c.resolution}</p>)}
+              {r.lead.placement.target !== "none" && <p className="rt">Placement: <span className="mono">{r.lead.placement.target.replace("rack:", "rack ")}</span>. {r.lead.placement.reason}</p>}
+              {r.lead.model === "unavailable" ? <p className="rt">The Survey Lead was unavailable this round.</p>
+                : r.lead.fell_back && <p className="rt">The Survey Lead ran on {r.lead.model} because Muse Wonder did not answer in time.</p>}
+            </div>
+          </article>
+        ) : running?.round === r.round && running.leadThinking && <Thinking agent="lead" text="The Survey Lead is reading the statements" />}
+      </div>
     </section>
   );
 }
@@ -168,8 +200,8 @@ export function MeetingStep({ survey, onEditLayout, onApprove }: { survey: Surve
           {view ? <RoundView r={view} t={t} frameHref={frameHref} running={p?.state === "running" && view === last ? p : null} />
             : t && <RoundView r={{ round: 1, findings: [], calcs: [], lead: null }} t={t} frameHref={frameHref} running={{ round: 1, leadThinking: false }} />}
           {p?.state === "running" && last?.lead && view === last && (
-            <section className="panel" style={{ marginTop: 12 }} aria-label={`Round ${p.round}`}>
-              {t!.reps.map((a) => <p className="st thinking muted" key={a}><span className="tag">{TAG[a]}</span><span>{NAME[a]} is reviewing round {p.round}…</span></p>)}
+            <section className="panel chat-panel" style={{ marginTop: 12 }} aria-label={`Round ${p.round}`}>
+              <div className="chat">{t!.reps.map((a) => <Thinking key={a} agent={a} text={`${NAME[a]} is reviewing round ${p.round}`} />)}</div>
             </section>
           )}
         </div>

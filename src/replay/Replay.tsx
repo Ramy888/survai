@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { ApiError, type Timeline } from "../api";
 import { ReportSheet, type Report } from "../report/ReportPage";
 import "../report/print.css";
-import { phase, RoundView } from "../steps/MeetingStep";
+import { phase, RoundView, Thinking } from "../steps/MeetingStep";
 
 type Payload = { timeline: Timeline; report: Report; rerun: { enabled: boolean; running: boolean } };
 const MAX_ROUNDS = 3;
@@ -83,7 +83,7 @@ export function Replay({ slug }: { slug: string }) {
                 {running && ph?.state !== "running" && (
                   <section className="panel" aria-label={`Run ${t.run! + 1}`}>
                     <p className="muted">Run {t.run! + 1} is starting live:</p>
-                    {t.reps.map((a) => <p className="st thinking muted" key={a}><span className="tag">{a.slice(0, 3).toUpperCase()}</span><span>Reviewing the room…</span></p>)}
+                    <div className="chat">{t.reps.map((a) => <Thinking key={a} agent={a} text="Reviewing the room" />)}</div>
                   </section>
                 )}
                 {waiting.map((f) => <div className="ask" key={f.id}><span className="label">Waiting on the engineer</span><p>{f.question!.text}</p></div>)}

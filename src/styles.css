@@ -138,11 +138,26 @@ select{font:400 1rem/1.4 var(--body);color:var(--ink);background:var(--surface);
 .chip svg{width:12px;height:12px}
 .chip.ok{background:var(--approve-bg);color:var(--approve)}.chip.no{background:var(--object-bg);color:var(--object)}
 .chip.q{background:var(--question-bg);color:var(--question)}.chip.neutral{background:var(--ground);color:var(--muted)}
-.st{display:grid;grid-template-columns:auto 1fr;gap:12px;padding:14px 0;border-top:1px solid var(--rule);margin:0;animation:fade .15s ease-out}
-.st:first-child{border-top:0}
-.st .tag{align-self:start}
-.st .meta{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-bottom:6px}
-.st.thinking{align-items:center}
+/* The meeting as a chat: one scroll box per round, sized for about one agent's review; scrolling settles on each turn. */
+.chat-panel{padding:6px 6px 6px 16px}
+.chat{max-height:clamp(360px,60vh,560px);overflow-y:auto;overscroll-behavior:contain;scroll-snap-type:y proximity;scroll-padding:10px;padding:10px 10px 18px 0;outline-offset:-2px;
+  -webkit-mask-image:linear-gradient(to bottom,transparent,#000 10px,#000 calc(100% - 18px),transparent);mask-image:linear-gradient(to bottom,transparent,#000 10px,#000 calc(100% - 18px),transparent)}
+.chat:focus-visible{outline:2px solid var(--primary)}
+.msg{display:grid;grid-template-columns:auto 1fr;gap:12px;padding:10px 0;scroll-snap-align:start;animation:fade .15s ease-out}
+.msg>.tag{align-self:start;margin-top:2px}
+.msg-body{min-width:0}
+.msg-head{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-bottom:6px}
+.who{font:600 .95rem/1.2 var(--body)}
+.bubble{background:var(--ground);border-radius:4px 14px 14px 14px;padding:12px 14px}
+.bubble p{margin:0}
+.bubble .more-btn{padding-bottom:0}
+.bubble.lead{background:var(--primary-soft)}
+.msg-foot{display:flex;flex-wrap:wrap;gap:0 12px;margin-top:2px}
+.msg.thinking .bubble{display:inline-flex;align-items:center;gap:10px;padding:10px 14px}
+.dots{display:inline-flex;gap:4px}
+.dots i{width:6px;height:6px;border-radius:50%;background:var(--muted);opacity:.35;animation:dot 1.2s infinite ease-in-out}
+.dots i:nth-child(2){animation-delay:.15s}.dots i:nth-child(3){animation-delay:.3s}
+@keyframes dot{0%,80%,100%{opacity:.35}40%{opacity:1}}
 .ev{font:500 .75rem/1 var(--mono);color:var(--primary);text-underline-offset:3px;padding:8px 0}
 .ev.muted{color:var(--muted)}
 .rt{font-size:.85rem;color:var(--muted);margin-top:4px}
@@ -151,7 +166,7 @@ select{font:400 1rem/1.4 var(--body);color:var(--ink);background:var(--surface);
 .ask{background:var(--question-bg);border-radius:14px;padding:16px;display:grid;gap:10px}
 .ask .label{color:var(--question);font-weight:600;font-size:.85rem;text-transform:uppercase;letter-spacing:.04em}
 @keyframes fade{from{opacity:0}to{opacity:1}}
-@media (prefers-reduced-motion:reduce){.st{animation:none}}
+@media (prefers-reduced-motion:reduce){.msg,.dots i{animation:none}.chat{scroll-behavior:auto}}
 /* approve */
 .override{padding:4px 0 14px}
 .override+.override{border-top:1px solid var(--rule);padding-top:10px}

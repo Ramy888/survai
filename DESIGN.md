@@ -231,8 +231,9 @@ round stepper dots. The report sheet stays at 6 px, like paper. Nested radius = 
   The LEAD tag is inverted (ink background).
 - **verdict:** uppercase body-font label on a tint (approve / object / question). Forced objections add the lock
   icon. Never colour the whole row.
-- **agent statement row:** tag | verdict + evidence link (mono, underlined, primary) | statement | the rule id and
-  rule text in muted small type. Rows are separated by 1 px `rule` lines, not cards.
+- **agent statement (chat turn):** tag as avatar | name, verdict chip and model chip | the statement in a neutral
+  bubble (4 lines, "Show all") | evidence links (mono, underlined, primary) and the rule id with its text in muted
+  small type below the bubble. The Survey Lead's bubble uses `primary-soft`.
 - **question block:** amber tint across the full width, the asking department in the label, the answer input, and
   a primary button that names the outcome ("Send answer, start round 3").
 - **round bar:** one segment per round; done = ink, current = primary, pending = rule.
@@ -252,7 +253,7 @@ round stepper dots. The report sheet stays at 6 px, like paper. Nested radius = 
 - Do: test every step at 360 and 390 px (light and dark) with mobile emulation; no horizontal scroll.
 - Do: keep the report printable to A4 with the same content as the audit view.
 - Don't: colour-code departments, or use a coloured left border on statements.
-- Don't: wrap the meeting in cards, or nest cards; use ruled rows.
+- Don't: nest cards. The meeting is a chat log in one panel (see the 2026-10-29 decision); no department colours on bubbles.
 - Don't: use gradients, glows, blobs, emoji or icon tiles above headings.
 - Don't: show placeholder grey boxes where evidence frames belong; show the frame or the timestamp link.
 - Don't: use `mark` yellow anywhere except over photos.
@@ -277,3 +278,4 @@ round stepper dots. The report sheet stays at 6 px, like paper. Nested radius = 
 | 2026-10-27 | Report rendered as a ruled form, paper white in both themes | Mirrors the company survey form the reviewer signs; prints to A4 |
 | 2026-10-27 | Five-step flow with a top stepper and bottom action bar; softer radii | The owner asked for steps with a top indicator, simple and modern; tested at 360/390 px |
 | 2026-10-27 | Light by default | Phone in a lit equipment room; report is paper |
+| 2026-10-29 | Meeting statements as a chat log: tag as avatar, name + verdict + model above a neutral bubble, evidence and rules below; one scroll box per round sized for about one review, scroll snaps to each turn; typing bubbles while agents work | The owner asked for a chat list that keeps the page short; same component in the judges' replay |
