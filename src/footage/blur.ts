@@ -62,3 +62,18 @@ export function blurOnCanvas(ctx: CanvasRenderingContext2D, boxes: Box[]) {
     }
   }
 }
+
+/** The frame with its boxes blurred, as the JPEG that gets uploaded. */
+export async function blurredBlob(frame: Blob, width: number, height: number, boxes: Box[]): Promise<Blob> {
+  const bitmap = await createImageBitmap(frame);
+  const canvas = document.createElement("canvas");
+  canvas.width = width;
+  canvas.height = height;
+  const ctx = canvas.getContext("2d")!;
+  ctx.drawImage(bitmap, 0, 0, width, height);
+  bitmap.close();
+  blurOnCanvas(ctx, boxes);
+  const out = await new Promise<Blob | null>((r) => canvas.toBlob(r, "image/jpeg", 0.88));
+  if (!out) throw new Error("Could not blur a frame");
+  return out;
+}

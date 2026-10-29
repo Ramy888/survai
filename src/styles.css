@@ -239,24 +239,3 @@ textarea{font:400 1rem/1.4 var(--body);color:var(--ink);background:var(--surface
 .made-frames img{width:100%;aspect-ratio:9/16;object-fit:cover;border-radius:6px;border:1px solid var(--rule);background:var(--ground)}
 .made-answers{margin:0;padding-left:18px;display:grid;gap:4px;font-size:.95rem}
 @media (min-width:960px){.made-steps{grid-template-columns:1.3fr 1fr 1fr;gap:24px}}
-/* Walk-through video: the optional blur and the review before upload. */
-.blur-opt{margin-top:6px}
-.review{display:grid;gap:12px;margin-top:10px}
-.review-sum{margin:0;font-size:.95rem}
-.review-grid{list-style:none;margin:0;padding:0;display:grid;grid-template-columns:repeat(auto-fill,minmax(64px,1fr));gap:6px}
-.review-tile{all:unset;position:relative;display:block;width:100%;aspect-ratio:3/4;border-radius:6px;overflow:hidden;cursor:pointer;background:var(--ground);border:1px solid var(--rule)}
-.review-tile img{width:100%;height:100%;object-fit:cover;display:block}
-.review-tile.on{outline:3px solid var(--primary);outline-offset:1px}
-.review-tile:focus-visible{outline:2px solid var(--primary);outline-offset:2px}
-.review-wait{display:block;width:100%;height:100%;background:var(--rule)}
-.review-n{position:absolute;left:3px;bottom:3px;font-size:.7rem;background:rgba(0,0,0,.6);color:#fff;border-radius:4px;padding:1px 4px}
-.review-count{position:absolute;right:3px;top:3px;font-size:.7rem;background:#FFD000;color:#14191C;border-radius:4px;padding:1px 5px;font-weight:600}
-.review-count.heavy{background:var(--object);color:#fff}
-.review-editor{display:grid;gap:8px;border-top:1px solid var(--rule);padding-top:10px}
-.review-canvas{position:relative;width:100%;max-width:420px;margin:0 auto;touch-action:none;user-select:none;cursor:crosshair}
-.review-canvas img{width:100%;height:100%;display:block;border-radius:6px;pointer-events:none}
-.review-box{position:absolute;outline:2px solid #FFD000;outline-offset:-1px;border-radius:2px}
-.review-box.drawing{outline-style:dashed}
-.review-box button{position:absolute;right:-12px;top:-12px;width:24px;height:24px;border-radius:50%;border:0;background:#14191C;color:#fff;font:600 14px/24px var(--body);text-align:center;cursor:pointer;padding:0}
-.review-box button::after{content:"";position:absolute;inset:-10px} /* 44 px to tap */
-.review-actions{display:flex;flex-wrap:wrap;gap:10px;justify-content:flex-end}

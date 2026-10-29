@@ -47,7 +47,7 @@ function HowMade({ slug, made, t }: { slug: string; made: Made; t: Timeline }) {
           <div className="made-frames">{Array.from({ length: Math.min(6, f.frames) }, (_, k) => (
             <img key={k} src={`/api/replay/${slug}/frames/${k + 1}`} alt={`Key frame ${k + 1}`} loading="lazy" />))}</div>
           <p>{plural(f.frames, "key frame")}{f.clip ? ", a narrated path clip" : ""}{f.photos ? ` and ${plural(f.photos, "photo")}` : ""}. {f.source === "prepared" ? "Faces, labels and logos were blurred before upload."
-            : f.blurred ? "SurvAI picked the sharpest frames from the walk-through video; Meta SAM 3.1 found the labels to blur and the engineer checked every frame."
+            : f.blurred ? "SurvAI picked the sharpest frames from the walk-through video, and Meta SAM 3.1 found the labels it blurred before anything was stored."
               : "SurvAI picked the sharpest frames from the walk-through video."}</p>
         </li>
         <li>

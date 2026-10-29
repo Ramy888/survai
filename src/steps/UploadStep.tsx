@@ -3,9 +3,8 @@ import {
   deleteFile, findToBlur, listFiles, savedPasscode, setFootage, startProcessing, uploadFile, type FileKind, type RoomFiles, type Survey, type UploadedFile,
 } from "../api";
 import { Clip, FrameGrid, ModelChip } from "../components/Footage";
-import { scaleBoxes } from "../footage/blur";
+import { blurredBlob, scaleBoxes } from "../footage/blur";
 import { framesFromVideo, type Progress } from "../footage/extract";
-import { blurredBlob, Review, type ReviewFrame } from "../footage/Review";
 import { Shell } from "../components/Shell";
 
 const ROOM_NAME: Record<string, string> = { devices_hall: "Devices hall", connect_to: "Connect-to room" };
@@ -30,7 +29,6 @@ export function UploadStep({ survey, onStarted, back }: { survey: Survey; onStar
   const [busy, setBusy] = useState(false);
   // How the room's key frames arrive: picked here from the walk-through video, or prepared with tools/prepare.
   const [source, setSource] = useState<"video" | "prepared">("video");
-  const [blur, setBlur] = useState(true); // optional, on by default: Meta SAM 3.1 finds labels and people to blur
   const refresh = () => listFiles(survey.id).then((r) => setRooms(r.rooms), (e: Error) => setError(e.message));
   useEffect(() => { void refresh(); }, [survey.id]);
 
@@ -62,7 +60,7 @@ export function UploadStep({ survey, onStarted, back }: { survey: Survey; onStar
     setError("");
     try {
       // Say how this survey's frames were made, so the replay and report tell the truth about blurring.
-      for (const role of survey.rooms) await setFootage(survey.id, role, { source, blurred: source === "prepared" || blur }, passcode);
+      for (const role of survey.rooms) await setFootage(survey.id, role, { source, blurred: true }, passcode);
       await startProcessing(survey.id, passcode); onStarted();
     } catch (e) { setError((e as Error).message); setBusy(false); }
   }
@@ -90,21 +88,14 @@ export function UploadStep({ survey, onStarted, back }: { survey: Survey; onStar
         )}
         {!locked && rooms && (
           <section className="panel" aria-labelledby="h-source">
-            <h2 id="h-source">Key frames from</h2>
+            <h2 id="h-source">What will you upload?</h2>
             <div className="seg" role="group" aria-labelledby="h-source">
-              <button type="button" aria-pressed={source === "video"} onClick={() => setSource("video")}>Walk-through video</button>
+              <button type="button" aria-pressed={source === "video"} onClick={() => setSource("video")}>The video as is</button>
               <button type="button" aria-pressed={source === "prepared"} onClick={() => setSource("prepared")}>Prepared frames</button>
             </div>
-            {source === "video" ? (
-              <>
-                <p className="muted small" style={{ marginTop: 10 }}>Upload the video as you filmed it. SurvAI picks the 30 sharpest frames in this browser and uploads only those.</p>
-                <label className="toggle blur-opt"><input type="checkbox" checked={blur} onChange={(e) => setBlur(e.target.checked)} />
-                  <span>Blur labels and stickers first <ModelChip model="sam-3.1" /></span></label>
-                <p className="muted small">{blur
-                  ? "Each picked frame goes to Meta SAM 3.1 once to find what to blur and is not kept. You check the blur, then only blurred frames are uploaded."
-                  : "Frames are uploaded as filmed."}</p>
-              </>
-            ) : <p className="muted small" style={{ marginTop: 10 }}>Frames you picked and blurred on your computer with tools/prepare: faces, labels and logos never leave it.</p>}
+            <p className="muted small" style={{ marginTop: 10 }}>{source === "video"
+              ? <>Upload the walk-through as you filmed it. SurvAI picks the 30 sharpest frames and blurs labels before anything is stored <ModelChip model="sam-3.1" what="finds what to blur" /></>
+              : "Frames you already picked and blurred yourself, for example with tools/prepare."}</p>
           </section>
         )}
         {rooms && survey.rooms.slice().sort().reverse().map((role) => (
@@ -112,7 +103,7 @@ export function UploadStep({ survey, onStarted, back }: { survey: Survey; onStar
             <h2 id={`h-${role}`}>{ROOM_NAME[role]}</h2>
             <div className="rows">
               {KINDS.filter((k) => k.rooms.includes(role)).map((k) => !locked && source === "video" && k.kind === "key_frame" ? (
-                <VideoFrames key={k.kind} surveyId={survey.id} role={role} passcode={passcode} blur={blur} files={rooms[role].files.filter((f) => f.kind === "key_frame")}
+                <VideoFrames key={k.kind} surveyId={survey.id} role={role} passcode={passcode} files={rooms[role].files.filter((f) => f.kind === "key_frame")}
                   disabled={!!progress || !passcode} onDone={refresh} onError={setError} />
               ) : (
                 <Slot key={k.kind} role={role} k={k} files={rooms[role].files.filter((f) => f.kind === k.kind)}
@@ -129,68 +120,48 @@ export function UploadStep({ survey, onStarted, back }: { survey: Survey; onStar
   );
 }
 
-/** The walk-through video: frames are picked in this browser; with blur on, Meta SAM 3.1 finds labels (and people),
- * the engineer reviews the blurred frames, and only then are they uploaded as key frames. */
-function VideoFrames({ surveyId, role, passcode, files, blur, disabled, onDone, onError }: {
-  surveyId: string; role: string; passcode: string; files: UploadedFile[]; blur: boolean; disabled: boolean;
+/** The walk-through video as filmed: SurvAI picks the frames in this browser, Meta SAM 3.1 finds the labels to blur,
+ * the browser blurs them, and only the blurred frames are uploaded as key frames. The engineer only films. */
+function VideoFrames({ surveyId, role, passcode, files, disabled, onDone, onError }: {
+  surveyId: string; role: string; passcode: string; files: UploadedFile[]; disabled: boolean;
   onDone: () => Promise<unknown>; onError: (m: string) => void;
 }) {
   const input = useRef<HTMLInputElement>(null);
   type Work = Progress | { stage: "finding" | "uploading"; done: number; total: number };
   const [work, setWork] = useState<Work | null>(null);
-  const [picked, setPicked] = useState<{ name: string; seconds: number; frames: number } | null>(null);
-  const [review, setReview] = useState<ReviewFrame[] | null>(null);
+  const [picked, setPicked] = useState<{ name: string; seconds: number; frames: number; blurred: number } | null>(null);
   const total = files.reduce((s, f) => s + f.bytes, 0);
-
-  async function upload(blobs: Blob[]) {
-    for (const f of files) await deleteFile(surveyId, f.id, passcode); // a new video replaces the last one's frames
-    for (const [k, blob] of blobs.entries()) {
-      setWork({ stage: "uploading", done: k, total: blobs.length });
-      await uploadFile(surveyId, role, "key_frame", new File([blob], `walkthrough-${String(k + 1).padStart(2, "0")}.jpg`, { type: "image/jpeg" }), passcode, () => {});
-    }
-  }
 
   async function run(file: File | undefined) {
     if (!file) return;
     onError("");
-    setReview(null);
     try {
       const { frames, duration } = await framesFromVideo(file, 30, setWork);
-      setPicked({ name: file.name, seconds: Math.round(duration), frames: frames.length });
-      if (!blur) { await upload(frames.map((f) => f.blob)); return; }
-      // Three frames at a time to SAM 3.1; each answer is boxes only, nothing is kept on the server.
-      const out: ReviewFrame[] = new Array(frames.length);
+      // Three frames at a time: SAM 3.1 answers with boxes only, the server keeps nothing; the browser blurs.
+      const blurred: Blob[] = new Array(frames.length);
       let next = 0;
       let done = 0;
+      let areas = 0;
       setWork({ stage: "finding", done: 0, total: frames.length });
       await Promise.all(Array.from({ length: 3 }, async () => {
         while (next < frames.length) {
           const k = next++;
           const bitmap = await createImageBitmap(frames[k].blob);
-          const size = { width: bitmap.width, height: bitmap.height };
+          const { width, height } = bitmap;
           bitmap.close();
           const found = await findToBlur(surveyId, frames[k].blob, passcode);
-          out[k] = { t: frames[k].t, blob: frames[k].blob, ...size, boxes: scaleBoxes(found.boxes, found.width, found.height, size.width, size.height) };
+          const boxes = scaleBoxes(found.boxes, found.width, found.height, width, height);
+          areas += boxes.length;
+          blurred[k] = await blurredBlob(frames[k].blob, width, height, boxes);
           setWork({ stage: "finding", done: ++done, total: frames.length });
         }
       }));
-      setReview(out);
-    } catch (e) {
-      onError((e as Error).message);
-    } finally {
-      setWork(null);
-      await onDone();
-    }
-  }
-
-  async function confirm() {
-    if (!review) return;
-    onError("");
-    try {
-      const blobs: Blob[] = [];
-      for (const f of review) blobs.push(await blurredBlob(f));
-      await upload(blobs);
-      setReview(null);
+      for (const f of files) await deleteFile(surveyId, f.id, passcode); // a new video replaces the last one's frames
+      for (const [k, blob] of blurred.entries()) {
+        setWork({ stage: "uploading", done: k, total: blurred.length });
+        await uploadFile(surveyId, role, "key_frame", new File([blob], `walkthrough-${String(k + 1).padStart(2, "0")}.jpg`, { type: "image/jpeg" }), passcode, () => {});
+      }
+      setPicked({ name: file.name, seconds: Math.round(duration), frames: frames.length, blurred: areas });
     } catch (e) {
       onError((e as Error).message);
     } finally {
@@ -203,11 +174,10 @@ function VideoFrames({ surveyId, role, passcode, files, blur, disabled, onDone, 
     ? work.stage === "reading" ? "Reading the video…"
       : work.stage === "scoring" ? `Finding the sharpest frames: ${work.done} of ${work.total} checked`
         : work.stage === "capturing" ? `Saving frame ${work.done} of ${work.total}`
-          : work.stage === "finding" ? `Meta SAM 3.1 is finding labels to blur: ${work.done} of ${work.total} frames`
+          : work.stage === "finding" ? `Blurring labels with Meta SAM 3.1: ${work.done} of ${work.total} frames`
             : `Uploading frame ${work.done + 1} of ${work.total}`
-    : review ? `${review.length} frames picked from ${picked?.name ?? "the video"}: check the blur, then upload`
-      : files.length ? `${files.length} key frames${picked ? ` from ${picked.name} (${picked.seconds} s)` : ""} · ${mb(total)}`
-        : "MP4 or MOV, filmed slowly around the room; SurvAI picks the 30 sharpest frames";
+    : files.length ? `${files.length} key frames${picked ? ` from ${picked.name} (${picked.seconds} s), ${picked.blurred} areas blurred` : ""} · ${mb(total)}`
+      : "MP4 or MOV, filmed slowly around the room";
   return (
     <div className="fileslot">
       <div className="r nohover">
@@ -218,13 +188,9 @@ function VideoFrames({ surveyId, role, passcode, files, blur, disabled, onDone, 
           {work && <div className="prog"><i style={{ width: `${Math.round((work.done / Math.max(work.total, 1)) * 100)}%` }} /></div>}
         </div>
         <input ref={input} type="file" hidden accept="video/*" id={`${role}-walkthrough`} onChange={(e) => { void run(e.target.files?.[0]); e.target.value = ""; }} />
-        {!review && <button className="btn btn-secondary" disabled={disabled || !!work} onClick={() => input.current?.click()}>{files.length ? "Replace video" : "Choose video"}</button>}
+        <button className="btn btn-secondary" disabled={disabled || !!work} onClick={() => input.current?.click()}>{files.length ? "Replace video" : "Choose video"}</button>
       </div>
       {picked && picked.frames < 30 && !work && <p className="note warn small">Only {picked.frames} frames: the video is short or blurry in places. Film a longer, slower walk-through for more.</p>}
-      {review && (
-        <Review frames={review} busy={!!work} onCancel={() => { setReview(null); input.current?.click(); }} onUpload={() => void confirm()}
-          onChange={(k, boxes) => setReview(review.map((f, i) => (i === k ? { ...f, boxes } : f)))} />
-      )}
     </div>
   );
 }
