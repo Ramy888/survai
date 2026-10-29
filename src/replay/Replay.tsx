@@ -47,6 +47,8 @@ export function Replay({ slug }: { slug: string }) {
   const ph = t && phase(t);
   const last = t?.rounds.at(-1);
   const view = t && (t.rounds.find((r) => r.round === shown) ?? last);
+  // How many departments met, in words; the sample's count comes from the survey, not from this copy.
+  const agents = t ? `${["", "one", "two", "three", "four", "five", "six", "seven"][t.reps.length] ?? t.reps.length} department agents` : "The department agents";
   const waiting = ph?.state === "waiting" && last ? last.findings.filter((f) => f.question && !f.question.answer) : [];
   return (
     <>
@@ -54,7 +56,7 @@ export function Replay({ slug }: { slug: string }) {
       <main className="wrap stack">
         <div className="narrow-intro">
           <h1>A real equipment-room survey, replayed</h1>
-          <p className="muted">Six department agents met over prepared, anonymised footage of a real room. Read their meeting and the report, or run the meeting again live.</p>
+          <p className="muted">{agents.charAt(0).toUpperCase() + agents.slice(1)} met over prepared, anonymised footage of a real room. Read their meeting and the report, or run the meeting again live.</p>
           <p className="muted small">In this sample the engineer's part (correcting the drafted layout, answering the departments and approving) was played by the builder; every department statement and the Survey Lead's notes are live model output.</p>
         </div>
         {error && <p className="note error" role="alert">{error}</p>}
@@ -94,7 +96,7 @@ export function Replay({ slug }: { slug: string }) {
             {p.rerun.enabled && (
               <div className="panel stack" style={{ gap: 10 }}>
                 <button className="btn btn-primary" disabled={busy || running} onClick={rerun}>{running ? "Meeting running…" : busy ? "Starting…" : "Run the meeting again"}</button>
-                <p className="muted small">Starts a live run of the same six agents on the same frames (Muse Spark and Muse Wonder). The report keeps the run the engineer approved.</p>
+                <p className="muted small">Starts a live run of the same {agents} on the same frames (Muse Spark and Muse Wonder). The report keeps the run the engineer approved.</p>
                 {note && <p className="note warn" role="status">{note}</p>}
               </div>
             )}
