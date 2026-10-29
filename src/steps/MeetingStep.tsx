@@ -109,6 +109,10 @@ export function RoundView({ r, t, frameHref, running }: { r: Round; t: Timeline;
           {pending.map((a) => <li key={a}><span className="tag">{TAG[a] ?? a}</span><span className="chip neutral">Reviewing</span></li>)}
         </ul>
       )}
+      {(r.findings.length > 0 || pending.length > 0) && (
+        <p className="key muted">Tap a vote to read it. <b>Forced</b>: a rule the app calculated failed, so that department must object.
+          {" "}<span className="mono">calc</span>: a check the app computed, not the model.</p>
+      )}
       <div className="chat" key={r.round} ref={log} role="log" aria-live="off" tabIndex={0} aria-label={`Round ${r.round} statements`}
         onScroll={(e) => { const el = e.currentTarget; near.current = el.scrollHeight - el.scrollTop - el.clientHeight < 120; }}>
         {r.findings.map((f) => <Statement key={f.id} f={f} frameHref={frameHref} calcRule={calcRule} />)}

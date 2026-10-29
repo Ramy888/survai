@@ -165,11 +165,13 @@ select{font:400 1rem/1.4 var(--body);color:var(--ink);background:var(--surface);
   -webkit-mask-image:linear-gradient(to bottom,transparent,#000 10px,#000 calc(100% - 18px),transparent);mask-image:linear-gradient(to bottom,transparent,#000 10px,#000 calc(100% - 18px),transparent)}
 .chat:focus-visible{outline:2px solid var(--primary)}
 .chat{position:relative} /* offsetTop of a turn is measured from the chat, for the vote strip's jumps */
-.tally{list-style:none;margin:0;padding:10px 10px 8px 0;display:flex;flex-wrap:wrap;gap:6px 8px;border-bottom:1px solid var(--rule)}
+.tally{list-style:none;margin:0;padding:10px 10px 0 0;display:flex;flex-wrap:wrap;gap:6px 8px}
 .tally li{display:flex;align-items:center;gap:6px}
 .tally-btn{all:unset;display:flex;align-items:center;gap:6px;min-height:44px;cursor:pointer;border-radius:8px}
 .tally-btn:hover .tag{border-color:var(--primary);color:var(--primary)}
 .tally-btn:focus-visible{outline:2px solid var(--primary);outline-offset:2px}
+.key{font-size:.85rem;margin:8px 10px 0 0;padding-bottom:8px;border-bottom:1px solid var(--rule)}
+.key b{font-weight:600}
 .msg{display:grid;grid-template-columns:auto 1fr;gap:12px;padding:10px 0;scroll-snap-align:start;animation:fade .15s ease-out}
 .msg>.tag{align-self:start;margin-top:2px}
 .msg-body{min-width:0}
