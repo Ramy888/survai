@@ -6,13 +6,14 @@ import { Clip, FrameGrid } from "../components/Footage";
 import { Shell } from "../components/Shell";
 
 const ROOM_NAME: Record<string, string> = { devices_hall: "Devices hall", connect_to: "Connect-to room" };
-const KINDS: { kind: FileKind; label: string; hint: string; limit: number; accept: string; rooms: string[]; optional?: boolean }[] = [
+export const KINDS: { kind: FileKind; label: string; hint: string; limit: number; accept: string; rooms: string[]; optional?: boolean }[] = [
   { kind: "key_frame", label: "Key frames", hint: "Up to 30 sharp, blurred frames", limit: 30, accept: "image/jpeg,image/png", rooms: ["devices_hall", "connect_to"] },
   { kind: "path_clip", label: "Narrated path clip", hint: "MP4, 20-30 s, the cable route", limit: 1, accept: "video/mp4", rooms: ["devices_hall"] },
   { kind: "panel_photo", label: "Power panel photos", hint: "Needed to read the breakers", limit: 3, accept: "image/jpeg,image/png", rooms: ["devices_hall"] },
   { kind: "photo", label: "Other photos", hint: "Optional", limit: 5, accept: "image/jpeg,image/png", rooms: ["devices_hall", "connect_to"], optional: true },
 ];
 const CHECK = <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" aria-hidden="true"><path d="M5 12l5 5L19 7" /></svg>;
+const DASH = <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" aria-hidden="true"><path d="M7 12h10" /></svg>;
 const PLUS = <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" aria-hidden="true"><path d="M12 5v14M5 12h14" /></svg>;
 const mb = (b: number) => `${(b / 1024 / 1024).toFixed(1)} MB`;
 
@@ -96,7 +97,7 @@ export function UploadStep({ survey, onStarted, back }: { survey: Survey; onStar
   );
 }
 
-function Slot({ role, k, files, missing, progress, disabled, locked, onAdd, onRemove }: {
+export function Slot({ role, k, files, missing, progress, disabled, locked, onAdd, onRemove }: {
   role: string; k: (typeof KINDS)[number]; files: { id: string; name: string; bytes: number }[]; missing: boolean;
   progress: { done: number; total: number; frac: number } | null; disabled: boolean; locked: boolean;
   onAdd: (l: FileList | null) => void; onRemove: (id: string) => void;
@@ -106,11 +107,11 @@ function Slot({ role, k, files, missing, progress, disabled, locked, onAdd, onRe
   const full = files.length >= k.limit && k.kind !== "path_clip";
   const sub = progress
     ? `Uploading ${progress.done + 1} of ${progress.total}`
-    : files.length ? `${files.length}${k.limit > 1 ? ` of ${k.limit}` : ""} · ${mb(total)}` : k.hint;
+    : files.length ? `${files.length}${k.limit > 1 ? ` of ${k.limit}` : ""} · ${mb(total)}` : locked ? "Not uploaded" : k.hint;
   return (
     <div className="fileslot">
       <div className="r nohover">
-        <span className={`state ${files.length ? "ok" : "todo"}`}>{files.length ? CHECK : PLUS}</span>
+        <span className={`state ${files.length ? "ok" : "todo"}`}>{files.length ? CHECK : locked ? DASH : PLUS}</span>
         <div className="grow">
           {k.label}{missing && <span className="sr-only"> (required)</span>}
           <span className={`sub${files.length || progress ? " mono" : ""}`}>{sub}</span>

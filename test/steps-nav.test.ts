@@ -9,6 +9,7 @@ import { describe, expect, it } from "vitest";
 import { Stepper, StepNav } from "../src/components/Shell";
 import { DeviceSummary } from "../src/steps/DeviceStep";
 import { openQuestions, RoundView } from "../src/steps/MeetingStep";
+import { KINDS, Slot } from "../src/steps/UploadStep";
 
 const buttons = (html: string) => [...html.matchAll(/<button[^>]*>.*?<\/button>/g)].map((m) => m[0]);
 
@@ -71,5 +72,17 @@ describe("the meeting's vote strip", () => {
     expect([...strip.matchAll(/<li[^>]*>(.*?)<\/li>/g)].map((m) => m[1].replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim()))
       .toEqual(["PWR Forced · R11", "CLG Approve", "RMG Question", "SPC Reviewing"]);
     expect(html.indexOf('class="tally"')).toBeLessThan(html.indexOf('class="chat"'));
+  });
+});
+
+describe("a locked upload slot", () => {
+  it("says Not uploaded with a dash, and offers no Add, when nothing was uploaded", () => {
+    const k = KINDS.find((x) => x.kind === "photo")!;
+    const html = renderToStaticMarkup(createElement(Slot, { role: "devices_hall", k, files: [], missing: false, progress: null, disabled: false, locked: true, onAdd: () => {}, onRemove: () => {} }));
+    expect(html).toContain("Not uploaded");
+    expect(html).toContain('d="M7 12h10"');
+    expect(html).not.toContain("<button");
+    const open = renderToStaticMarkup(createElement(Slot, { role: "devices_hall", k, files: [], missing: false, progress: null, disabled: false, locked: false, onAdd: () => {}, onRemove: () => {} }));
+    expect(open).toContain(">Add<");
   });
 });
