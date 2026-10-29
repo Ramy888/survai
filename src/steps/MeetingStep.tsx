@@ -5,7 +5,7 @@ import { Shell } from "../components/Shell";
 
 const MAX_ROUNDS = 3;
 const TAG: Record<string, string> = { space: "SPC", power: "PWR", cooling: "CLG", execution: "EXE", transmission: "TRN", room_manager: "RMG", request: "REQ" };
-const NAME: Record<string, string> = { space: "Space", power: "Power", cooling: "Cooling", execution: "Execution", transmission: "Transmission", room_manager: "Room Manager", request: "The narrated clip" };
+export const NAME: Record<string, string> = { space: "Space", power: "Power", cooling: "Cooling", execution: "Execution", transmission: "Transmission", room_manager: "Room Manager", request: "The narrated clip" };
 const VERDICT: Record<Finding["verdict"], [string, string]> = { approve: ["ok", "Approve"], object: ["no", "Object"], question: ["q", "Question"], unavailable: ["neutral", "Unavailable"] };
 const LOCK = <svg viewBox="0 0 12 12" aria-hidden="true"><path fill="currentColor" d="M3 5V3.5a3 3 0 0 1 6 0V5h.5a.5.5 0 0 1 .5.5v5a.5.5 0 0 1-.5.5h-7a.5.5 0 0 1-.5-.5v-5a.5.5 0 0 1 .5-.5zm1.2 0h3.6V3.5a1.8 1.8 0 0 0-3.6 0z" /></svg>;
 

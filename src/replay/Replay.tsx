@@ -4,9 +4,57 @@ import { useEffect, useState } from "react";
 import { ApiError, type Timeline } from "../api";
 import { ReportSheet, type Report } from "../report/ReportPage";
 import "../report/print.css";
-import { phase, RoundView, Thinking } from "../steps/MeetingStep";
+import { NAME, phase, RoundView, Thinking } from "../steps/MeetingStep";
 
-type Payload = { timeline: Timeline; report: Report; rerun: { enabled: boolean; running: boolean } };
+type Made = {
+  footage: { frames: number; clip: boolean; photos: number };
+  sam: { frames: number; rack_frames: number; tile_frames: number } | null;
+  drafted: { items: number; breakers: number; observations: number };
+  engineer: { added: number; target: string | null; free_u: string | null; free_breakers: number; spare_ac_btu: number | null; ladder_height_m: number | null };
+};
+type Payload = { timeline: Timeline; report: Report; made: Made | null; rerun: { enabled: boolean; running: boolean } };
+
+const plural = (n: number, one: string, many = `${one}s`) => `${n} ${n === 1 ? one : many}`;
+
+/** The pipeline behind the meeting, so a judge sees more than the finished result: filmed, drafted, corrected. */
+function HowMade({ slug, made, t }: { slug: string; made: Made; t: Timeline }) {
+  const { footage: f, sam, drafted: d, engineer: e } = made;
+  const answers = [
+    ...t.rounds.flatMap((r) => r.findings.filter((x) => x.question?.answer).map((x) => ({ who: x.agent, q: x.question!.text, a: x.question!.answer! }))),
+    ...t.request_questions.filter((q) => q.answer).map((q) => ({ who: "request", q: q.text, a: q.answer! })),
+  ];
+  const confirmed = [
+    e.target && `marked ${e.target} as the target${e.free_u ? ` (free U${e.free_u})` : ""}`,
+    e.free_breakers > 0 && `confirmed ${plural(e.free_breakers, "free breaker")}`,
+    e.spare_ac_btu != null && `${e.spare_ac_btu.toLocaleString("en-US")} BTU/h of spare cooling`,
+    e.ladder_height_m != null && `a ${e.ladder_height_m} m ladder`,
+    e.added > 0 && `edited or added ${plural(e.added, "layout item")}`,
+  ].filter(Boolean);
+  return (
+    <section className="panel made" aria-labelledby="made-h">
+      <h2 id="made-h">How this survey was made</h2>
+      <ol className="made-steps">
+        <li>
+          <span className="label">1 · Filmed, blurred on the engineer's computer</span>
+          <div className="made-frames">{Array.from({ length: Math.min(6, f.frames) }, (_, k) => (
+            <img key={k} src={`/api/replay/${slug}/frames/${k + 1}`} alt={`Key frame ${k + 1}`} loading="lazy" />))}</div>
+          <p>{plural(f.frames, "key frame")}{f.clip ? ", a narrated path clip" : ""}{f.photos ? ` and ${plural(f.photos, "photo")}` : ""}. Faces, labels and logos were blurred before upload.</p>
+        </li>
+        <li>
+          <span className="label">2 · Drafted by the models</span>
+          <p>{sam && <>Meta SAM 3.1 found racks in {sam.rack_frames} of {sam.frames} frames and floor tiles in {sam.tile_frames}. </>}
+            Muse Spark drafted {plural(d.items, "layout item")}, read {plural(d.breakers, "breaker slot")} on the panel photos
+            {d.observations ? ` and noted ${plural(d.observations, "housekeeping issue")}` : ""}, and read the request from the narrated clip.</p>
+        </li>
+        <li>
+          <span className="label">3 · Corrected and answered by the engineer</span>
+          {confirmed.length > 0 && <p>The engineer {confirmed.join(", ")}.</p>}
+          {answers.length > 0 && <ul className="made-answers">{answers.map((x, k) => <li key={k}><b>{NAME[x.who] ?? x.who}</b> asked: {x.q} <span className="mono">{x.a}</span></li>)}</ul>}
+        </li>
+      </ol>
+    </section>
+  );
+}
 const MAX_ROUNDS = 3;
 
 export function Replay({ slug }: { slug: string }) {
@@ -69,6 +117,7 @@ export function Replay({ slug }: { slug: string }) {
         {!p && !error && <p className="muted">Loading the replay…</p>}
         {p && t && (
           <>
+            {p.made && <HowMade slug={slug} made={p.made} t={t} />}
             <div className="seg" role="group" aria-label="View">
               <button type="button" aria-pressed={tab === "meeting"} onClick={() => setTab("meeting")}>Meeting</button>
               <button type="button" aria-pressed={tab === "report"} onClick={() => setTab("report")}>Report</button>

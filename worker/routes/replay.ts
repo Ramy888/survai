@@ -22,6 +22,33 @@ const keyFrames = (db: D1Database, id: string) =>
   db.prepare("SELECT f.id, r.role, f.r2_key FROM files f JOIN rooms r ON r.id = f.room_id WHERE r.survey_id = ?1 AND f.kind = 'key_frame' ORDER BY f.created_at")
     .bind(id).all<{ id: string; role: string; r2_key: string }>().then((r) => r.results);
 
+/** How the sample was made, for judges: what was filmed, what the models drafted, what the engineer confirmed.
+ * Counts and labels only, no ids. */
+async function howMade(db: D1Database, id: string) {
+  const room = await db.prepare("SELECT id, facts_json FROM rooms WHERE survey_id = ?1 AND role = 'devices_hall'").bind(id).first<{ id: string; facts_json: string | null }>();
+  if (!room) return null;
+  const f = JSON.parse(room.facts_json ?? "{}");
+  const [files, items] = await Promise.all([
+    db.prepare("SELECT kind, COUNT(*) AS n FROM files WHERE room_id = ?1 GROUP BY kind").bind(room.id).all<{ kind: string; n: number }>(),
+    db.prepare("SELECT label, source, props_json FROM layout_items WHERE room_id = ?1").bind(room.id).all<{ label: string | null; source: string; props_json: string | null }>(),
+  ]);
+  const count = (k: string) => files.results.find((x) => x.kind === k)?.n ?? 0;
+  const perFrame: { tiles: number; racks: number }[] = f.sam?.per_frame ?? [];
+  const target = items.results.map((i) => ({ ...i, props: JSON.parse(i.props_json ?? "{}") })).find((i) => i.props.is_target);
+  const block = target?.props.free_blocks?.[0];
+  return {
+    footage: { frames: count("key_frame"), clip: count("path_clip") > 0, photos: count("panel_photo") + count("photo") },
+    sam: f.sam ? { frames: f.sam.frames ?? perFrame.length, rack_frames: perFrame.filter((x) => x.racks > 0).length, tile_frames: perFrame.filter((x) => x.tiles > 0).length } : null,
+    drafted: { items: items.results.filter((i) => i.source === "ai").length, breakers: f.breakers_draft?.length ?? 0, observations: f.observations?.length ?? 0 },
+    engineer: {
+      added: items.results.filter((i) => i.source === "engineer").length,
+      target: target?.label ?? null, free_u: block ? `${block.from_u}-${block.to_u}` : null,
+      free_breakers: (f.breakers_confirmed ?? []).filter((b: { free?: boolean }) => b.free).length,
+      spare_ac_btu: f.spare_ac_btu ?? null, ladder_height_m: f.ladder_height_m ?? null,
+    },
+  };
+}
+
 /** A round is running when the latest one has no Lead note yet, or led to another round, and is not stuck. */
 async function running(db: D1Database, id: string) {
   const r = await db.prepare(
@@ -51,6 +78,7 @@ replay.get("/:slug", async (c) => {
   return c.json({
     timeline: { ...timeline, rounds: timeline.rounds.map((r) => ({ ...r, findings: r.findings.map((f) => ({ ...f, evidence: strip(f.evidence as never) })) })) },
     report: { ...report, statements: report.statements.map((s) => ({ ...s, evidence: strip(s.evidence as never) })) },
+    made: await howMade(db, id),
     rerun: { enabled: c.env.RERUN_ENABLED !== "0", running: await running(db, id) },
   });
 });

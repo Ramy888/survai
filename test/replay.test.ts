@@ -56,6 +56,29 @@ describe("GET /api/replay/:slug", () => {
     expect(body.rerun).toMatchObject({ enabled: true, running: false });
   });
 
+  it("explains how the survey was made: footage, what the models drafted, what the engineer confirmed", async () => {
+    const { id, hall } = await seed();
+    const facts = {
+      sam: { frames: 2, per_frame: [{ n: 1, tiles: 4, racks: 2 }, { n: 2, tiles: 0, racks: 1 }] },
+      breakers_draft: [{ position: 1 }, { position: 2 }, { position: 3 }],
+      breakers_confirmed: [{ position: 1, dc: true, rating_a: 16, free: false }, { position: 3, dc: true, rating_a: 16, free: true }],
+      spare_ac_btu: 6000, ladder_height_m: 2.6, observations: [{ rule: "R1", text: "Stepladder", frames: [1] }],
+    };
+    await env.DB.batch([
+      q("UPDATE rooms SET facts_json = ?1 WHERE id = ?2", JSON.stringify(facts), hall),
+      q("INSERT INTO layout_items (id, room_id, kind, label, x_tiles, y_tiles, props_json, source) VALUES (?1, ?4, 'rack', 'R1', 0, 0, '{}', 'ai'), (?2, ?4, 'door', 'D1', 1, 0, '{}', 'ai'), (?3, ?4, 'rack', 'R3', 2, 0, ?5, 'engineer')",
+        crypto.randomUUID(), crypto.randomUUID(), crypto.randomUUID(), hall, JSON.stringify({ is_target: true, free_blocks: [{ from_u: 10, to_u: 30 }] })),
+    ]);
+    const body = await (await call("/api/replay/sample")).json<Record<string, any>>();
+    expect(body.made).toEqual({
+      footage: { frames: 2, clip: false, photos: 1 },
+      sam: { frames: 2, rack_frames: 2, tile_frames: 1 },
+      drafted: { items: 2, breakers: 3, observations: 1 },
+      engineer: { added: 1, target: "R3", free_u: "10-30", free_breakers: 1, spare_ac_btu: 6000, ladder_height_m: 2.6 },
+    });
+    expect(JSON.stringify(body.made)).not.toContain(id);
+  });
+
   it("serves only a sample survey", async () => {
     await seed({ sample: 0, slug: "sample" });
     expect((await call("/api/replay/sample")).status).toBe(404);
