@@ -76,7 +76,7 @@ export function RoundView({ r, t, frameHref, running }: { r: Round; t: Timeline;
   }, [count, running]);
   return (
     <section className="panel chat-panel" aria-label={`Round ${r.round}`}>
-      <div className="chat" key={r.round} ref={log} role="log" tabIndex={0} aria-label={`Round ${r.round} statements`}
+      <div className="chat" key={r.round} ref={log} role="log" aria-live="off" tabIndex={0} aria-label={`Round ${r.round} statements`}
         onScroll={(e) => { const el = e.currentTarget; near.current = el.scrollHeight - el.scrollTop - el.clientHeight < 120; }}>
         {r.findings.map((f) => <Statement key={f.id} f={f} frameHref={frameHref} calcRule={calcRule} />)}
         {pending.map((a) => <Thinking key={a} agent={a} text={`${NAME[a]} is reviewing the room`} />)}
