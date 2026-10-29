@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { ApiError, confirmDevice, lookupDevice, savePasscode, savedPasscode, type DeviceSpec, type Survey } from "../api";
 import { ModelChip } from "../components/Footage";
 import { Shell } from "../components/Shell";
+import { DEPARTMENTS } from "./SurveyStep";
 
 type Fields = Record<"height_u" | "power_w" | "feed_count" | "breaker_rating_a" | "depth_mm" | "weight_kg" | "airflow", string>;
 const empty: Fields = { height_u: "", power_w: "", feed_count: "", breaker_rating_a: "", depth_mm: "", weight_kg: "", airflow: "" };
@@ -12,7 +13,66 @@ const toFields = (s: DeviceSpec): Fields => ({
 });
 const num = (v: string) => (v.trim() === "" ? null : Number(v));
 
-export function DeviceStep({ survey, onConfirmed }: { survey: Survey; onConfirmed: () => void }) {
+const REP_NAME: Record<string, string> = { ...Object.fromEntries(DEPARTMENTS.map(([id, , name]) => [id, name])), transmission: "Transmission" };
+
+/** What was saved in step 1, once the device is confirmed: the survey and the device, read-only. */
+export function DeviceSummary({ survey }: { survey: Survey }) {
+  const d = survey.device;
+  const row = (label: string, value: React.ReactNode) => value == null || value === "" ? null : <div className="kv"><dt>{label}</dt><dd>{value}</dd></div>;
+  return (
+    <>
+      <section className="panel" aria-labelledby="h-survey">
+        <h2 id="h-survey">Survey</h2>
+        <dl className="kvs">
+          {row("Site", survey.site)}
+          {row("Project", survey.project)}
+          {row("Device", `${survey.quantity} × ${survey.device_model}`)}
+          {row("Connects to", survey.connects_to === "same_room" ? "Same room" : "Another room")}
+          {row("Representatives", survey.reps.map((r) => REP_NAME[r] ?? r).join(", "))}
+        </dl>
+      </section>
+      {d && (
+        <section className="panel" aria-labelledby="h-device">
+          <h2 id="h-device">Device</h2>
+          <dl className="kvs mono-values">
+            {row("Height (U)", d.height_u)}
+            {row("Power, max (W)", d.power_w)}
+            {row("Feeds", `${d.feed_count} × ${d.feed_type}`)}
+            {row("Breaker (A)", d.breaker_rating_a)}
+            {row("Depth (mm)", d.depth_mm)}
+            {row("Weight (kg)", d.weight_kg)}
+            {row("Airflow", d.airflow)}
+          </dl>
+          {d.sources.length > 0 && (
+            <div>
+              <span className="label">Sources</span>
+              <ul className="sources">
+                {d.sources.map((s) => <li key={s.url}><a href={s.url} target="_blank" rel="noopener noreferrer">{s.title || new URL(s.url).hostname}</a></li>)}
+              </ul>
+            </div>
+          )}
+        </section>
+      )}
+    </>
+  );
+}
+
+export function DeviceStep({ survey, onConfirmed, back }: { survey: Survey; onConfirmed: () => void; back?: { label: string; go: () => void } }) {
+  if (survey.status !== "draft") {
+    return (
+      <Shell step={1} surveyCode={survey.site} actions={back && <button className="btn btn-primary" onClick={back.go}>{back.label}</button>}>
+        <div className="stack narrow">
+          <div><h1>Survey and device</h1><p className="muted">{survey.quantity} × {survey.device_model} · {survey.project}</p></div>
+          <p className="note info">Saved and locked once the device was confirmed: the footage, layout and meeting are built on it. To change it, start a new survey.</p>
+          <DeviceSummary survey={survey} />
+        </div>
+      </Shell>
+    );
+  }
+  return <DeviceForm survey={survey} onConfirmed={onConfirmed} />;
+}
+
+function DeviceForm({ survey, onConfirmed }: { survey: Survey; onConfirmed: () => void }) {
   const [passcode, setPasscode] = useState(savedPasscode);
   const [phase, setPhase] = useState<"looking" | "found" | "manual">(passcode ? "looking" : "manual");
   const [fields, setFields] = useState<Fields>(empty);

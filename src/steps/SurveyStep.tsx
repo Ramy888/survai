@@ -2,7 +2,7 @@ import { useState } from "react";
 import { createSurvey, savePasscode, savedPasscode, type NewSurvey } from "../api";
 import { Shell } from "../components/Shell";
 
-const DEPARTMENTS = [
+export const DEPARTMENTS = [
   ["space", "SPC", "Space"],
   ["power", "PWR", "Power"],
   ["cooling", "CLG", "Cooling"],

@@ -11,5 +11,5 @@
     "skipLibCheck": true,
     "types": ["vite/client"]
   },
-  "include": ["src", "test/render.test.ts"]
+  "include": ["src", "test/render.test.ts", "test/steps-nav.test.ts"]
 }

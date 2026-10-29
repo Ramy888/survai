@@ -16,7 +16,9 @@ const CHECK = <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeW
 const PLUS = <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" aria-hidden="true"><path d="M12 5v14M5 12h14" /></svg>;
 const mb = (b: number) => `${(b / 1024 / 1024).toFixed(1)} MB`;
 
-export function UploadStep({ survey, onStarted }: { survey: Survey; onStarted: () => void }) {
+export function UploadStep({ survey, onStarted, back }: { survey: Survey; onStarted: () => void; back?: { label: string; go: () => void } }) {
+  // Once processing starts the footage is what the models saw: shown as uploaded, no longer changed here.
+  const locked = survey.status !== "uploading";
   const [rooms, setRooms] = useState<Record<string, RoomFiles> | null>(null);
   const [passcode, setPasscode] = useState(savedPasscode);
   const [progress, setProgress] = useState<{ slot: string; done: number; total: number; frac: number } | null>(null);
@@ -57,16 +59,19 @@ export function UploadStep({ survey, onStarted }: { survey: Survey; onStarted: (
   const complete = rooms && Object.values(rooms).every((r) => r.missing.length === 0);
   return (
     <Shell step={2} surveyCode={survey.site}
-      actions={<button className="btn btn-primary" disabled={!complete || !!progress || busy || !passcode} onClick={process}>{busy ? "Starting…" : "Process footage"}</button>}>
+      actions={locked ? back && <button className="btn btn-primary" onClick={back.go}>{back.label}</button>
+        : <button className="btn btn-primary" disabled={!complete || !!progress || busy || !passcode} onClick={process}>{busy ? "Starting…" : "Process footage"}</button>}>
       <div className="stack narrow">
         <div>
-          <h1>Upload footage</h1>
-          <p className="muted">Prepare the files on your computer first. Faces, labels and logos are blurred before anything leaves it.</p>
+          <h1>{locked ? "Uploaded footage" : "Upload footage"}</h1>
+          <p className="muted">{locked ? "What the models worked from, as uploaded. Faces, labels and logos were blurred before upload."
+            : "Prepare the files on your computer first. Faces, labels and logos are blurred before anything leaves it."}</p>
         </div>
+        {locked && <p className="note info">Locked once processing started: the layout and the meeting are built on these files. To use different footage, start a new survey.</p>}
         {survey.processing_error && <p className="note error" role="alert">{survey.processing_error}</p>}
         {!rooms && !error && <p className="muted">Loading files…</p>}
         {/* First, because adding files needs it. */}
-        {!savedPasscode() && (
+        {!locked && !savedPasscode() && (
           <section className="panel fields">
             <div className="field"><label htmlFor="pass">Team passcode</label>
               <input id="pass" type="password" autoComplete="off" value={passcode} onChange={(e) => setPasscode(e.target.value)} /></div>
@@ -79,7 +84,7 @@ export function UploadStep({ survey, onStarted }: { survey: Survey; onStarted: (
               {KINDS.filter((k) => k.rooms.includes(role)).map((k) => (
                 <Slot key={k.kind} role={role} k={k} files={rooms[role].files.filter((f) => f.kind === k.kind)}
                   missing={rooms[role].missing.includes(k.kind)} progress={progress?.slot === `${role}:${k.kind}` ? progress : null}
-                  disabled={!!progress || !passcode} onAdd={(l) => add(role, k.kind, l)} onRemove={remove} />
+                  disabled={!!progress || !passcode} locked={locked} onAdd={(l) => add(role, k.kind, l)} onRemove={remove} />
               ))}
             </div>
             <Preview surveyId={survey.id} files={rooms[role].files} />
@@ -91,9 +96,9 @@ export function UploadStep({ survey, onStarted }: { survey: Survey; onStarted: (
   );
 }
 
-function Slot({ role, k, files, missing, progress, disabled, onAdd, onRemove }: {
+function Slot({ role, k, files, missing, progress, disabled, locked, onAdd, onRemove }: {
   role: string; k: (typeof KINDS)[number]; files: { id: string; name: string; bytes: number }[]; missing: boolean;
-  progress: { done: number; total: number; frac: number } | null; disabled: boolean;
+  progress: { done: number; total: number; frac: number } | null; disabled: boolean; locked: boolean;
   onAdd: (l: FileList | null) => void; onRemove: (id: string) => void;
 }) {
   const input = useRef<HTMLInputElement>(null);
@@ -111,23 +116,23 @@ function Slot({ role, k, files, missing, progress, disabled, onAdd, onRemove }: 
           <span className={`sub${files.length || progress ? " mono" : ""}`}>{sub}</span>
           {progress && <div className="prog"><i style={{ width: `${Math.round(((progress.done + progress.frac) / progress.total) * 100)}%` }} /></div>}
         </div>
-        <input ref={input} type="file" hidden accept={k.accept} multiple={k.limit > 1} id={`${role}-${k.kind}`}
+        {!locked && <><input ref={input} type="file" hidden accept={k.accept} multiple={k.limit > 1} id={`${role}-${k.kind}`}
           onChange={(e) => { onAdd(e.target.files); e.target.value = ""; }} />
         <button className="btn btn-secondary" disabled={disabled || full} onClick={() => input.current?.click()}
           aria-label={`${files.length && k.kind === "path_clip" ? "Replace" : "Add"} ${k.label.toLowerCase()}`}>
           {files.length && k.kind === "path_clip" ? "Replace" : "Add"}
-        </button>
+        </button></>}
       </div>
       {k.kind !== "key_frame" && files.map((f) => (
         <div className="filerow" key={f.id}>
           <span className="name">{f.name}</span><span className="mono">{mb(f.bytes)}</span>
-          <button className="link-btn" onClick={() => onRemove(f.id)} disabled={disabled}>Remove<span className="sr-only"> {f.name}</span></button>
+          {!locked && <button className="link-btn" onClick={() => onRemove(f.id)} disabled={disabled}>Remove<span className="sr-only"> {f.name}</span></button>}
         </div>
       ))}
       {k.kind === "key_frame" && files.length > 0 && (
         <div className="filerow">
           <span className="name">{files[0].name} … {files.at(-1)!.name}</span>
-          <button className="link-btn" onClick={() => onRemove(files.at(-1)!.id)} disabled={disabled}>Remove last</button>
+          {!locked && <button className="link-btn" onClick={() => onRemove(files.at(-1)!.id)} disabled={disabled}>Remove last</button>}
         </div>
       )}
     </div>

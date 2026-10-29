@@ -279,3 +279,4 @@ round stepper dots. The report sheet stays at 6 px, like paper. Nested radius = 
 | 2026-10-27 | Five-step flow with a top stepper and bottom action bar; softer radii | The owner asked for steps with a top indicator, simple and modern; tested at 360/390 px |
 | 2026-10-27 | Light by default | Phone in a lit equipment room; report is paper |
 | 2026-10-29 | Meeting statements as a chat log: tag as avatar, name + verdict + model above a neutral bubble, evidence and rules below; one scroll box per round sized for about one review, scroll snaps to each turn; typing bubbles while agents work | The owner asked for a chat list that keeps the page short; same component in the judges' replay |
+| 2026-10-29 | Stepper steps already reached are buttons; earlier steps open with their saved data (Survey and Upload read-only once locked, Layout editable); opened steps stay mounted so unsaved inputs survive switching | The owner asked to move between steps without losing work |

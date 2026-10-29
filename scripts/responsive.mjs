@@ -42,7 +42,7 @@ for (const [w, h, mobile] of SIZES) {
       await evaluate(`localStorage.setItem("theme", "${theme}")`);
       await send("Page.navigate", { url: new URL(s.path, base).href }); await sleep(2500);
       if (s.click) {
-        await evaluate(`[...document.querySelectorAll("button, a")].find((b) => b.textContent.trim() === ${JSON.stringify(s.click)})?.click()`);
+        await evaluate(`[...document.querySelectorAll("button, a")].find((b) => b.textContent.trim() === ${JSON.stringify(s.click)} || b.getAttribute("aria-label") === ${JSON.stringify(s.click)})?.click()`);
         await sleep(1500);
       }
       const over = await evaluate("document.documentElement.scrollWidth - innerWidth");

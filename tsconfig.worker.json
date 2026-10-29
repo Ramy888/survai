@@ -20,5 +20,5 @@
     "test",
     "fixtures"
   ],
-  "exclude": ["test/render.test.ts"]
+  "exclude": ["test/render.test.ts", "test/steps-nav.test.ts"]
 }

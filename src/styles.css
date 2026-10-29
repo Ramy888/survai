@@ -41,7 +41,7 @@ p{margin:0}
 .stepper{list-style:none;margin:0 auto;padding:4px 0 14px;display:grid;grid-template-columns:repeat(5,1fr);max-width:640px}
 .stepper li{position:relative;display:flex;flex-direction:column;align-items:center;min-width:0}
 .stepper li+li::before{content:"";position:absolute;top:15px;right:calc(50% + 20px);left:calc(-50% + 20px);height:2px;background:var(--rule);border-radius:1px}
-.stepper li.done+li::before{background:var(--primary)}
+.stepper li.reached+li.reached::before{background:var(--primary)}
 .stepper .step{display:flex;flex-direction:column;align-items:center;gap:6px;min-width:44px}
 .dot{width:32px;height:32px;border-radius:50%;display:grid;place-items:center;font:600 .8rem/1 var(--mono);border:2px solid var(--rule);color:var(--muted);background:var(--surface)}
 .dot svg{width:16px;height:16px}
@@ -49,6 +49,12 @@ p{margin:0}
 .stepper li.now .dot{border-color:var(--primary);color:var(--primary);box-shadow:0 0 0 4px var(--primary-soft)}
 .sname{font:500 .8rem/1 var(--body);color:var(--muted);white-space:nowrap}
 .stepper li.now .sname{color:var(--ink);font-weight:600}
+.stepper li.open .dot{border-color:var(--primary);color:var(--primary)}
+/* Reached steps are buttons: no button chrome, a 44 px target, a ring on hover and a focus outline. */
+.step-btn{all:unset;display:block;cursor:pointer;border-radius:10px;padding:0 4px;-webkit-tap-highlight-color:transparent}
+.step-btn:focus-visible{outline:2px solid var(--primary);outline-offset:3px}
+.step-btn:hover .dot{box-shadow:0 0 0 4px var(--primary-soft)}
+.step-btn:hover .sname{color:var(--primary)}
 
 /* Room under the fixed action bar; main.wrap beats .wrap, whose padding used to reset this to 0 */
 main.wrap:has(+ .actions){padding-bottom:calc(120px + env(safe-area-inset-bottom))}
@@ -87,6 +93,12 @@ input[aria-invalid="true"]{border-color:var(--object)}
 @media (prefers-reduced-motion:no-preference){main>*{animation:in .2s ease-out}}
 @keyframes in{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:none}}
 .found{display:flex;flex-wrap:wrap;gap:6px 12px;align-items:center;padding:12px;border-radius:10px;background:var(--approve-bg);color:var(--approve);font-weight:600;font-size:.95rem}
+.kvs{display:grid;margin:0}
+.kv{display:grid;grid-template-columns:minmax(120px,38%) 1fr;gap:12px;padding:10px 0;border-top:1px solid var(--rule)}
+.kv:first-child{border-top:0}
+.kv dt{color:var(--muted);font-size:.95rem}
+.kv dd{margin:0;min-width:0;overflow-wrap:anywhere}
+.mono-values dd{font-family:var(--mono);font-size:.95rem}
 .sources{display:grid;gap:4px;margin:0;padding:0;list-style:none;font-size:.85rem}
 .sources a{color:var(--primary);word-break:break-word}
 .spin{width:18px;height:18px;border:2px solid var(--rule);border-top-color:var(--primary);border-radius:50%;animation:sp .9s linear infinite;flex:none}
