@@ -23,13 +23,21 @@ function HowMade({ slug, made, t }: { slug: string; made: Made; t: Timeline }) {
     ...t.rounds.flatMap((r) => r.findings.filter((x) => x.question?.answer).map((x) => ({ who: x.agent, q: x.question!.text, a: x.question!.answer! }))),
     ...t.request_questions.filter((q) => q.answer).map((q) => ({ who: "request", q: q.text, a: q.answer! })),
   ];
-  const confirmed = [
-    e.target && `marked ${e.target} as the target${e.free_u ? ` (free U${e.free_u})` : ""}`,
-    e.free_breakers > 0 && `confirmed ${plural(e.free_breakers, "free breaker")}`,
-    e.spare_ac_btu != null && `${e.spare_ac_btu.toLocaleString("en-US")} BTU/h of spare cooling`,
-    e.ladder_height_m != null && `a ${e.ladder_height_m} m ladder`,
-    d.items > 0 ? e.added > 0 && `edited or added ${plural(e.added, "layout item")}` : e.added > 0 && "reviewed and saved the drafted layout",
+  const and = (xs: string[]) => (xs.length > 1 ? `${xs.slice(0, -1).join(", ")} and ${xs.at(-1)}` : xs[0] ?? "");
+  const facts = [
+    e.free_breakers > 0 ? plural(e.free_breakers, "free breaker") : "",
+    e.spare_ac_btu != null ? `${e.spare_ac_btu.toLocaleString("en-US")} BTU/h of spare cooling` : "",
+    e.ladder_height_m != null ? `a ${e.ladder_height_m} m ladder` : "",
   ].filter(Boolean);
+  const did = [
+    facts.length ? `confirmed ${and(facts)}` : "",
+    // A full layout save re-labels every drafted item as the engineer's, so a zero AI count means "reviewed", not "drew it all".
+    e.added > 0 ? (d.items > 0 ? `edited or added ${plural(e.added, "layout item")}` : "reviewed and saved the drafted layout") : "",
+  ].filter(Boolean);
+  const engineer = [
+    e.target ? `The engineer marked ${e.target} as the target${e.free_u ? ` (free U${e.free_u})` : ""}.` : "",
+    did.length ? `${e.target ? "They" : "The engineer"} ${did.join(", and ")}.` : "",
+  ].filter(Boolean).join(" ");
   return (
     <section className="panel made" aria-labelledby="made-h">
       <h2 id="made-h">How this survey was made</h2>
@@ -48,7 +56,7 @@ function HowMade({ slug, made, t }: { slug: string; made: Made; t: Timeline }) {
         </li>
         <li>
           <span className="label">3 · Corrected and answered by the engineer</span>
-          {confirmed.length > 0 && <p>The engineer {confirmed.join(", ")}.</p>}
+          {engineer && <p>{engineer}</p>}
           {answers.length > 0 && <ul className="made-answers">{answers.map((x, k) => <li key={k}><b>{NAME[x.who] ?? x.who}</b> asked: {x.q} <span className="mono">{x.a}</span></li>)}</ul>}
         </li>
       </ol>
