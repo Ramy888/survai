@@ -28,7 +28,7 @@ function HowMade({ slug, made, t }: { slug: string; made: Made; t: Timeline }) {
     e.free_breakers > 0 && `confirmed ${plural(e.free_breakers, "free breaker")}`,
     e.spare_ac_btu != null && `${e.spare_ac_btu.toLocaleString("en-US")} BTU/h of spare cooling`,
     e.ladder_height_m != null && `a ${e.ladder_height_m} m ladder`,
-    e.added > 0 && `edited or added ${plural(e.added, "layout item")}`,
+    d.items > 0 ? e.added > 0 && `edited or added ${plural(e.added, "layout item")}` : e.added > 0 && "reviewed and saved the drafted layout",
   ].filter(Boolean);
   return (
     <section className="panel made" aria-labelledby="made-h">
@@ -43,7 +43,7 @@ function HowMade({ slug, made, t }: { slug: string; made: Made; t: Timeline }) {
         <li>
           <span className="label">2 · Drafted by the models</span>
           <p>{sam && <>Meta SAM 3.1 found racks in {sam.rack_frames} of {sam.frames} frames and floor tiles in {sam.tile_frames}. </>}
-            Muse Spark drafted {plural(d.items, "layout item")}, read {plural(d.breakers, "breaker slot")} on the panel photos
+            Muse Spark drafted {d.items > 0 ? plural(d.items, "layout item") : "the room's layout"}, read {plural(d.breakers, "breaker slot")} on the panel photos
             {d.observations ? ` and noted ${plural(d.observations, "housekeeping issue")}` : ""}, and read the request from the narrated clip.</p>
         </li>
         <li>
