@@ -30,3 +30,6 @@ Deferred during the CEO plan review on Oct 27, 2026. Context: `docs/spec-survai.
 - (medium, color) Two chip systems: "Unavailable" is grey in the meeting but red in the report; no lock icon on the sign-off page. Effort: S / S.
 - (medium, typography) Secondary text (.sub, .rt, .small, .sources at 13.6 px; .ev at 12 px) is below DESIGN.md's 15 px phone minimum. Effort: S / S.
 - (polish) Duplicate `.frames` rule (the sign-off evidence grid gets the 104 px version); bare `.label` outside `.field`/`.ask` renders as body text; department TAG/NAME maps copied in 5 files. Effort: S / S.
+- (medium, replay) "Run the meeting again" sits below the intro, tabs, rounds and chat; consider a fixed action bar or a button under the intro so judges see it without scrolling. [muse] Effort: S / S.
+- (medium, meeting) The chat's edge fade and scroll snap can tug a tall, expanded statement; snapping is kept on purpose (one review per scroll); revisit if users report it. [muse] Effort: S / S.
+- (polish) One shared header for kept steps instead of one per step (Muse); the visible bugs it caused (focus, theme) are fixed. Effort: M / S.
