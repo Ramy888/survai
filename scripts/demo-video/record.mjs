@@ -84,11 +84,12 @@ b.pause();
 await b.goto(B + "/", 3000);
 await b.resume();
 cue("new survey: site, project, device, and the departments that must agree");
+await sleep(1500); // the one-line intro
+await fill("#pass", PASS, 20);
 await fill("#site", "Demo room", 30);
 await fill("#project", "Router install", 30);
 await fill("#model", "Juniper MX104", 30);
-await scrollTo("#pass"); await hover(700, 400); await sleep(800);
-await fill("#pass", PASS, 20);
+await scrollTo("#reps-h"); await hover(700, 400); await sleep(1200);
 await press("Create survey");
 
 // 3. Device: the datasheet lookup (live), then confirm
@@ -173,8 +174,12 @@ for (let round = 1; round <= 3; round++) {
   await b.resume();
   cue(`round ${round}: statements with rule ids, calculations and evidence frames; the Survey Lead sums up`);
   if (round > 1) await banner(null);
-  await sleep(2500); await hover(400, 520); await sleep(2000);
-  await scrollBy(600); await sleep(2500); await scrollBy(700); await sleep(2500);
+  await sleep(1500);
+  await hoverSel(".tally"); await sleep(2000); // who approved, objected or asked
+  const objector = await js(() => { const b = [...document.querySelectorAll(".tally-btn")].find((x) => x.querySelector(".chip.no")) ?? document.querySelector(".tally-btn"); b?.setAttribute("data-rec-btn", "tally"); return !!b; });
+  if (objector) { await clickSel('[data-rec-btn="tally"]'); await sleep(2500); }
+  await js(() => document.querySelector(".chat")?.scrollBy({ top: 420, behavior: "smooth" })); await sleep(2500);
+  await scrollBy(500); await sleep(2000);
   if (await js(pageHas, "The meeting is over")) break;
   // answer the departments' questions as the site engineer (the owner played this part; the replay says so)
   cue("the engineer answers the departments' questions");
@@ -242,13 +247,13 @@ await b.send("Emulation.setDeviceMetricsOverride", { width: 1440, height: 900, d
 await b.goto(`${B}/replay/${SLUG}`, 4000);
 await b.resume();
 cue("replay: the whole meeting, with a live 'run the meeting again'");
-await sleep(2500); await hover(700, 450); await sleep(2000);
-await scrollBy(900); await sleep(2000);
+await sleep(2000); await hoverSel(".made"); await sleep(3000); // how this survey was made
+await scrollTo(".tally"); await sleep(2500);
 if (await markButton("Run the meeting again")) { await scrollTo(button("Run the meeting again")); await b.moveTo(await rect(button("Run the meeting again"))); await sleep(2500); }
 b.pause();
 const card = `<!doctype html><meta charset=utf-8><body style="margin:0;height:100vh;display:grid;place-content:center;background:#EEF1F1;color:#14191C;font:20px/1.5 Barlow,system-ui,sans-serif">
 <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600&family=Barlow:wght@400;500&family=JetBrains+Mono&display=swap" rel="stylesheet">
-<div style="max-width:900px"><div style="font:600 64px/1.05 'Barlow Condensed'">Survey<span style="color:#0B6770">AI</span> runs on Meta models</div>
+<div style="max-width:900px"><div style="font:600 64px/1.05 'Barlow Condensed'">Surv<span style="color:#0B6770">AI</span> runs on Meta models</div>
 <table style="margin-top:28px;border-collapse:collapse;font-size:22px">${[
   ["SAM 3.1", "finds racks and floor tiles in every key frame"],
   ["Muse Spark Open (Baseten)", "drafts the room, speaks for each department"],
