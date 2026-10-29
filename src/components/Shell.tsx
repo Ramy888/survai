@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import { createContext, useContext, useEffect, useState } from "react";
+import { createContext, useContext, useState } from "react";
 
 export const STEPS = ["Survey", "Upload", "Layout", "Meeting", "Report"] as const;
 
@@ -36,14 +36,18 @@ export function Stepper({ step }: { step: number }) {
 }
 
 function ThemeButton() {
-  const [dark, setDark] = useState(() => document.documentElement.dataset.theme === "dark" ||
-    (!document.documentElement.dataset.theme && matchMedia("(prefers-color-scheme: dark)").matches));
-  useEffect(() => {
-    document.documentElement.dataset.theme = dark ? "dark" : "light";
-    try { localStorage.setItem("theme", dark ? "dark" : "light"); } catch { /* storage may be blocked */ }
-  }, [dark]);
+  // Read from the page on every render: steps kept mounted while hidden each have a button, and a stale copy
+  // would show the wrong label and flip the theme the wrong way when its step comes back.
+  const [, redraw] = useState(0);
+  const root = document.documentElement;
+  const dark = root.dataset.theme === "dark" || (!root.dataset.theme && matchMedia("(prefers-color-scheme: dark)").matches);
+  const flip = () => {
+    root.dataset.theme = dark ? "light" : "dark";
+    try { localStorage.setItem("theme", root.dataset.theme); } catch { /* storage may be blocked */ }
+    redraw((n) => n + 1);
+  };
   return (
-    <button className="icon-btn" onClick={() => setDark(!dark)} aria-label={dark ? "Switch to light theme" : "Switch to dark theme"}>
+    <button className="icon-btn" onClick={flip} aria-label={dark ? "Switch to light theme" : "Switch to dark theme"}>
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true">
         <path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z" />
       </svg>

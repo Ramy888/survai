@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { getSurvey, type Survey } from "./api";
 import { ModelChip } from "./components/Footage";
 import { Shell, StepNav } from "./components/Shell";
@@ -56,9 +56,14 @@ function SurveyView({ id }: { id: string }) {
   // The survey moved on: show where it is now and drop the kept views, which hold the old state.
   useEffect(() => { setChosen(null); setVisited([]); }, [status]);
   // Steps already opened stay mounted (hidden), so what was typed there is still there on the way back.
+  const first = useRef(true);
   useEffect(() => {
     if (active) setVisited((v) => (v.includes(active) ? v : [...v, active]));
     scrollTo(0, 0);
+    // The stepper button that was pressed is now hidden: give keyboard and screen-reader focus to the new step's title.
+    if (first.current) { first.current = false; return; }
+    const h1 = document.querySelector<HTMLElement>("#root > div:not([hidden]) main h1");
+    if (h1) { h1.tabIndex = -1; h1.focus({ preventScroll: true }); }
   }, [active]);
 
   // Approved is terminal in v1: the report is the survey from here on.
