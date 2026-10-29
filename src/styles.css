@@ -91,6 +91,10 @@ input[aria-invalid="true"]{border-color:var(--object)}
 .actions{position:fixed;left:0;right:0;bottom:0;z-index:5;background:var(--surface);border-top:1px solid var(--rule);padding:12px 16px calc(12px + env(safe-area-inset-bottom))}
 .actions .inner{display:flex;gap:10px;max-width:640px;margin:0 auto}
 .actions .btn-primary{flex:1}
+/* Action labels stay on one line; on a phone the buttons give up side padding first. */
+.actions .btn{white-space:nowrap}
+@media (max-width:420px){.actions .btn{padding:0 12px}.actions .inner{gap:8px}}
+@media (max-width:359px){.actions .btn{white-space:normal}}
 @media (prefers-reduced-motion:no-preference){main>*{animation:in .2s ease-out}}
 @keyframes in{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:none}}
 .found{display:flex;flex-wrap:wrap;gap:6px 12px;align-items:center;padding:12px;border-radius:10px;background:var(--approve-bg);color:var(--approve);font-weight:600;font-size:.95rem}
