@@ -28,7 +28,7 @@
   @page{size:A4;margin:14mm}
   html,body,main,.report{background:#fff!important}
   .top,.actions,.no-print{display:none!important}
-  .wrap,main.wrap{max-width:none;padding:0}
+  .wrap,main.wrap{max-width:none!important;padding:0!important} /* print.css loads before styles.css, so it must win here */
   .sheet{border:0;padding:0;overflow:visible;font-size:9.5pt}
   .form,.plan-section{break-inside:avoid}
 }
