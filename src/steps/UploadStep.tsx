@@ -3,6 +3,7 @@ import {
   deleteFile, listFiles, savedPasscode, startProcessing, uploadFile, type FileKind, type RoomFiles, type Survey, type UploadedFile,
 } from "../api";
 import { Clip, FrameGrid } from "../components/Footage";
+import { framesFromVideo, type Progress } from "../footage/extract";
 import { Shell } from "../components/Shell";
 
 const ROOM_NAME: Record<string, string> = { devices_hall: "Devices hall", connect_to: "Connect-to room" };
@@ -25,6 +26,8 @@ export function UploadStep({ survey, onStarted, back }: { survey: Survey; onStar
   const [progress, setProgress] = useState<{ slot: string; done: number; total: number; frac: number } | null>(null);
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
+  // How the room's key frames arrive: picked here from the walk-through video, or prepared with tools/prepare.
+  const [source, setSource] = useState<"video" | "prepared">("video");
   const refresh = () => listFiles(survey.id).then((r) => setRooms(r.rooms), (e: Error) => setError(e.message));
   useEffect(() => { void refresh(); }, [survey.id]);
 
@@ -65,8 +68,8 @@ export function UploadStep({ survey, onStarted, back }: { survey: Survey; onStar
       <div className="stack narrow">
         <div>
           <h1>{locked ? "Uploaded footage" : "Upload footage"}</h1>
-          <p className="muted">{locked ? "What the models worked from, as uploaded. Faces, labels and logos were blurred before upload."
-            : "Prepare the files on your computer first. Faces, labels and logos are blurred before anything leaves it."}</p>
+          <p className="muted">{locked ? "What the models worked from, as uploaded."
+            : "Film a slow walk-through of the room, a narrated clip of the cable route, and the power panel. SurvAI picks the frames from the walk-through."}</p>
         </div>
         {locked && <p className="note info">Locked once processing started: the layout and the meeting are built on these files. To use different footage, start a new survey.</p>}
         {survey.processing_error && <p className="note error" role="alert">{survey.processing_error}</p>}
@@ -78,11 +81,26 @@ export function UploadStep({ survey, onStarted, back }: { survey: Survey; onStar
               <input id="pass" type="password" autoComplete="off" value={passcode} onChange={(e) => setPasscode(e.target.value)} /></div>
           </section>
         )}
+        {!locked && rooms && (
+          <section className="panel" aria-labelledby="h-source">
+            <h2 id="h-source">Key frames from</h2>
+            <div className="seg" role="group" aria-labelledby="h-source">
+              <button type="button" aria-pressed={source === "video"} onClick={() => setSource("video")}>Walk-through video</button>
+              <button type="button" aria-pressed={source === "prepared"} onClick={() => setSource("prepared")}>Prepared frames</button>
+            </div>
+            <p className="muted small" style={{ marginTop: 10 }}>{source === "video"
+              ? "Upload the video as you filmed it. SurvAI picks the 30 sharpest frames in this browser and uploads only those."
+              : "Frames you picked and blurred on your computer with tools/prepare: faces, labels and logos never leave it."}</p>
+          </section>
+        )}
         {rooms && survey.rooms.slice().sort().reverse().map((role) => (
           <section className="panel" key={role} aria-labelledby={`h-${role}`}>
             <h2 id={`h-${role}`}>{ROOM_NAME[role]}</h2>
             <div className="rows">
-              {KINDS.filter((k) => k.rooms.includes(role)).map((k) => (
+              {KINDS.filter((k) => k.rooms.includes(role)).map((k) => !locked && source === "video" && k.kind === "key_frame" ? (
+                <VideoFrames key={k.kind} surveyId={survey.id} role={role} passcode={passcode} files={rooms[role].files.filter((f) => f.kind === "key_frame")}
+                  disabled={!!progress || !passcode} onDone={refresh} onError={setError} />
+              ) : (
                 <Slot key={k.kind} role={role} k={k} files={rooms[role].files.filter((f) => f.kind === k.kind)}
                   missing={rooms[role].missing.includes(k.kind)} progress={progress?.slot === `${role}:${k.kind}` ? progress : null}
                   disabled={!!progress || !passcode} locked={locked} onAdd={(l) => add(role, k.kind, l)} onRemove={remove} />
@@ -94,6 +112,60 @@ export function UploadStep({ survey, onStarted, back }: { survey: Survey; onStar
         {error && <p className="note error" role="alert">{error}</p>}
       </div>
     </Shell>
+  );
+}
+
+/** The walk-through video: frames are picked in this browser, then only the picks are uploaded as key frames. */
+function VideoFrames({ surveyId, role, passcode, files, disabled, onDone, onError }: {
+  surveyId: string; role: string; passcode: string; files: UploadedFile[]; disabled: boolean;
+  onDone: () => Promise<unknown>; onError: (m: string) => void;
+}) {
+  const input = useRef<HTMLInputElement>(null);
+  const [work, setWork] = useState<Progress | { stage: "uploading"; done: number; total: number } | null>(null);
+  const [picked, setPicked] = useState<{ name: string; seconds: number; frames: number } | null>(null);
+  const total = files.reduce((s, f) => s + f.bytes, 0);
+
+  async function run(file: File | undefined) {
+    if (!file) return;
+    onError("");
+    try {
+      // A new video replaces the frames picked from the last one.
+      for (const f of files) await deleteFile(surveyId, f.id, passcode);
+      const { frames, duration } = await framesFromVideo(file, 30, setWork);
+      for (const [k, f] of frames.entries()) {
+        setWork({ stage: "uploading", done: k, total: frames.length });
+        const name = `walkthrough-${String(k + 1).padStart(2, "0")}.jpg`;
+        await uploadFile(surveyId, role, "key_frame", new File([f.blob], name, { type: "image/jpeg" }), passcode, () => {});
+      }
+      setPicked({ name: file.name, seconds: Math.round(duration), frames: frames.length });
+    } catch (e) {
+      onError((e as Error).message);
+    } finally {
+      setWork(null);
+      await onDone();
+    }
+  }
+
+  const sub = work
+    ? work.stage === "reading" ? "Reading the video…"
+      : work.stage === "scoring" ? `Finding the sharpest frames: ${work.done} of ${work.total} checked`
+        : work.stage === "capturing" ? `Saving frame ${work.done} of ${work.total}` : `Uploading frame ${work.done + 1} of ${work.total}`
+    : files.length ? `${files.length} key frames${picked ? ` from ${picked.name} (${picked.seconds} s)` : ""} · ${mb(total)}`
+      : "MP4 or MOV, filmed slowly around the room; SurvAI picks the 30 sharpest frames";
+  return (
+    <div className="fileslot">
+      <div className="r nohover">
+        <span className={`state ${files.length ? "ok" : "todo"}`}>{files.length ? CHECK : PLUS}</span>
+        <div className="grow">
+          Walk-through video
+          <span className="sub" aria-live="polite">{sub}</span>
+          {work && <div className="prog"><i style={{ width: `${Math.round((work.done / Math.max(work.total, 1)) * 100)}%` }} /></div>}
+        </div>
+        <input ref={input} type="file" hidden accept="video/*" id={`${role}-walkthrough`} onChange={(e) => { void run(e.target.files?.[0]); e.target.value = ""; }} />
+        <button className="btn btn-secondary" disabled={disabled || !!work} onClick={() => input.current?.click()}>{files.length ? "Replace video" : "Choose video"}</button>
+      </div>
+      {picked && picked.frames < 30 && <p className="note warn small">Only {picked.frames} frames: the video is short or blurry in places. Film a longer, slower walk-through for more.</p>}
+    </div>
   );
 }
 
