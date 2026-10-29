@@ -18,6 +18,9 @@
 .v-approve{background:var(--approve-bg);color:var(--approve)}
 .v-object,.v-unavailable{background:var(--object-bg);color:var(--object)}
 .v-question{background:var(--question-bg);color:var(--question)}
+.decision{margin:12px 0 0;padding:10px 12px;border-left:0;border:1px solid var(--rule);border-radius:4px;background:var(--approve-bg);color:#14191C;font-weight:500}
+.decision.open{background:var(--question-bg)}
+.form td .tag+.tag{margin-left:4px}
 .plan-fig{margin:0}
 .plan-fig svg{width:100%;height:auto;display:block;max-width:720px}
 .legend{display:flex;flex-wrap:wrap;gap:6px 14px;margin-top:8px;font-size:.8rem;color:var(--muted)}

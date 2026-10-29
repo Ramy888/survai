@@ -37,12 +37,47 @@ const MAX_ROUNDS = 3;
 const empty = (v: unknown) => v === null || v === undefined || v === "";
 
 function Fields({ title, data }: { title: string; data: Record<string, unknown> }) {
+  // Captured values first; whatever the survey did not capture is named once, not shown as a wall of blanks.
+  const rows = Object.entries(data).filter(([, v]) => !empty(v));
+  const missing = Object.entries(data).filter(([, v]) => empty(v)).map(([k]) => LABEL[k] ?? k);
   return (
     <table className="form">
       <caption>{title}</caption>
-      <tbody>{Object.entries(data).map(([k, v]) => <tr key={k}><th scope="row">{LABEL[k] ?? k}</th>
-        <td className={typeof v === "number" ? "mono" : undefined}>{empty(v) ? <span className="muted">not recorded</span> : String(v)}</td></tr>)}</tbody>
+      <tbody>
+        {rows.map(([k, v]) => <tr key={k}><th scope="row">{LABEL[k] ?? k}</th><td className={typeof v === "number" ? "mono" : undefined}>{String(v)}</td></tr>)}
+        {missing.length > 0 && <tr><td colSpan={2} className="muted">Not captured: {missing.join(", ")}</td></tr>}
+      </tbody>
     </table>
+  );
+}
+
+const NAME: Record<string, string> = { space: "Space", power: "Power", cooling: "Cooling", execution: "Execution", transmission: "Transmission", room_manager: "Room Manager" };
+
+/** Two departments approving the same device in the same rack is one approval, confirmed twice. */
+function mergeApprovals(items: Report["approved_items"], devices: string | null) {
+  const model = (devices ?? "").split("×").pop()?.trim().split(/\s+/).pop()?.toLowerCase() ?? "";
+  const merged: { text: string; agents: string[] }[] = [];
+  for (const it of items) {
+    const rack = it.text.match(/\bR\d+\b/)?.[0];
+    const same = rack && model && it.text.toLowerCase().includes(model)
+      ? merged.find((m) => m.text.match(/\bR\d+\b/)?.[0] === rack && m.text.toLowerCase().includes(model)) : undefined;
+    if (same) { if (!same.agents.includes(it.agent)) same.agents.push(it.agent); } else merged.push({ text: it.text, agents: [it.agent] });
+  }
+  return merged;
+}
+
+/** One line on what was decided: approved for planning, what installation waits on, who has signed off. */
+function Decision({ r }: { r: Report }) {
+  const signed = r.signoffs.filter((s) => s.decision).length;
+  const of = r.statements.length;
+  if (r.header.status !== "approved") return <p className="decision open">Not approved yet: the departments are still meeting.</p>;
+  const waits = r.objections.map((o) => `${NAME[o.agent] ?? o.agent} (${o.rules.join(", ")})`);
+  return (
+    <p className="decision">
+      {waits.length ? <>Approved by the engineer for planning. Installation waits on {waits.length > 1 ? `${waits.slice(0, -1).join(", ")} and ${waits.at(-1)}` : waits[0]}: see the override reasons below.</>
+        : <>Approved: every department agreed.</>}
+      {" "}{signed} of {of} departments signed off.
+    </p>
   );
 }
 
@@ -93,6 +128,7 @@ export function ReportSheet({ r }: { r: Report }) {
   return (
     <article className="sheet">
       <header className="sheet-head"><h1>Site Survey Report</h1><span className="mono">{h.site} · {h.date} ({h.day})</span></header>
+      <Decision r={r} />
       <table className="form"><tbody>
         <tr><th scope="row">Site</th><td>{show(h.site)}</td><th scope="row">Project</th><td>{show(h.project)}</td></tr>
         <tr><th scope="row">Devices</th><td>{show(h.devices)}</td><th scope="row">Status</th><td>{overrides ? `approved with ${overrides} engineer override${overrides > 1 ? "s" : ""}` : show(h.status)}</td></tr>
@@ -104,7 +140,9 @@ export function ReportSheet({ r }: { r: Report }) {
       <Fields title="Cooling" data={r.cooling} />
       <table className="form">
         <caption>Approved items</caption>
-        <tbody>{r.approved_items.length ? r.approved_items.map((t, k) => <tr key={k}><td className="mono num">{k + 1}</td><td><span className="tag">{TAG[t.agent] ?? t.agent}</span> {t.text}</td></tr>) : <tr><td>—</td></tr>}</tbody>
+        <tbody>{r.approved_items.length ? mergeApprovals(r.approved_items, h.devices).map((t, k) => (
+          <tr key={k}><td className="mono num">{k + 1}</td><td>{t.agents.map((a) => <span key={a} className="tag">{TAG[a] ?? a}</span>)} {t.text}</td></tr>
+        )) : <tr><td>—</td></tr>}</tbody>
       </table>
       <table className="form">
         <caption>Specs and rules</caption>

@@ -107,8 +107,41 @@ describe("the report's ending", () => {
 
   it("names the department beside each approved item and marks what was not recorded or signed", () => {
     expect(html).toMatch(/<span class="tag">SPC<\/span> ?Install in R3/);
-    expect(html).toContain("not recorded");
+    expect(html).toContain("Not captured: Floor");
     expect(html).toContain("not signed yet");
     expect(html).toContain("No cable path was drawn");
+  });
+});
+
+describe("the report says what was decided, plainly", () => {
+  const r = {
+    header: { site: "S", project: "P", devices: "1 × Juniper MX104", date: "2026-10-27", day: "Tuesday", status: "approved", problem: "x" },
+    devices_hall: { floor: null, floor_type: "Raised floor", model: "Juniper MX104", patch_cord_m: null }, connect_to: null, power: {}, cooling: {},
+    statements: ["power", "room_manager", "space", "execution"].map((agent) => ({ agent, verdict: agent === "power" || agent === "room_manager" ? "object" : "approve", statement: "s", rule_refs: [] })),
+    approved_items: [{ text: "Placement of 1x MX104 in R3 free block 10-30U", agent: "space" }, { text: "Install 1x Juniper MX104 in R3 (free 10U-30U)", agent: "execution" }, { text: "Two LC/LC patch cords", agent: "execution" }],
+    specs: [], rules: [], cable_lengths: [],
+    objections: [{ agent: "power", rules: ["R11", "R3"], override_reason: "Work order" }, { agent: "room_manager", rules: ["R6"], override_reason: "Checked on site" }],
+    lead: null, meeting: { run: 1, round: 3 }, signoffs: [{ agent: "space", rep_name: "A", decision: "approve", comment: null, decided_at: "2026-10-28" }],
+    tech_specs: null, plan: { size: null, items: [], lengths: {}, clearances: [] },
+  };
+  const html = renderToStaticMarkup(createElement(ReportSheet, { r: r as never }));
+  const text = html.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ");
+
+  it("opens with one decision line: approved for planning, what installation waits on, sign-off count", () => {
+    expect(text).toContain("Approved by the engineer for planning");
+    expect(text).toMatch(/Installation waits on Power \(R11, R3\) and Room Manager \(R6\)/);
+    expect(text).toContain("1 of 4 departments signed off");
+    expect(html.indexOf("decision")).toBeLessThan(html.indexOf("Site Survey Report") + 2000);
+  });
+
+  it("lists only captured fields, then one Not captured line", () => {
+    expect(text).toMatch(/Not captured: Floor, Patch-cord length \(m\)/);
+    expect(text).not.toMatch(/Floor not recorded/);
+  });
+
+  it("merges approvals of the same device in the same rack, naming both departments", () => {
+    expect(text).toMatch(/SPC EXE Placement of 1x MX104 in R3/);
+    expect(text).not.toContain("Install 1x Juniper MX104 in R3");
+    expect(text).toContain("Two LC/LC patch cords");
   });
 });
