@@ -185,7 +185,7 @@ select{font:400 1rem/1.4 var(--body);color:var(--ink);background:var(--surface);
 .ask{background:var(--question-bg);border-radius:14px;padding:16px;display:grid;gap:10px}
 .ask .label{color:var(--question);font-weight:600;font-size:.85rem;text-transform:uppercase;letter-spacing:.04em}
 @keyframes fade{from{opacity:0}to{opacity:1}}
-@media (prefers-reduced-motion:reduce){.msg,.dots i{animation:none}.chat{scroll-behavior:auto}}
+@media (prefers-reduced-motion:reduce){.msg,.dots i{animation:none}.chat{scroll-behavior:auto}.spin{animation:none;border-color:var(--primary)}}
 /* approve */
 .override{padding:4px 0 14px}
 .override+.override{border-top:1px solid var(--rule);padding-top:10px}
