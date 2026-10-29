@@ -1,4 +1,5 @@
-import { buildPlan, type PlanInput, type Shape } from "./plan";
+import { useEffect, useRef, type KeyboardEvent, type PointerEvent } from "react";
+import { buildPlan, dragTo, type PlanInput, type Shape } from "./plan";
 
 const T = 40; // px per tile (600 mm)
 const M = 30; // margin
@@ -15,7 +16,7 @@ function Rack({ s, labelOnly = false }: { s: Extract<Shape, { type: "rect" }>; l
   };
   const f = s.facing ? front[s.facing] : null;
   const thin = s.d * T < 20 || s.w * T < 20; // a wall panel: its label goes beside it, into the room, not across the wall
-  const label = <text x={cx} y={thin ? (s.y < 1 ? px(s.y + s.d) + 17 : px(s.y) - 7) : cy + 5} textAnchor="middle" fontFamily="JetBrains Mono" fontSize="15" fontWeight="600" fill={stroke} paintOrder="stroke" stroke="var(--surface)" strokeWidth="4">{s.label}</text>;
+  const label = <text pointerEvents="none" x={cx} y={thin ? (s.y < 1 ? px(s.y + s.d) + 17 : px(s.y) - 7) : cy + 5} textAnchor="middle" fontFamily="JetBrains Mono" fontSize="15" fontWeight="600" fill={stroke} paintOrder="stroke" stroke="var(--surface)" strokeWidth="4">{s.label}</text>;
   if (labelOnly) return label;
   return (
     <g>
@@ -25,13 +26,38 @@ function Rack({ s, labelOnly = false }: { s: Extract<Shape, { type: "rect" }>; l
   );
 }
 
-export function FloorPlan(props: PlanInput) {
+type Movable = Extract<Shape, { type: "rect" | "door" | "ladder" }>;
+const STEP: Record<string, [number, number]> = { ArrowLeft: [-1, 0], ArrowRight: [1, 0], ArrowUp: [0, -1], ArrowDown: [0, 1] };
+
+/** The plan; with onMove, the engineer's items can be dragged (or moved with the arrow keys) into place. */
+export function FloorPlan({ onMove, ...props }: PlanInput & { onMove?: (id: string, x: number, y: number) => void }) {
   const plan = buildPlan(props);
   const W = plan.w * T + 2 * M;
   const H = plan.d * T + 2 * M + 30;
+  const svg = useRef<SVGSVGElement>(null);
+  const drag = useRef<{ s: Movable; x: number; y: number } | null>(null);
+  // A finger on an item drags it instead of scrolling the page. Browsers ignore touch-action on SVG shapes, and
+  // React's touch listeners are passive, so this one is added by hand.
+  useEffect(() => {
+    const el = svg.current;
+    if (!el || !onMove) return;
+    const hold = (e: TouchEvent) => { if ((e.target as Element).closest(".movable")) e.preventDefault(); };
+    el.addEventListener("touchstart", hold, { passive: false });
+    return () => el.removeEventListener("touchstart", hold);
+  }, [!onMove]);
+  const at = (e: PointerEvent) => new DOMPoint(e.clientX, e.clientY).matrixTransform(svg.current!.getScreenCTM()!.inverse());
+  const move = (s: Movable, dx: number, dy: number) => { const p = dragTo(s, { dx, dy }, s, plan); onMove!(s.id, p.x, p.y); };
+  const handle = (s: Movable) => !onMove || s.fixed ? {} : {
+    className: "movable", tabIndex: 0, role: "button", "aria-label": `Move ${s.label}: drag it, or use the arrow keys`,
+    onPointerDown: (e: PointerEvent<SVGGElement>) => { const p = at(e); drag.current = { s, x: p.x, y: p.y }; e.currentTarget.setPointerCapture(e.pointerId); },
+    onPointerMove: (e: PointerEvent) => { const d = drag.current; if (!d) return; const p = at(e); move(d.s, (p.x - d.x) / T, (p.y - d.y) / T); },
+    onPointerUp: () => { drag.current = null; },
+    onPointerCancel: () => { drag.current = null; },
+    onKeyDown: (e: KeyboardEvent) => { const k = STEP[e.key]; if (!k) return; e.preventDefault(); const n = e.shiftKey ? 0.1 : 0.5; move(s, k[0] * n, k[1] * n); },
+  };
   return (
     <figure className="plan-fig">
-      <svg viewBox={`0 0 ${W} ${H}`} role="img" aria-label={`Floor plan, ${plan.w} by ${plan.d} tiles`}>
+      <svg ref={svg} viewBox={`0 0 ${W} ${H}`} role="img" aria-label={`Floor plan, ${plan.w} by ${plan.d} tiles`}>
         <defs>
           <pattern id="tile" width={T} height={T} patternUnits="userSpaceOnUse" x={M} y={M}><path d={`M${T} 0H0V${T}`} fill="none" stroke="var(--rule)" /></pattern>
           <pattern id="hatch-off" width="6" height="6" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><line y2="6" stroke="var(--muted)" strokeWidth="1.2" /></pattern>
@@ -42,11 +68,12 @@ export function FloorPlan(props: PlanInput) {
         <rect x={M} y={M} width={plan.w * T} height={plan.d * T} fill="url(#tile)" />
         <rect x={M} y={M} width={plan.w * T} height={plan.d * T} fill="none" stroke="var(--ink)" strokeWidth="3" />
         {plan.shapes.map((s, k) => {
-          if (s.type === "rect") return <Rack key={k} s={s} />;
+          if (s.type === "rect") return <g key={k} {...handle(s)}><Rack s={s} /></g>;
           if (s.type === "ladder") {
             const horizontal = s.w >= s.d;
             return (
-              <g key={k} stroke="var(--muted)" strokeDasharray="6 4" strokeWidth="1.4">
+              <g key={k} stroke="var(--muted)" strokeDasharray="6 4" strokeWidth="1.4" {...handle(s)}>
+                <rect x={px(s.x)} y={px(s.y)} width={Math.max(14, s.w * T)} height={Math.max(14, s.d * T)} fill="transparent" stroke="none" />
                 {horizontal
                   ? <><line x1={px(s.x)} y1={px(s.y)} x2={px(s.x + s.w)} y2={px(s.y)} /><line x1={px(s.x)} y1={px(s.y) + 14} x2={px(s.x + s.w)} y2={px(s.y) + 14} /></>
                   : <><line x1={px(s.x)} y1={px(s.y)} x2={px(s.x)} y2={px(s.y + s.d)} /><line x1={px(s.x) + 14} y1={px(s.y)} x2={px(s.x) + 14} y2={px(s.y + s.d)} /></>}
@@ -58,7 +85,7 @@ export function FloorPlan(props: PlanInput) {
             const [x0, y0] = [px(s.x), px(s.y)];
             const arc = s.side === "north" ? `M${x0} ${y0} h${r} A${r} ${r} 0 0 0 ${x0} ${y0 - r}` : `M${x0} ${y0 + s.d * T} h${r} A${r} ${r} 0 0 1 ${x0} ${y0 + s.d * T + r}`;
             return (
-              <g key={k}>
+              <g key={k} {...handle(s)}>
                 <rect x={x0} y={y0} width={s.w * T} height={Math.max(4, s.d * T)} fill="var(--surface)" />
                 <path d={arc} fill="none" stroke="var(--muted)" strokeWidth="1.2" />
                 <text x={x0 + 4} y={y0 + s.d * T + r + 14} fontFamily="JetBrains Mono" fontSize="12" fill="var(--muted)">{s.label}</text>

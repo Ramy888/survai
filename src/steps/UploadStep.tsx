@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import {
   deleteFile, findToBlur, listFiles, savedPasscode, setFootage, startProcessing, uploadFile, type FileKind, type RoomFiles, type Survey, type UploadedFile,
 } from "../api";
-import { Clip, FrameGrid, ModelChip } from "../components/Footage";
+import { Clip, fileSrc, FrameStrip, ModelChip } from "../components/Footage";
 import { blurredBlob, scaleBoxes } from "../footage/blur";
 import { framesFromVideo, type Progress } from "../footage/extract";
 import { Shell } from "../components/Shell";
@@ -106,12 +106,11 @@ export function UploadStep({ survey, onStarted, back }: { survey: Survey; onStar
                 <VideoFrames key={k.kind} surveyId={survey.id} role={role} passcode={passcode} files={rooms[role].files.filter((f) => f.kind === "key_frame")}
                   disabled={!!progress || !passcode} onDone={refresh} onError={setError} />
               ) : (
-                <Slot key={k.kind} role={role} k={k} files={rooms[role].files.filter((f) => f.kind === k.kind)}
+                <Slot key={k.kind} surveyId={survey.id} role={role} k={k} files={rooms[role].files.filter((f) => f.kind === k.kind)}
                   missing={rooms[role].missing.includes(k.kind)} progress={progress?.slot === `${role}:${k.kind}` ? progress : null}
                   disabled={!!progress || !passcode} locked={locked} onAdd={(l) => add(role, k.kind, l)} onRemove={remove} />
               ))}
             </div>
-            <Preview surveyId={survey.id} files={rooms[role].files} />
           </section>
         ))}
         {error && <p className="note error" role="alert">{error}</p>}
@@ -130,11 +129,17 @@ function VideoFrames({ surveyId, role, passcode, files, disabled, onDone, onErro
   type Work = Progress | { stage: "finding" | "uploading"; done: number; total: number };
   const [work, setWork] = useState<Work | null>(null);
   const [picked, setPicked] = useState<{ name: string; seconds: number; frames: number; blurred: number } | null>(null);
+  // Each frame appears here the moment it is blurred, so the engineer watches SAM 3.1 work.
+  const [live, setLive] = useState<{ key: string; src: string; n: number }[]>([]);
+  const urls = useRef<string[]>([]);
+  const clearLive = () => { urls.current.forEach((u) => URL.revokeObjectURL(u)); urls.current = []; setLive([]); };
+  useEffect(() => clearLive, []);
   const total = files.reduce((s, f) => s + f.bytes, 0);
 
   async function run(file: File | undefined) {
     if (!file) return;
     onError("");
+    clearLive();
     try {
       const { frames, duration } = await framesFromVideo(file, 30, setWork);
       // Three frames at a time: SAM 3.1 answers with boxes only, the server keeps nothing; the browser blurs.
@@ -153,6 +158,9 @@ function VideoFrames({ surveyId, role, passcode, files, disabled, onDone, onErro
           const boxes = scaleBoxes(found.boxes, found.width, found.height, width, height);
           areas += boxes.length;
           blurred[k] = await blurredBlob(frames[k].blob, width, height, boxes);
+          const shown = { key: `live-${k}`, src: URL.createObjectURL(blurred[k]), n: k + 1 };
+          urls.current.push(shown.src);
+          setLive((l) => [...l, shown]);
           setWork({ stage: "finding", done: ++done, total: frames.length });
         }
       }));
@@ -162,7 +170,9 @@ function VideoFrames({ surveyId, role, passcode, files, disabled, onDone, onErro
         await uploadFile(surveyId, role, "key_frame", new File([blob], `walkthrough-${String(k + 1).padStart(2, "0")}.jpg`, { type: "image/jpeg" }), passcode, () => {});
       }
       setPicked({ name: file.name, seconds: Math.round(duration), frames: frames.length, blurred: areas });
+      clearLive(); // the uploaded frames take over the row
     } catch (e) {
+      clearLive(); // the row shows what the server has, not frames that never uploaded
       onError((e as Error).message);
     } finally {
       setWork(null);
@@ -190,13 +200,15 @@ function VideoFrames({ surveyId, role, passcode, files, disabled, onDone, onErro
         <input ref={input} type="file" hidden accept="video/*" id={`${role}-walkthrough`} onChange={(e) => { void run(e.target.files?.[0]); e.target.value = ""; }} />
         <button className="btn btn-secondary" disabled={disabled || !!work} onClick={() => input.current?.click()}>{files.length ? "Replace video" : "Choose video"}</button>
       </div>
+      {live.length > 0 ? <FrameStrip items={live} follow />
+        : <FrameStrip items={files.map((f, i) => ({ key: f.id, src: fileSrc(surveyId, f), n: i + 1 }))} />}
       {picked && picked.frames < 30 && !work && <p className="note warn small">Only {picked.frames} frames: the video is short or blurry in places. Film a longer, slower walk-through for more.</p>}
     </div>
   );
 }
 
-export function Slot({ role, k, files, missing, progress, disabled, locked, onAdd, onRemove }: {
-  role: string; k: (typeof KINDS)[number]; files: { id: string; name: string; bytes: number }[]; missing: boolean;
+export function Slot({ surveyId, role, k, files, missing, progress, disabled, locked, onAdd, onRemove }: {
+  surveyId: string; role: string; k: (typeof KINDS)[number]; files: UploadedFile[]; missing: boolean;
   progress: { done: number; total: number; frac: number } | null; disabled: boolean; locked: boolean;
   onAdd: (l: FileList | null) => void; onRemove: (id: string) => void;
 }) {
@@ -234,21 +246,9 @@ export function Slot({ role, k, files, missing, progress, disabled, locked, onAd
           {!locked && <button className="link-btn" onClick={() => onRemove(files.at(-1)!.id)} disabled={disabled}>Remove last</button>}
         </div>
       )}
-    </div>
-  );
-}
-
-/** What is about to go to the models: the frames, the narrated clip and the photos, as uploaded. */
-function Preview({ surveyId, files }: { surveyId: string; files: UploadedFile[] }) {
-  const of = (kind: FileKind) => files.filter((f) => f.kind === kind);
-  const clip = of("path_clip")[0];
-  const photos = [...of("panel_photo"), ...of("photo")];
-  if (!files.length) return null;
-  return (
-    <div className="preview">
-      {of("key_frame").length > 0 && <><span className="label">Key frames</span><FrameGrid surveyId={surveyId} files={of("key_frame")} /></>}
-      {clip && <><span className="label">Narrated path clip</span><Clip surveyId={surveyId} f={clip} /></>}
-      {photos.length > 0 && <><span className="label">Photos</span><FrameGrid surveyId={surveyId} files={photos} /></>}
+      {/* Each item's media right under it: frames and photos in a row, the clip as a player. */}
+      {k.kind === "path_clip" ? files[0] && <Clip surveyId={surveyId} f={files[0]} />
+        : <FrameStrip items={files.map((f, i) => ({ key: f.id, src: fileSrc(surveyId, f), n: i + 1 }))} />}
     </div>
   );
 }

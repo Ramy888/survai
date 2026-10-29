@@ -80,6 +80,20 @@ describe("POST /api/surveys/:id/rooms/:role/files", () => {
     expect((await upload(id, "devices_hall", "key_frame", JPEG, "f.jpg", "wrong")).status).toBe(401);
   });
 
+  it("serves byte ranges, so a video player can show the clip before it has all of it", async () => {
+    const id = await surveyIn("uploading");
+    const { id: fid } = await (await upload(id, "devices_hall", "path_clip", MP4, "a.mp4")).json<{ id: string }>();
+    const part = await req(`/api/surveys/${id}/files/${fid}`, { headers: { Range: "bytes=4-7" } });
+    expect(part.status).toBe(206);
+    expect(part.headers.get("Content-Range")).toBe(`bytes 4-7/${MP4.length}`);
+    expect(part.headers.get("Accept-Ranges")).toBe("bytes");
+    expect(new Uint8Array(await part.arrayBuffer())).toEqual(MP4.slice(4, 8));
+    const whole = await req(`/api/surveys/${id}/files/${fid}`);
+    expect(whole.status).toBe(200);
+    expect(whole.headers.get("Accept-Ranges")).toBe("bytes");
+    expect((await whole.arrayBuffer()).byteLength).toBe(MP4.length);
+  });
+
   it("lets a connect-to room take frames but not a path clip", async () => {
     const id = await surveyIn("uploading", "other_room");
     expect((await upload(id, "connect_to", "key_frame", JPEG)).status).toBe(201);

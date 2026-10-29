@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { SamMasks, UploadedFile } from "../api";
 
 const MODEL: Record<string, string> = { "muse-spark-open": "Muse Spark Open", "muse-spark-1.3": "Muse Spark 1.3", "muse-wonder-1.0": "Muse Wonder 1.0", "sam-3.1": "SAM 3.1" };
@@ -32,6 +32,32 @@ export function FrameGrid({ surveyId, files, withMasks = false }: { surveyId: st
   return <div className="frames">{files.map((f, k) => <Frame key={f.id} surveyId={surveyId} f={f} n={k + 1} masks={withMasks ? f.masks : undefined} />)}</div>;
 }
 
+/** The narrated clip: a dark holder with a spinner until its first frame is in (the server serves byte ranges, so
+ * that is the first few hundred kB, not the whole file); "#t=0.1" makes that frame the poster. */
 export function Clip({ surveyId, f }: { surveyId: string; f: UploadedFile }) {
-  return <video className="clip" src={src(surveyId, f)} controls muted playsInline preload="metadata" aria-label="Narrated path clip" />;
+  const [ready, setReady] = useState(false);
+  return (
+    <div className="clip-wrap">
+      <video className="clip" src={`${src(surveyId, f)}#t=0.1`} controls muted playsInline preload="metadata" aria-label="Narrated path clip"
+        onLoadedData={() => setReady(true)} onError={() => setReady(true)} />
+      {!ready && <span className="clip-wait" aria-hidden="true"><span className="spin" /></span>}
+    </div>
+  );
 }
+
+/** Frames in one horizontal row; with `follow`, the row keeps the newest frame in view as frames arrive. */
+export function FrameStrip({ items, follow = false }: { items: { key: string; src: string; n: number }[]; follow?: boolean }) {
+  const row = useRef<HTMLUListElement>(null);
+  useEffect(() => {
+    const el = row.current;
+    if (follow && el) el.scrollTo({ left: el.scrollWidth, behavior: matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth" });
+  }, [items.length, follow]);
+  if (!items.length) return null;
+  return (
+    <ul className="strip" ref={row}>
+      {items.map((it) => <li key={it.key}><img src={it.src} alt={`Frame ${it.n}`} loading="lazy" /><span className="mono">{it.n}</span></li>)}
+    </ul>
+  );
+}
+
+export const fileSrc = src;

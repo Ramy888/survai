@@ -88,12 +88,18 @@ export function RoundView({ r, t, frameHref, running }: { r: Round; t: Timeline;
     const el = log.current?.querySelector<HTMLElement>(`[data-finding="${id}"]`);
     if (el && log.current) log.current.scrollTo({ top: el.offsetTop - 8, behavior: matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth" });
   };
-  // Follow new statements while a round runs, unless the reader has scrolled up to read an earlier one.
+  // Follow new statements and whoever is thinking while a round runs, unless the reader has scrolled up to read an
+  // earlier one. Our own smooth scroll also fires scroll events on its way down; those must not count as the reader's.
   const near = useRef(true);
+  const following = useRef(0);
+  const thinking = pending.length + (running?.leadThinking ? 1 : 0);
+  useEffect(() => { near.current = true; }, [r.round]);
   useEffect(() => {
     const el = log.current;
-    if (el && running && near.current) el.scrollTo({ top: el.scrollHeight, behavior: matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth" });
-  }, [count, running]);
+    if (!el || !running || !near.current) return;
+    following.current = Date.now() + 1000;
+    el.scrollTo({ top: el.scrollHeight, behavior: matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth" });
+  }, [count, thinking, r.round, running !== null]);
   return (
     <section className="panel chat-panel" aria-label={`Round ${r.round}`}>
       {/* Who approved, objected or asked: the first thing to read in a meeting (DESIGN.md); a tap jumps to the turn. */}
@@ -114,7 +120,7 @@ export function RoundView({ r, t, frameHref, running }: { r: Round; t: Timeline;
           {" "}<span className="mono">calc</span>: a check the app computed, not the model.</p>
       )}
       <div className="chat" key={r.round} ref={log} role="log" aria-live="off" tabIndex={0} aria-label={`Round ${r.round} statements`}
-        onScroll={(e) => { const el = e.currentTarget; near.current = el.scrollHeight - el.scrollTop - el.clientHeight < 120; }}>
+        onScroll={(e) => { const el = e.currentTarget; if (Date.now() > following.current) near.current = el.scrollHeight - el.scrollTop - el.clientHeight < 120; }}>
         {r.findings.map((f) => <Statement key={f.id} f={f} frameHref={frameHref} calcRule={calcRule} />)}
         {pending.map((a) => <Thinking key={a} agent={a} text={`${NAME[a]} is reviewing the room`} />)}
         {r.lead ? (

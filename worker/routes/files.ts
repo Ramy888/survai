@@ -98,9 +98,21 @@ files.get("/:id/files/:fileId", async (c) => {
   const { id, fileId } = c.req.param();
   const row = await c.env.DB.prepare("SELECT f.r2_key FROM files f JOIN rooms r ON r.id = f.room_id WHERE f.id = ?1 AND r.survey_id = ?2")
     .bind(fileId, id).first<{ r2_key: string }>();
-  const obj = row && (await c.env.MEDIA.get(row.r2_key));
+  // Byte ranges let a video player read the start (and seek) without downloading the whole clip; Safari needs them.
+  const ranged = c.req.header("Range") !== undefined;
+  const obj = row && (await c.env.MEDIA.get(row.r2_key, ranged ? { range: c.req.raw.headers } : undefined));
   if (!obj) return c.json({ error: "File not found" }, 404);
-  return new Response(obj.body, { headers: { "Content-Type": obj.httpMetadata?.contentType ?? "application/octet-stream", "Cache-Control": "private, max-age=3600", "X-Content-Type-Options": "nosniff" } });
+  const headers: Record<string, string> = {
+    "Content-Type": obj.httpMetadata?.contentType ?? "application/octet-stream", "Cache-Control": "private, max-age=3600",
+    "X-Content-Type-Options": "nosniff", "Accept-Ranges": "bytes",
+  };
+  const r = obj.range as { offset?: number; length?: number } | undefined;
+  if (ranged && r && r.offset !== undefined && r.length !== undefined) {
+    headers["Content-Range"] = `bytes ${r.offset}-${r.offset + r.length - 1}/${obj.size}`;
+    headers["Content-Length"] = String(r.length);
+    return new Response(obj.body, { status: 206, headers });
+  }
+  return new Response(obj.body, { headers });
 });
 
 files.delete("/:id/files/:fileId", requirePasscode, async (c) => {

@@ -5,7 +5,7 @@
 import { env } from "cloudflare:workers";
 import { beforeEach, describe, expect, it } from "vitest";
 import { createApp } from "../worker/index";
-import { buildPlan } from "../src/report/plan";
+import { buildPlan, dragTo } from "../src/report/plan";
 
 const app = createApp();
 const q = (sql: string, ...a: unknown[]) => env.DB.prepare(sql).bind(...a);
@@ -68,6 +68,16 @@ describe("GET /api/surveys/:id/report", () => {
 
   it("is 404 for an unknown survey", async () => {
     expect((await app.request("/api/surveys/00000000-0000-4000-8000-000000000000/report", {}, env)).status).toBe(404);
+  });
+});
+
+describe("dragTo (moving an item on the layout's floor plan)", () => {
+  it("moves by the pointer's offset, snapped to a tenth of a tile", () => {
+    expect(dragTo({ x: 2, y: 3 }, { dx: 1.234, dy: -0.66 }, { w: 1, d: 1.7 }, { w: 9, d: 12 })).toEqual({ x: 3.2, y: 2.3 });
+  });
+  it("keeps the whole item inside the room", () => {
+    expect(dragTo({ x: 2, y: 3 }, { dx: -5, dy: 20 }, { w: 1, d: 1.7 }, { w: 9, d: 12 })).toEqual({ x: 0, y: 10.3 });
+    expect(dragTo({ x: 0, y: 0 }, { dx: 3, dy: 3 }, { w: 12, d: 1 }, { w: 9, d: 12 })).toEqual({ x: 0, y: 3 });
   });
 });
 

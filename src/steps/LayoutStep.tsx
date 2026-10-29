@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { ApiError, getLayout, listFiles, saveLayout, savePasscode, savedPasscode, type LayoutItem, type RoomLayout, type Survey, type UploadedFile } from "../api";
 import { Shell } from "../components/Shell";
 import { FloorPlan } from "../report/FloorPlan";
@@ -6,6 +6,16 @@ import { FrameGrid, ModelChip } from "../components/Footage";
 
 type Breaker = { position: number | null; dc: boolean; rating_a: string; free: boolean };
 const ROOM: Record<string, string> = { devices_hall: "Devices hall", connect_to: "Connect-to room" };
+// What the engineer can add, at a typical size in tiles (600 mm). A cable path is drawn by the Survey Lead, not added.
+const ADD: Record<string, { name: string; tag: string; w: number; d: number; props: Record<string, unknown>; facing?: string }> = {
+  rack: { name: "Rack", tag: "R", w: 1, d: 1.7, props: { height_u: 42, free_blocks: [] }, facing: "east" },
+  ac: { name: "A/C unit", tag: "AC", w: 1.5, d: 1, props: {} },
+  panel: { name: "Power panel", tag: "P", w: 1, d: 0.3, props: {} },
+  door: { name: "Door", tag: "D", w: 1.5, d: 0.2, props: { swing_m: 0.9 } },
+  column: { name: "Column", tag: "C", w: 1, d: 1, props: {} },
+  ladder: { name: "Cable ladder", tag: "L", w: 4, d: 0.5, props: {} },
+  reserved: { name: "Reserved space", tag: "RES", w: 1, d: 1.7, props: {} },
+};
 const num = (v: string) => (v.trim() === "" ? null : Number(v));
 const blocksText = (b: unknown) => ((b as { from_u: number; to_u: number }[] | undefined) ?? []).map((x) => (x.from_u === x.to_u ? `${x.from_u}` : `${x.from_u}-${x.to_u}`)).join(", ");
 function parseBlocks(t: string): { from_u: number; to_u: number }[] | null {
@@ -27,7 +37,9 @@ export function LayoutStep({ survey, onSaved, onBack }: { survey: Survey; onSave
   const [freeText, setFreeText] = useState<Record<string, string>>({});
   const [facts, setFacts] = useState<Record<string, string>>({});
   const [breakers, setBreakers] = useState<Breaker[]>([]);
-  const [newRack, setNewRack] = useState({ label: "", x: "", y: "", facing: "east" });
+  const [adding, setAdding] = useState({ kind: "rack", label: "" });
+  const addDialog = useRef<HTMLDialogElement>(null);
+  const autoLabel = `${ADD[adding.kind].tag}${items.filter((i) => i.kind === adding.kind).length + 1}`; // a blank label gets the next name, e.g. AC2
   const [error, setError] = useState("");
   const [stale, setStale] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -131,12 +143,17 @@ export function LayoutStep({ survey, onSaved, onBack }: { survey: Survey; onSave
           <>
             <section className="panel plan-panel" aria-label="Floor plan">
               <div className="plan-by"><ModelChip model="Muse Spark" what="drafted from the frames; correct it below" /></div>
-              <FloorPlan size={num(facts.w) && num(facts.d) ? { w: num(facts.w)!, d: num(facts.d)! } : null} items={planItems} lengths={{}} clearances={[]} />
+              <FloorPlan size={num(facts.w) && num(facts.d) ? { w: num(facts.w)!, d: num(facts.d)! } : null} items={planItems} lengths={{}} clearances={[]}
+                onMove={(id, x, y) => set(id, { x_tiles: x, y_tiles: y })} />
+              <div className="plan-actions">
+                <p className="muted small">Drag an item to move it, or select it and use the arrow keys.</p>
+                <button className="btn btn-secondary" onClick={() => { setAdding({ kind: "rack", label: "" }); addDialog.current?.showModal(); }}>Add item</button>
+              </div>
             </section>
             <div className="stack">
               <section className="panel" aria-labelledby="racks-h">
                 <h2 id="racks-h">Racks</h2>
-                {racks.length === 0 && <p className="muted">No racks found. Add them below.</p>}
+                {racks.length === 0 && <p className="muted">No racks found. Add them with Add item under the plan.</p>}
                 {racks.map((r) => (
                   <div className="rack" key={r.id}>
                     <div className="rack-head">
@@ -156,15 +173,6 @@ export function LayoutStep({ survey, onSaved, onBack }: { survey: Survey; onSave
                   </div>
                 ))}
                 {badFree.length > 0 && <p className="note error" role="alert">Write free U as ranges, e.g. 10-30, 35 ({badFree.join(", ")}).</p>}
-                <div className="add-row" style={{ marginTop: 12 }}>
-                  <div className="field"><label htmlFor="nr-l">New rack</label><input id="nr-l" placeholder="R7" value={newRack.label} onChange={(e) => setNewRack({ ...newRack, label: e.target.value })} /></div>
-                  <div className="field"><label htmlFor="nr-x">x (tiles)</label><input id="nr-x" className="mono" inputMode="decimal" value={newRack.x} onChange={(e) => setNewRack({ ...newRack, x: e.target.value })} /></div>
-                  <div className="field"><label htmlFor="nr-y">y (tiles)</label><input id="nr-y" className="mono" inputMode="decimal" value={newRack.y} onChange={(e) => setNewRack({ ...newRack, y: e.target.value })} /></div>
-                </div>
-                <button className="btn btn-secondary" style={{ marginTop: 10 }} disabled={!newRack.label.trim() || num(newRack.x) == null || num(newRack.y) == null}
-                  onClick={() => { const id = `new-${Date.now()}`; setItems((xs) => [...xs, { id, kind: "rack", label: newRack.label.trim(), x_tiles: num(newRack.x)!, y_tiles: num(newRack.y)!, w_tiles: 1, d_tiles: 1.7, facing: newRack.facing, props: { height_u: 42, free_blocks: [] } }]); setFreeText((f) => ({ ...f, [id]: "" })); setNewRack({ label: "", x: "", y: "", facing: "east" }); }}>
-                  Add rack
-                </button>
               </section>
               {others.length > 0 && (
                 <section className="panel" aria-labelledby="other-h">
@@ -219,6 +227,30 @@ export function LayoutStep({ survey, onSaved, onBack }: { survey: Survey; onSave
             ) : null}
           </>
         )}
+        <dialog ref={addDialog} className="add-dialog" aria-labelledby="add-h">
+          <form method="dialog" className="stack" onSubmit={() => {
+            const a = ADD[adding.kind];
+            const room = { w: num(facts.w) ?? 4, d: num(facts.d) ?? 4 };
+            const id = `new-${Date.now()}`;
+            // It lands in the middle of the room; the engineer drags it into place.
+            setItems((xs) => [...xs, { id, kind: adding.kind, label: adding.label.trim() || autoLabel, x_tiles: Math.max(0, Math.round((room.w - a.w) * 5) / 10),
+              y_tiles: Math.max(0, Math.round((room.d - a.d) * 5) / 10), w_tiles: a.w, d_tiles: a.d, facing: a.facing ?? null, props: { ...a.props } }]);
+            if (adding.kind === "rack") setFreeText((f) => ({ ...f, [id]: "" }));
+          }}>
+            <h2 id="add-h">Add an item</h2>
+            <div className="field"><label htmlFor="add-k">Type</label>
+              <select id="add-k" value={adding.kind} onChange={(e) => setAdding({ ...adding, kind: e.target.value })}>
+                {Object.entries(ADD).map(([k, a]) => <option key={k} value={k}>{a.name}</option>)}
+              </select></div>
+            <div className="field"><label htmlFor="add-l">Label</label>
+              <input id="add-l" placeholder={autoLabel} maxLength={20} value={adding.label} onChange={(e) => setAdding({ ...adding, label: e.target.value })} /></div>
+            <p className="muted small">It appears in the middle of the plan. Drag it into place.</p>
+            <div className="dialog-actions">
+              <button type="button" className="btn btn-secondary" onClick={() => addDialog.current?.close()}>Cancel</button>
+              <button className="btn btn-primary">Add</button>
+            </div>
+          </form>
+        </dialog>
         {askPass && (
           <section className="panel fields full">
             <div className="field"><label htmlFor="pass">Team passcode</label>

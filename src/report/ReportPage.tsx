@@ -3,7 +3,7 @@ import { FloorPlan } from "./FloorPlan";
 import type { PlanItem } from "./plan";
 import "./print.css";
 import { reissueLinks, savedPasscode } from "../api";
-import { copyAll, SignoffLinks, type IssuedLink } from "../signoff/SignoffLinks";
+import { copyAll, shareAll, SignoffLinks, type IssuedLink } from "../signoff/SignoffLinks";
 
 export type Report = {
   header: Record<string, string | null>;
@@ -109,7 +109,8 @@ export function ReportPage({ id }: { id: string }) {
             <>
               <p className="muted">{links.issued.length ? "New links for the departments that have not decided. Their old links no longer work." : "Every department has decided; no new links needed."}
                 {links.decided.length > 0 && ` Already decided: ${links.decided.length}.`}</p>
-              {links.issued.length > 0 && <><SignoffLinks links={links.issued} /><button className="btn btn-secondary" onClick={() => copyAll(links.issued)}>Copy all links</button></>}
+              {links.issued.length > 0 && <><SignoffLinks links={links.issued} /><div className="row-btns"><button className="btn btn-secondary" onClick={() => copyAll(links.issued)}>Copy all links</button>
+                <button className="btn btn-secondary" onClick={() => shareAll(links.issued)}>Share all</button></div></>}
             </>
           )}
         </div>

@@ -161,7 +161,7 @@ select{font:400 1rem/1.4 var(--body);color:var(--ink);background:var(--surface);
 .chip.q{background:var(--question-bg);color:var(--question)}.chip.neutral{background:var(--ground);color:var(--muted)}
 /* The meeting as a chat: one scroll box per round, sized for about one agent's review; scrolling settles on each turn. */
 .chat-panel{padding:6px 6px 6px 16px}
-.chat{max-height:clamp(360px,60vh,560px);overflow-y:auto;overscroll-behavior:contain;scroll-snap-type:y proximity;scroll-padding:10px;padding:10px 10px 18px 0;outline-offset:-2px;
+.chat{max-height:clamp(360px,60vh,560px);overflow-y:auto;overscroll-behavior:contain;scroll-padding:10px;padding:10px 10px 18px 0;outline-offset:-2px;
   -webkit-mask-image:linear-gradient(to bottom,transparent,#000 10px,#000 calc(100% - 18px),transparent);mask-image:linear-gradient(to bottom,transparent,#000 10px,#000 calc(100% - 18px),transparent)}
 .chat:focus-visible{outline:2px solid var(--primary)}
 .chat{position:relative} /* offsetTop of a turn is measured from the chat, for the vote strip's jumps */
@@ -172,7 +172,7 @@ select{font:400 1rem/1.4 var(--body);color:var(--ink);background:var(--surface);
 .tally-btn:focus-visible{outline:2px solid var(--primary);outline-offset:2px}
 .key{font-size:.85rem;margin:8px 10px 0 0;padding-bottom:8px;border-bottom:1px solid var(--rule)}
 .key b{font-weight:600}
-.msg{display:grid;grid-template-columns:auto 1fr;gap:12px;padding:10px 0;scroll-snap-align:start;animation:fade .15s ease-out}
+.msg{display:grid;grid-template-columns:auto 1fr;gap:12px;padding:10px 0;animation:fade .15s ease-out}
 .msg>.tag{align-self:start;margin-top:2px}
 .msg-body{min-width:0}
 .msg-head{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-bottom:6px}
@@ -208,11 +208,14 @@ textarea{font:400 1rem/1.4 var(--body);color:var(--ink);background:var(--surface
 .evidence{width:100%;aspect-ratio:4/3;object-fit:cover;border-radius:8px;border:1px solid var(--rule);display:grid;place-items:center;background:var(--ground)}
 .small{font-size:.85rem}
 .links{display:grid;gap:8px}
-.links .r{cursor:default}
+.links .r{cursor:default;flex-wrap:wrap}
+.links .grow{min-width:min(100%,220px)}
+.row-btns{display:flex;flex-wrap:wrap;gap:8px}
 .narrow-intro{max-width:640px}
 /* Which Meta model did the work, and what it saw: model chips, key frames with SAM 3.1 outlines, the path clip */
 .model{display:inline-block;font:500 .75rem/1.6 var(--mono);border:1px solid var(--rule);border-radius:4px;padding:1px 7px;background:var(--surface);color:var(--ink);white-space:nowrap;vertical-align:middle}
-.model .what{color:var(--muted)}
+.model{max-width:100%}
+.model .what{color:var(--muted);white-space:normal} /* a long note wraps inside the chip instead of widening the page */
 .title-row{flex-wrap:wrap}
 .plan-by{margin-bottom:8px}
 .stages{margin:0;padding:0;list-style:none;display:grid;gap:8px}
@@ -240,3 +243,21 @@ textarea{font:400 1rem/1.4 var(--body);color:var(--ink);background:var(--surface
 .made-answers{margin:0;padding-left:18px;display:grid;gap:4px;font-size:.95rem}
 @media (min-width:960px){.made-steps{grid-template-columns:1.3fr 1fr 1fr;gap:24px}}
 .rerun-top{display:flex;flex-wrap:wrap;align-items:center;gap:8px 12px;margin-top:12px}
+/* Upload: each item's media sits under it; frames run in one row that follows the newest. */
+.strip{contain:inline-size;width:100%;list-style:none;margin:8px 0 4px;padding:0 0 6px;display:flex;gap:6px;overflow-x:auto;scroll-snap-type:x proximity;overscroll-behavior-x:contain}
+.strip li{position:relative;flex:none;width:72px;scroll-snap-align:end}
+.strip img{width:72px;height:96px;object-fit:cover;border-radius:6px;border:1px solid var(--rule);display:block;background:var(--ground);animation:fade .2s ease-out}
+.strip span{position:absolute;left:3px;bottom:3px;font-size:.7rem;background:rgba(0,0,0,.6);color:#fff;border-radius:4px;padding:1px 4px}
+.clip-wrap{position:relative;margin:8px 0 4px}
+.clip-wait{position:absolute;inset:0;display:grid;place-items:center;background:#101518;border-radius:10px}
+.clip-wait .spin{width:28px;height:28px;border-color:rgba(255,255,255,.25);border-top-color:#fff}
+@media (prefers-reduced-motion:reduce){.strip img{animation:none}}
+/* layout: moving items on the plan, and the add-item dialog */
+.movable{cursor:grab;touch-action:none}
+.movable:active{cursor:grabbing}
+.movable:hover rect:first-child,.movable:focus-visible rect:first-child{stroke:var(--primary)}
+.plan-actions{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:8px 12px;margin-top:8px}
+.plan-actions p{margin:0}
+.add-dialog{border:1px solid var(--rule);border-radius:14px;background:var(--surface);color:var(--ink);padding:20px;width:min(420px,calc(100vw - 32px))}
+.add-dialog::backdrop{background:rgb(0 0 0 / .45)}
+.dialog-actions{display:flex;justify-content:flex-end;gap:8px}

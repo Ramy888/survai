@@ -79,11 +79,11 @@ describe("the meeting's vote strip", () => {
 describe("a locked upload slot", () => {
   it("says Not uploaded with a dash, and offers no Add, when nothing was uploaded", () => {
     const k = KINDS.find((x) => x.kind === "photo")!;
-    const html = renderToStaticMarkup(createElement(Slot, { role: "devices_hall", k, files: [], missing: false, progress: null, disabled: false, locked: true, onAdd: () => {}, onRemove: () => {} }));
+    const html = renderToStaticMarkup(createElement(Slot, { surveyId: "s1", role: "devices_hall", k, files: [], missing: false, progress: null, disabled: false, locked: true, onAdd: () => {}, onRemove: () => {} }));
     expect(html).toContain("Not uploaded");
     expect(html).toContain('d="M7 12h10"');
     expect(html).not.toContain("<button");
-    const open = renderToStaticMarkup(createElement(Slot, { role: "devices_hall", k, files: [], missing: false, progress: null, disabled: false, locked: false, onAdd: () => {}, onRemove: () => {} }));
+    const open = renderToStaticMarkup(createElement(Slot, { surveyId: "s1", role: "devices_hall", k, files: [], missing: false, progress: null, disabled: false, locked: false, onAdd: () => {}, onRemove: () => {} }));
     expect(open).toContain(">Add<");
   });
 });

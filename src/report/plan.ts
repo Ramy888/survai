@@ -10,17 +10,18 @@ export interface PlanInput {
   lengths: Record<string, number | null>; // cable path label -> length (m) from its LEN calculation
   clearances: { to: string; m: number; from: [number, number]; at: [number, number] }[];
 }
+type Box = { id: string; fixed: boolean; label: string; x: number; y: number; w: number; d: number }; // fixed: the Survey Lead's, not the engineer's to move
 export type Shape =
-  | { type: "rect"; kind: string; label: string; x: number; y: number; w: number; d: number; facing: string | null; hatched?: "reserved" | "off_limits"; target?: boolean }
-  | { type: "door"; label: string; x: number; y: number; w: number; d: number; side: string; swing: number }
-  | { type: "ladder"; label: string; x: number; y: number; w: number; d: number }
+  | Box & { type: "rect"; kind: string; facing: string | null; hatched?: "reserved" | "off_limits"; target?: boolean }
+  | Box & { type: "door"; side: string; swing: number }
+  | Box & { type: "ladder" }
   | { type: "path"; label: string; cable_type: string; route: string; points: [number, number][] }
   | { type: "arrow"; from: [number, number]; at: [number, number]; label: string };
 
 export function buildPlan(i: PlanInput): { w: number; d: number; shapes: Shape[] } {
   const shapes: Shape[] = [];
   for (const it of i.items) {
-    const base = { label: it.label ?? it.kind, x: it.x, y: it.y, w: it.w ?? 1, d: it.d ?? 1 };
+    const base = { id: it.id, fixed: it.source === "lead", label: it.label ?? it.kind, x: it.x, y: it.y, w: it.w ?? 1, d: it.d ?? 1 };
     if (it.kind === "cable_path") {
       const len = i.lengths[it.label ?? ""];
       const type = String(it.props.cable_type ?? "cable");
@@ -41,4 +42,10 @@ export function buildPlan(i: PlanInput): { w: number; d: number; shapes: Shape[]
   const w = i.size?.w ?? Math.ceil(Math.max(4, ...i.items.map((it) => it.x + (it.w ?? 1))) + 1);
   const d = i.size?.d ?? Math.ceil(Math.max(4, ...i.items.map((it) => it.y + (it.d ?? 1))) + 1);
   return { w, d, shapes };
+}
+
+/** Where a dragged item lands: moved by the pointer's offset in tiles, snapped to a tenth of a tile, kept in the room. */
+export function dragTo(at: { x: number; y: number }, by: { dx: number; dy: number }, size: { w: number; d: number }, room: { w: number; d: number }) {
+  const place = (v: number, len: number, max: number) => Math.round(Math.min(Math.max(0, max - len), Math.max(0, v)) * 10) / 10;
+  return { x: place(at.x + by.dx, size.w, room.w), y: place(at.y + by.dy, size.d, room.d) };
 }
