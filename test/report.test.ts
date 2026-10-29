@@ -55,11 +55,13 @@ describe("GET /api/surveys/:id/report", () => {
     expect(Object.keys(r.cooling)).toEqual(["heat_load_btu", "ac_units", "ac_condition", "orientation_and_place", "notes"]);
     expect(r.cooling.heat_load_btu).toBe(2729.6);
     expect(r.statements.map((s: { agent: string }) => s.agent)).toEqual(["execution", "room_manager", "space"]);
-    expect(r.approved_items).toEqual(["R5 U10-U30 holds the MX104"]);
+    // Each approved item names its department, so two departments approving the same placement read as two confirmations.
+    expect(r.approved_items).toEqual([{ text: "R5 U10-U30 holds the MX104", agent: expect.any(String) }]);
     expect(r.rules).toContainEqual({ rule: "R8", text: "Leave 2U above an installed active device" });
     expect(r.cable_lengths).toEqual([{ path: "fibre-1", cable_type: "fibre", route: "overhead", length_m: 6 }]);
     expect(r.objections).toEqual([{ agent: "room_manager", rules: ["R1", "R2"], override_reason: null }]);
     expect(r.lead).toMatchObject({ summary: "Placed in R5.", model: "muse-wonder-1.0" });
+    expect(r.lead).toHaveProperty("next");
     expect(r.signoffs).toEqual([]);
     expect(r.plan.items.length).toBe(3);
   });

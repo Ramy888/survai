@@ -16,7 +16,7 @@ describe("markup in model or footage text", () => {
       header: { site: evil, project: "P", devices: "1 × M", date: "2026-10-28", day: "Wednesday", status: "approved", problem: evil },
       devices_hall: { notes: evil }, connect_to: null, power: {}, cooling: {},
       statements: [{ agent: "power", verdict: "object", statement: evil, rule_refs: ["R3"] }],
-      approved_items: [evil], specs: [{ kind: "spec", text: evil, quantity: 1, unit: "m", agent: "power" }], rules: [], cable_lengths: [],
+      approved_items: [{ text: evil, agent: "power" }], specs: [{ kind: "spec", text: evil, quantity: 1, unit: "m", agent: "power" }], rules: [], cable_lengths: [],
       objections: [{ agent: "power", rules: ["R3"], override_reason: evil }], lead: { summary: evil, placement: { target: "none", reason: evil }, model: "m", fell_back: false },
       signoffs: [{ agent: "power", rep_name: evil, decision: "object", comment: evil, decided_at: "2026-10-28" }], tech_specs: { text: evil },
       plan: { size: null, items: [], lengths: {}, clearances: [] },

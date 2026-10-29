@@ -12,12 +12,13 @@ export type Report = {
   power: Record<string, string | number | null>;
   cooling: Record<string, string | number | null>;
   statements: { agent: string; verdict: string; statement: string; rule_refs: string[] }[];
-  approved_items: string[];
+  approved_items: { text: string; agent: string }[];
   specs: { kind: string; text: string; quantity: number | null; unit: string | null; agent: string }[];
   rules: { rule: string; text: string }[];
   cable_lengths: { path: string; cable_type: string; route: string; length_m: number | null }[];
   objections: { agent: string; rules: string[]; override_reason: string | null }[];
-  lead: { summary: string; placement: { target: string; reason: string }; model: string; fell_back: boolean } | null;
+  lead: { summary: string; placement: { target: string; reason: string }; model: string; fell_back: boolean; next?: "another_round" | "done" | null } | null;
+  meeting?: { run: number; round: number } | null;
   signoffs: { agent: string; rep_name: string; decision: string; comment: string | null; decided_at: string }[];
   tech_specs: { text: string } | null;
   plan: { size: { w: number; d: number } | null; items: PlanItem[]; lengths: Record<string, number | null>; clearances: { to: string; m: number; from: [number, number]; at: [number, number] }[] };
@@ -32,12 +33,15 @@ const LABEL: Record<string, string> = {
   orientation_and_place: "Orientation and reserved place",
 };
 const show = (v: unknown) => (v === null || v === undefined || v === "" ? "—" : String(v));
+const MAX_ROUNDS = 3;
+const empty = (v: unknown) => v === null || v === undefined || v === "";
 
 function Fields({ title, data }: { title: string; data: Record<string, unknown> }) {
   return (
     <table className="form">
       <caption>{title}</caption>
-      <tbody>{Object.entries(data).map(([k, v]) => <tr key={k}><th scope="row">{LABEL[k] ?? k}</th><td className={typeof v === "number" ? "mono" : undefined}>{show(v)}</td></tr>)}</tbody>
+      <tbody>{Object.entries(data).map(([k, v]) => <tr key={k}><th scope="row">{LABEL[k] ?? k}</th>
+        <td className={typeof v === "number" ? "mono" : undefined}>{empty(v) ? <span className="muted">not recorded</span> : String(v)}</td></tr>)}</tbody>
     </table>
   );
 }
@@ -82,12 +86,15 @@ export function ReportPage({ id }: { id: string }) {
 /** The A4 sheet itself, shared by the survey's report page and the public replay. */
 export function ReportSheet({ r }: { r: Report }) {
   const h = r.header;
+  const overrides = h.status === "approved" ? r.objections.length : 0;
+  // The Lead asked for another round, but the meeting had used its rounds: say who decided, so the report reads as one decision.
+  const atLimit = r.lead?.next === "another_round" && (r.meeting?.round ?? 0) >= MAX_ROUNDS;
   return (
     <article className="sheet">
       <header className="sheet-head"><h1>Site Survey Report</h1><span className="mono">{h.site} · {h.date} ({h.day})</span></header>
       <table className="form"><tbody>
         <tr><th scope="row">Site</th><td>{show(h.site)}</td><th scope="row">Project</th><td>{show(h.project)}</td></tr>
-        <tr><th scope="row">Devices</th><td>{show(h.devices)}</td><th scope="row">Status</th><td>{show(h.status)}</td></tr>
+        <tr><th scope="row">Devices</th><td>{show(h.devices)}</td><th scope="row">Status</th><td>{overrides ? `approved with ${overrides} engineer override${overrides > 1 ? "s" : ""}` : show(h.status)}</td></tr>
         <tr><th scope="row">Request</th><td colSpan={3}>{show(h.problem)}</td></tr>
       </tbody></table>
       <Fields title="Devices hall" data={r.devices_hall} />
@@ -96,7 +103,7 @@ export function ReportSheet({ r }: { r: Report }) {
       <Fields title="Cooling" data={r.cooling} />
       <table className="form">
         <caption>Approved items</caption>
-        <tbody>{r.approved_items.length ? r.approved_items.map((t, k) => <tr key={k}><td className="mono num">{k + 1}</td><td>{t}</td></tr>) : <tr><td>—</td></tr>}</tbody>
+        <tbody>{r.approved_items.length ? r.approved_items.map((t, k) => <tr key={k}><td className="mono num">{k + 1}</td><td><span className="tag">{TAG[t.agent] ?? t.agent}</span> {t.text}</td></tr>) : <tr><td>—</td></tr>}</tbody>
       </table>
       <table className="form">
         <caption>Specs and rules</caption>
@@ -108,7 +115,7 @@ export function ReportSheet({ r }: { r: Report }) {
       <table className="form">
         <caption>Cable lengths</caption>
         <thead><tr><th>Cable</th><th>Route</th><th>Length</th></tr></thead>
-        <tbody>{r.cable_lengths.length ? r.cable_lengths.map((c) => <tr key={c.path}><td>{c.path}</td><td>{c.route}</td><td className="mono">{c.length_m == null ? "unknown" : `${c.length_m} m`}</td></tr>) : <tr><td colSpan={3}>—</td></tr>}</tbody>
+        <tbody>{r.cable_lengths.length ? r.cable_lengths.map((c) => <tr key={c.path}><td>{c.path}</td><td>{c.route}</td><td className="mono">{c.length_m == null ? "unknown" : `${c.length_m} m`}</td></tr>) : <tr><td colSpan={3} className="muted">No cable path was drawn in this survey.</td></tr>}</tbody>
       </table>
       <section className="plan-section"><h2>Layout</h2><FloorPlan {...r.plan} /></section>
       <table className="form">
@@ -132,7 +139,9 @@ export function ReportSheet({ r }: { r: Report }) {
       {r.lead && (
         <table className="form">
           <caption>Survey Lead</caption>
-          <tbody><tr><td>{r.lead.summary}<span className="muted"> (Muse {r.lead.model.includes("wonder") ? "Wonder" : "Spark 1.3"}{r.lead.fell_back ? ", fallback" : ""})</span></td></tr></tbody>
+          <tbody><tr><td>{r.lead.summary}<span className="muted"> (Muse {r.lead.model.includes("wonder") ? "Wonder" : "Spark 1.3"}{r.lead.fell_back ? ", fallback" : ""})</span>
+            {atLimit && <p className="muted" style={{ margin: "6px 0 0" }}>The meeting stopped at its {MAX_ROUNDS}-round limit. {h.status === "approved"
+              ? "The engineer approved over the remaining objections; see Objections overridden by the engineer." : "The engineer decides on the remaining objections."}</p>}</td></tr></tbody>
         </table>
       )}
       <table className="form">
@@ -141,7 +150,7 @@ export function ReportSheet({ r }: { r: Report }) {
         <tbody>{r.statements.map((s) => {
           const so = r.signoffs.find((x) => x.agent === s.agent);
           return <tr key={s.agent}><td><span className="tag">{TAG[s.agent] ?? s.agent}</span></td><td>{show(so?.rep_name)}</td>
-            <td className={so?.decision === "object" ? "objected" : undefined}>{show(so?.decision)}{so?.comment ? `: ${so.comment}` : ""}</td><td className="mono">{show(so?.decided_at?.slice(0, 10))}</td></tr>;
+            <td className={so?.decision === "object" ? "objected" : undefined}>{so ? <>{so.decision}{so.comment ? `: ${so.comment}` : ""}</> : <span className="muted">not signed yet</span>}</td><td className="mono">{show(so?.decided_at?.slice(0, 10))}</td></tr>;
         })}</tbody>
       </table>
     </article>

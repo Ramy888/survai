@@ -10,6 +10,7 @@ import { Stepper, StepNav } from "../src/components/Shell";
 import { DeviceSummary } from "../src/steps/DeviceStep";
 import { openQuestions, RoundView } from "../src/steps/MeetingStep";
 import { KINDS, Slot } from "../src/steps/UploadStep";
+import { ReportSheet } from "../src/report/ReportPage";
 
 const buttons = (html: string) => [...html.matchAll(/<button[^>]*>.*?<\/button>/g)].map((m) => m[0]);
 
@@ -84,5 +85,30 @@ describe("a locked upload slot", () => {
     expect(html).not.toContain("<button");
     const open = renderToStaticMarkup(createElement(Slot, { role: "devices_hall", k, files: [], missing: false, progress: null, disabled: false, locked: false, onAdd: () => {}, onRemove: () => {} }));
     expect(open).toContain(">Add<");
+  });
+});
+
+describe("the report's ending", () => {
+  const base = {
+    header: { site: "S", project: "P", devices: "1 × M", date: "2026-10-27", day: "Tuesday", status: "approved", problem: "x" },
+    devices_hall: { floor: null, ladder_m: 3.4 }, connect_to: null, power: {}, cooling: {},
+    statements: [{ agent: "power", verdict: "object", statement: "s", rule_refs: ["R11"] }, { agent: "space", verdict: "approve", statement: "s", rule_refs: [] }],
+    approved_items: [{ text: "Install in R3", agent: "space" }], specs: [], rules: [], cable_lengths: [],
+    objections: [{ agent: "power", rules: ["R11"], override_reason: "Pre-install work order" }],
+    lead: { summary: "Another round is required.", placement: { target: "rack:r3", reason: "" }, model: "muse-wonder-1.0", fell_back: false, next: "another_round" },
+    meeting: { run: 1, round: 3 }, signoffs: [], tech_specs: null, plan: { size: null, items: [], lengths: {}, clearances: [] },
+  };
+  const html = renderToStaticMarkup(createElement(ReportSheet, { r: base as never }));
+
+  it("says the survey was approved over objections, and that the meeting stopped at its limit", () => {
+    expect(html).toContain("approved with 1 engineer override");
+    expect(html).toContain("stopped at its 3-round limit");
+  });
+
+  it("names the department beside each approved item and marks what was not recorded or signed", () => {
+    expect(html).toMatch(/<span class="tag">SPC<\/span> ?Install in R3/);
+    expect(html).toContain("not recorded");
+    expect(html).toContain("not signed yet");
+    expect(html).toContain("No cable path was drawn");
   });
 });
