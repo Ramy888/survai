@@ -2,7 +2,7 @@ import { useState } from "react";
 import { createSurvey, savePasscode, savedPasscode, type NewSurvey } from "../api";
 import { Shell } from "../components/Shell";
 
-const DEMO_VIDEO = "https://youtu.be/e7pMw10oSwg";
+const DEMO_VIDEO = "https://youtu.be/9MUwTUvP_Ms";
 
 export const DEPARTMENTS = [
   ["space", "SPC", "Space"],
