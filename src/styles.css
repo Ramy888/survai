@@ -77,7 +77,7 @@ input[aria-invalid="true"]{border-color:var(--object)}
 .btn:focus-visible{outline:2px solid var(--primary);outline-offset:2px}
 .btn:disabled{opacity:.45;cursor:not-allowed}
 .seg{display:grid;grid-template-columns:1fr 1fr;background:var(--ground);border-radius:10px;padding:4px;gap:4px}
-.seg button{font:600 1rem/1 var(--body);min-height:40px;border:0;border-radius:8px;background:transparent;color:var(--muted);cursor:pointer}
+.seg button{font:600 1rem/1 var(--body);min-height:44px;border:0;border-radius:8px;background:transparent;color:var(--muted);cursor:pointer}
 .seg button[aria-pressed="true"]{background:var(--surface);color:var(--ink);box-shadow:var(--shadow)}
 .seg button:focus-visible{outline:2px solid var(--primary);outline-offset:1px}
 .rows{display:grid}
@@ -137,7 +137,7 @@ input[aria-invalid="true"]{border-color:var(--object)}
 .brk{display:grid;grid-template-columns:44px 1fr 1fr auto 44px;gap:8px;align-items:center;padding:6px 0;border-top:1px solid var(--rule)}
 .brk:first-of-type{border-top:0}
 .brk .seg{grid-template-columns:1fr 1fr}
-.brk .seg button{min-height:36px}
+.brk .seg button{min-height:44px}
 @media (max-width:479px){.brk{grid-template-columns:44px 1fr 1fr 44px;grid-template-areas:"tag type type del" "tag rating free del"}
   .brk>.tag{grid-area:tag;align-self:start}.brk>.seg{grid-area:type}.brk>input{grid-area:rating}.brk>.toggle{grid-area:free}.brk>.icon-btn{grid-area:del;align-self:start}}
 .add-row{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;align-items:end}
