@@ -54,12 +54,18 @@ export function Replay({ slug }: { slug: string }) {
     <>
       <header className="top"><div className="wrap bar"><a className="brand" href="/">Surv<b>AI</b></a><span className="mono muted">Replay · sample survey</span></div></header>
       <main className="wrap stack">
-        <div className="narrow-intro">
+        {error && !p ? (
+          <div className="narrow-intro stack">
+            <h1>Replay not found</h1>
+            <p className="note error" role="alert">{error === "Replay not found" ? "" : `${error}. `}Check that you opened the full link you were sent.</p>
+            <p><a className="btn btn-secondary" href="/">Go to SurvAI</a></p>
+          </div>
+        ) : <div className="narrow-intro">
           <h1>A real equipment-room survey, replayed</h1>
           <p className="muted">{agents.charAt(0).toUpperCase() + agents.slice(1)} met over prepared, anonymised footage of a real room. Read their meeting and the report, or run the meeting again live.</p>
           <p className="muted small">In this sample the engineer's part (correcting the drafted layout, answering the departments and approving) was played by the builder; every department statement and the Survey Lead's notes are live model output.</p>
-        </div>
-        {error && <p className="note error" role="alert">{error}</p>}
+        </div>}
+        {error && p && <p className="note error" role="alert">{error}</p>}
         {!p && !error && <p className="muted">Loading the replay…</p>}
         {p && t && (
           <>

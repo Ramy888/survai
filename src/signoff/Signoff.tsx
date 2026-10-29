@@ -18,7 +18,7 @@ function Frame({ token, n }: { token: string; n: number }) {
 
 export function Signoff({ token }: { token: string }) {
   const [p, setP] = useState<SignoffPage | null>(null);
-  const [error, setError] = useState(token ? "" : "This link is incomplete. Open the full link you were sent.");
+  const [error, setError] = useState(token ? "" : "This link is incomplete. Open the full link you were sent, or ask the engineer who sent it for a new one.");
   const [name, setName] = useState("");
   const [decision, setDecision] = useState<"approve" | "object" | "">("");
   const [comment, setComment] = useState("");

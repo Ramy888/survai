@@ -70,11 +70,18 @@ function SurveyView({ id }: { id: string }) {
   if (status === "approved") { location.replace(`/survey/${id}/report`); return null; }
   if (!survey || !reached) {
     return (
-      <Shell step={1} actions={null}>
-        <div className="stack narrow">
-          {error ? <p className="note error" role="alert">{error}</p> : <p className="muted">Loading survey…</p>}
-        </div>
-      </Shell>
+      <>
+        <header className="top"><div className="wrap bar"><a className="brand" href="/">Surv<b>AI</b></a></div></header>
+        <main className="wrap stack narrow">
+          {error ? (
+            <>
+              <h1>Survey not found</h1>
+              <p className="note error" role="alert">{error === "Survey not found" ? "" : `${error}. `}Check that you opened the full link, or start a new survey.</p>
+              <p><a className="btn btn-primary" href="/">Start a new survey</a></p>
+            </>
+          ) : <p className="muted">Loading survey…</p>}
+        </main>
+      </>
     );
   }
 
