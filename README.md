@@ -143,7 +143,7 @@ DEMO_PASSCODE=pick-a-local-passcode
 VARS
 npx wrangler d1 migrations apply survai --local
 npm run dev        # http://localhost:5173
-npm test           # 182 tests (Vitest in the Workers runtime) plus the source guards
+npm test           # the Vitest suite (in the Workers runtime) plus the source guards
 ```
 
 Prepare footage with `tools/prepare` first (macOS: it uses Apple Vision for faces and text); see
@@ -166,5 +166,10 @@ To deploy your own copy: create a D1 database and an R2 bucket named in `wrangle
 | `tools/prepare/` | Local anonymiser: blur, key-frame picking, metadata stripping |
 | `test/` | Vitest suites |
 
-Built in the hackathon window (Oct 27 to Nov 4, 2026) on Cloudflare Workers, D1, R2 and Workflows, with Vite and
-React. MIT licensed.
+## Built during the hackathon
+
+Everything in this repository was written during the build window (first commit Oct 27, 2026; the history shows
+each step). One file is reused from the builder's earlier project: `scripts/demo-video/cdp.mjs`, a small headless
+Chrome driver used only to record the demo video; it is not part of the app.
+
+Built on Cloudflare Workers, D1, R2 and Workflows, with Vite and React. MIT licensed.
