@@ -8,7 +8,7 @@ import { renderToStaticMarkup } from "react-dom/server.edge";
 import { describe, expect, it } from "vitest";
 import { Stepper, StepNav } from "../src/components/Shell";
 import { DeviceSummary } from "../src/steps/DeviceStep";
-import { openQuestions } from "../src/steps/MeetingStep";
+import { openQuestions, RoundView } from "../src/steps/MeetingStep";
 
 const buttons = (html: string) => [...html.matchAll(/<button[^>]*>.*?<\/button>/g)].map((m) => m[0]);
 
@@ -58,5 +58,18 @@ describe("the meeting's open questions", () => {
 
   it("drops the clip's questions once the meeting is over", () => {
     expect(openQuestions({ ...t, rounds: [] } as never, { state: "done" })).toEqual([]);
+  });
+});
+
+describe("the meeting's vote strip", () => {
+  it("shows every department's verdict above the chat, still-working ones as pending", () => {
+    const f = (id: string, agent: string, verdict: string, forced: string[] = []) => ({ id, agent, verdict, statement: "s", model: null, forced_rules: forced, rules: [], evidence: [], question: null });
+    const round = { round: 2, calcs: [], lead: null, findings: [f("a", "power", "object", ["R11"]), f("b", "cooling", "approve"), f("c", "room_manager", "question")] };
+    const t = { status: "deliberating", layout_version: 1, deliberated_layout_version: 1, run: 1, reps: ["space", "power", "cooling", "room_manager"], request_questions: [], rounds: [round] };
+    const html = renderToStaticMarkup(createElement(RoundView, { r: round as never, t: t as never, frameHref: () => "#", running: { round: 2, leadThinking: false } }));
+    const strip = html.match(/<ul class="tally"[^>]*>(.*?)<\/ul>/)?.[1] ?? "";
+    expect([...strip.matchAll(/<li[^>]*>(.*?)<\/li>/g)].map((m) => m[1].replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim()))
+      .toEqual(["PWR Forced · R11", "CLG Approve", "RMG Question", "SPC Reviewing"]);
+    expect(html.indexOf('class="tally"')).toBeLessThan(html.indexOf('class="chat"'));
   });
 });

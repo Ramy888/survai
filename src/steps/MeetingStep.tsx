@@ -20,6 +20,12 @@ export function phase(t: Timeline) {
 
 export type FrameHref = (e: { frame: number | null; file_id?: string }) => string;
 
+function Verdict({ f }: { f: Finding }) {
+  const [cls, label] = VERDICT[f.verdict];
+  const forced = f.verdict === "object" && f.forced_rules.length > 0;
+  return <span className={`chip ${cls}`}>{forced ? <>{LOCK}Forced · {f.forced_rules.join(", ")}</> : label}</span>;
+}
+
 /** One agent's turn in the meeting chat: who and how they voted, the statement in a bubble, then its evidence and rules. */
 function Statement({ f, frameHref, calcRule }: { f: Finding; frameHref: FrameHref; calcRule: (id: string) => string }) {
   const [all, setAll] = useState(false);
@@ -35,18 +41,16 @@ function Statement({ f, frameHref, calcRule }: { f: Finding; frameHref: FrameHre
     check();
     return () => ro.disconnect();
   }, [all, f.statement]);
-  const [cls, label] = VERDICT[f.verdict];
-  const forced = f.verdict === "object" && f.forced_rules.length > 0;
   // One chip per calculation rule: two cable paths give two LEN calculations, read as one.
   const calcs = [...new Set(f.evidence.flatMap((e) => "calc_id" in e ? [calcRule(e.calc_id)] : []))];
   const frames = f.evidence.flatMap((e) => "calc_id" in e ? [] : [e]);
   return (
-    <article className="msg">
+    <article className="msg" data-finding={f.id}>
       <span className="tag" title={NAME[f.agent]}>{TAG[f.agent] ?? f.agent}</span>
       <div className="msg-body">
         <div className="msg-head">
           <b className="who">{NAME[f.agent] ?? f.agent}</b>
-          <span className={`chip ${cls}`}>{forced ? <>{LOCK}Forced · {f.forced_rules.join(", ")}</> : label}</span>
+          <Verdict f={f} />
           {f.model && <ModelChip model={f.model} />}
         </div>
         <div className="bubble">
@@ -80,6 +84,10 @@ export function RoundView({ r, t, frameHref, running }: { r: Round; t: Timeline;
   const pending = running && running.round === r.round && !running.leadThinking ? t.reps.filter((a) => !r.findings.some((f) => f.agent === a)) : [];
   const log = useRef<HTMLDivElement>(null);
   const count = r.findings.length + (r.lead ? 1 : 0);
+  const jump = (id: string) => {
+    const el = log.current?.querySelector<HTMLElement>(`[data-finding="${id}"]`);
+    if (el && log.current) log.current.scrollTo({ top: el.offsetTop - 8, behavior: matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth" });
+  };
   // Follow new statements while a round runs, unless the reader has scrolled up to read an earlier one.
   const near = useRef(true);
   useEffect(() => {
@@ -88,6 +96,19 @@ export function RoundView({ r, t, frameHref, running }: { r: Round; t: Timeline;
   }, [count, running]);
   return (
     <section className="panel chat-panel" aria-label={`Round ${r.round}`}>
+      {/* Who approved, objected or asked: the first thing to read in a meeting (DESIGN.md); a tap jumps to the turn. */}
+      {(r.findings.length > 0 || pending.length > 0) && (
+        <ul className="tally" aria-label={`Round ${r.round} votes`}>
+          {r.findings.map((f) => (
+            <li key={f.id}>
+              <button type="button" className="tally-btn" onClick={() => jump(f.id)} aria-label={`${NAME[f.agent] ?? f.agent}: ${VERDICT[f.verdict][1]}. Show the statement`}>
+                <span className="tag">{TAG[f.agent] ?? f.agent}</span><Verdict f={f} />
+              </button>
+            </li>
+          ))}
+          {pending.map((a) => <li key={a}><span className="tag">{TAG[a] ?? a}</span><span className="chip neutral">Reviewing</span></li>)}
+        </ul>
+      )}
       <div className="chat" key={r.round} ref={log} role="log" aria-live="off" tabIndex={0} aria-label={`Round ${r.round} statements`}
         onScroll={(e) => { const el = e.currentTarget; near.current = el.scrollHeight - el.scrollTop - el.clientHeight < 120; }}>
         {r.findings.map((f) => <Statement key={f.id} f={f} frameHref={frameHref} calcRule={calcRule} />)}
