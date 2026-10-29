@@ -23,3 +23,10 @@ Deferred during the CEO plan review on Oct 27, 2026. Context: `docs/spec-survai.
 - Admin page (budget use, failures). Effort: S / S.
 - Per-survey budgets in addition to the daily cap. Effort: S / S.
 - (T18) A survey opened in a new tab has no passcode, so the Layout, Meeting and Approve buttons are greyed out with no reason given. Show a passcode field or a hint. Effort: S / S. Fixed by /design-review on main, 2026-10-28: the three steps show the passcode field when the tab has none.
+
+## Design debt (from /design-review, 2026-10-29)
+- (medium, spacing) Spacing values off the 4/8/16/24 scale (6/10/12/14/18/20 px) and inline style margins in 7 files; add spacing tokens. Effort: S / S.
+- (medium, responsive) Breakpoints 420/479/960 vs DESIGN.md's 600/720; DESIGN's tablet and laptop ranges overlap. Effort: S / S.
+- (medium, color) Two chip systems: "Unavailable" is grey in the meeting but red in the report; no lock icon on the sign-off page. Effort: S / S.
+- (medium, typography) Secondary text (.sub, .rt, .small, .sources at 13.6 px; .ev at 12 px) is below DESIGN.md's 15 px phone minimum. Effort: S / S.
+- (polish) Duplicate `.frames` rule (the sign-off evidence grid gets the 104 px version); bare `.label` outside `.field`/`.ask` renders as body text; department TAG/NAME maps copied in 5 files. Effort: S / S.
