@@ -177,11 +177,11 @@ select{font:400 1rem/1.4 var(--body);color:var(--ink);background:var(--surface);
 .dots i{width:6px;height:6px;border-radius:50%;background:var(--muted);opacity:.35;animation:dot 1.2s infinite ease-in-out}
 .dots i:nth-child(2){animation-delay:.15s}.dots i:nth-child(3){animation-delay:.3s}
 @keyframes dot{0%,80%,100%{opacity:.35}40%{opacity:1}}
-.ev{font:500 .75rem/1 var(--mono);color:var(--primary);text-underline-offset:3px;padding:8px 0}
+.ev{font:500 .75rem/1 var(--mono);color:var(--primary);text-underline-offset:3px;padding:16px 0;margin:-8px 0} /* 44 px to tap, 28 px of layout */
 .ev.muted{color:var(--muted)}
 .rt{font-size:.85rem;color:var(--muted);margin-top:4px}
 .clamp{display:-webkit-box;-webkit-line-clamp:4;-webkit-box-orient:vertical;overflow:hidden}
-.more-btn{font:600 .85rem/1 var(--body);color:var(--primary);background:none;border:0;padding:10px 0;cursor:pointer;min-height:36px}
+.more-btn{font:600 .85rem/1 var(--body);color:var(--primary);background:none;border:0;padding:10px 0;cursor:pointer;min-height:44px;margin:-4px 0}
 .ask{background:var(--question-bg);border-radius:14px;padding:16px;display:grid;gap:10px}
 .ask .label{color:var(--question);font-weight:600;font-size:.85rem;text-transform:uppercase;letter-spacing:.04em}
 @keyframes fade{from{opacity:0}to{opacity:1}}
