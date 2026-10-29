@@ -57,6 +57,7 @@ p{margin:0}
 .step-btn:hover .sname{color:var(--primary)}
 
 /* Room under the fixed action bar; main.wrap beats .wrap, whose padding used to reset this to 0 */
+main.wrap{padding-top:24px}
 main.wrap:has(+ .actions){padding-bottom:calc(120px + env(safe-area-inset-bottom))}
 .stack{display:grid;gap:20px}
 .panel{background:var(--surface);border:1px solid var(--rule);border-radius:14px;padding:16px}
