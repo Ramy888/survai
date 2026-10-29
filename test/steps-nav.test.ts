@@ -8,6 +8,7 @@ import { renderToStaticMarkup } from "react-dom/server.edge";
 import { describe, expect, it } from "vitest";
 import { Stepper, StepNav } from "../src/components/Shell";
 import { DeviceSummary } from "../src/steps/DeviceStep";
+import { openQuestions } from "../src/steps/MeetingStep";
 
 const buttons = (html: string) => [...html.matchAll(/<button[^>]*>.*?<\/button>/g)].map((m) => m[0]);
 
@@ -38,5 +39,24 @@ describe("the locked survey step", () => {
     for (const v of ["Demo room", "Core upgrade", "Juniper MX104", "Space", "Power", "3.5", "800", "DC", "40", "240", "14.5", "side to side", "MX104 datasheet"]) expect(html).toContain(v);
     expect(html).not.toContain("<input");
     expect(html).not.toContain("<button");
+  });
+});
+
+describe("the meeting's open questions", () => {
+  const q = (id: string, text: string) => ({ id, text, answer_kind: "yes_no", answer: null });
+  const t = {
+    status: "deliberating", layout_version: 1, deliberated_layout_version: 1, run: 1, reps: ["room_manager"],
+    request_questions: [q("r1", "Is the rack next to the installation rack owned by the customer?"), q("r2", "Which wall box feeds DC?")],
+    rounds: [{ round: 1, calcs: [], lead: { outcome: "waiting" },
+      findings: [{ id: "f", agent: "room_manager", verdict: "question", question: q("d1", "Is the rack next to the installation rack  owned by the customer ?") }] }],
+  };
+
+  it("drops the clip's question when a department already asks the same thing", () => {
+    const open = openQuestions(t as never, { state: "waiting" });
+    expect(open.map((o) => o.q.id)).toEqual(["d1", "r2"]);
+  });
+
+  it("drops the clip's questions once the meeting is over", () => {
+    expect(openQuestions({ ...t, rounds: [] } as never, { state: "done" })).toEqual([]);
   });
 });

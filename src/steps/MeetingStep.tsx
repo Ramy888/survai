@@ -115,6 +115,19 @@ function Ask({ q, agent, value, onChange }: { q: Question; agent: string; value:
   );
 }
 
+const sameText = (s: string) => s.toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
+
+/** What the engineer is asked now: the departments' open questions, then the narrated clip's optional ones. */
+export function openQuestions(t: Timeline, p: { state: string }) {
+  const last = t.rounds.at(-1);
+  const asked = p.state === "waiting" && last ? last.findings.filter((f) => f.question && !f.question.answer).map((f) => ({ q: f.question!, agent: f.agent })) : [];
+  // The clip's optional questions are context for the meeting; once it has ended they would only be clutter,
+  // and one a department already asks would be the same question twice.
+  const taken = new Set(asked.map(({ q }) => sameText(q.text)));
+  const clip = p.state === "done" ? [] : t.request_questions.filter((q) => !q.answer && !taken.has(sameText(q.text))).map((q) => ({ q, agent: "request" }));
+  return [...asked, ...clip];
+}
+
 export function MeetingStep({ survey, onEditLayout, onApprove }: { survey: Survey; onEditLayout: () => void; onApprove: () => void }) {
   const [t, setT] = useState<Timeline | null>(null);
   const [error, setError] = useState("");
@@ -136,11 +149,7 @@ export function MeetingStep({ survey, onEditLayout, onApprove }: { survey: Surve
   }, [p?.state]);
 
   const last = t?.rounds.at(-1);
-  const open = [
-    ...(p?.state === "waiting" && last ? last.findings.filter((f) => f.question && !f.question.answer).map((f) => ({ q: f.question!, agent: f.agent })) : []),
-    // The clip's optional questions are context for the meeting; once it has ended they would only be clutter.
-    ...(p?.state === "done" ? [] : t?.request_questions.filter((q) => !q.answer).map((q) => ({ q, agent: "request" })) ?? []),
-  ];
+  const open = t && p ? openQuestions(t, p) : [];
   const stale = t != null && t.deliberated_layout_version != null && t.layout_version > t.deliberated_layout_version;
   const view = t && (t.rounds.find((r) => r.round === shown) ?? last);
 
