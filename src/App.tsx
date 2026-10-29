@@ -71,6 +71,7 @@ function SurveyView({ id }: { id: string }) {
   // Approved is terminal in v1: the report is the survey from here on.
   if (status === "approved") { location.replace(`/survey/${id}/report`); return null; }
   if (!survey || !reached) {
+    if (error) document.title = "Survey not found · SurvAI";
     return (
       <>
         <header className="top"><div className="wrap bar"><a className="brand" href="/">Surv<b>AI</b></a></div></header>

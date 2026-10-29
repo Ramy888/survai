@@ -123,6 +123,11 @@ export function Replay({ slug }: { slug: string }) {
           <h1>A real equipment-room survey, replayed</h1>
           <p className="muted">{agents.charAt(0).toUpperCase() + agents.slice(1)} met over prepared, anonymised footage of a real room. Read their meeting and the report, or run the meeting again live.</p>
           <p className="muted small">In this sample the engineer's part (correcting the drafted layout, answering the departments and approving) was played by the builder; every department statement and the Survey Lead's notes are live model output.</p>
+          {/* The live proof, where a judge sees it first; the full panel stays at the bottom. */}
+          {p?.rerun.enabled && (
+            <p className="rerun-top"><button className="btn btn-secondary" disabled={busy || running} onClick={rerun}>{running ? "Meeting running…" : "Run the meeting again, live"}</button>
+              <span className="muted small">About 2 minutes on Meta models. The report keeps the run the engineer approved.</span></p>
+          )}
         </div>}
         {error && p && <p className="note error" role="alert">{error}</p>}
         {!p && !error && <p className="muted">Loading the replay…</p>}

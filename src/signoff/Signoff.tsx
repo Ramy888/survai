@@ -85,6 +85,7 @@ export function Signoff({ token }: { token: string }) {
           </>
         )}
         {error && <p className="note error" role="alert">{error}</p>}
+        {error && !p && <p><a className="btn btn-secondary" href="/">Go to SurvAI</a></p>}
       </main>
     </>
   );

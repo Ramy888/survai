@@ -63,15 +63,18 @@ export function SurveyStep({ onCreated }: { onCreated: (id: string) => void }) {
           <div className="field"><label htmlFor="pass">Team passcode</label>
             <input id="pass" type="password" autoComplete="off" value={passcode} onChange={(e) => setPasscode(e.target.value)}
               aria-describedby="pass-hint" aria-invalid={error.includes("passcode") || undefined} />
-            <span className="sub" id="pass-hint">Ask your team lead for it. Creating a survey runs paid models, so it is passcode-only.</span></div>
+            <span className="sub" id="pass-hint">Ask your team lead for it. Creating a survey runs paid models, so it is passcode-only.</span>
+            {/* Someone filling in the form without it learns why "Create survey" stays grey before they finish. */}
+            {!passcode && (form.site || form.project || form.device_model) && <p className="note warn small" role="status">Add the team passcode to create this survey.</p>}</div>
         </section>
         <section className="panel fields" aria-label="Request">
           <div className="two">
             <div className="field"><label htmlFor="site">Site code</label>
               <input id="site" placeholder="e.g. CAI-104" value={form.site} onChange={(e) => set("site", e.target.value)} autoComplete="off" /></div>
             <div className="field"><label htmlFor="qty">Quantity</label>
-              <input id="qty" type="number" inputMode="numeric" min={1} max={20} value={form.quantity}
-                onChange={(e) => set("quantity", Math.max(1, Math.min(20, Number(e.target.value) || 1)))} /></div>
+              <input id="qty" type="number" inputMode="numeric" min={1} max={20} value={form.quantity} aria-describedby="qty-hint"
+                onChange={(e) => set("quantity", Math.max(1, Math.min(20, Number(e.target.value) || 1)))} />
+              <span className="sub" id="qty-hint">How many of this device go in</span></div>
           </div>
           <div className="field"><label htmlFor="project">Project</label>
             <input id="project" placeholder="e.g. Card expansion" value={form.project} onChange={(e) => set("project", e.target.value)} /></div>
@@ -83,6 +86,7 @@ export function SurveyStep({ onCreated }: { onCreated: (id: string) => void }) {
               <button type="button" aria-pressed={!other} onClick={() => set("connects_to", "same_room")}>Same room</button>
               <button type="button" aria-pressed={other} onClick={() => set("connects_to", "other_room")}>Another room</button>
             </div>
+            <span className="sub">{other ? "The device links to a rack in another room: both rooms are filmed and Transmission joins." : "The device and what it links to are in this room."}</span>
           </div>
         </section>
         <section className="panel" aria-labelledby="reps-h">

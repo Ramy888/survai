@@ -239,3 +239,4 @@ textarea{font:400 1rem/1.4 var(--body);color:var(--ink);background:var(--surface
 .made-frames img{width:100%;aspect-ratio:9/16;object-fit:cover;border-radius:6px;border:1px solid var(--rule);background:var(--ground)}
 .made-answers{margin:0;padding-left:18px;display:grid;gap:4px;font-size:.95rem}
 @media (min-width:960px){.made-steps{grid-template-columns:1.3fr 1fr 1fr;gap:24px}}
+.rerun-top{display:flex;flex-wrap:wrap;align-items:center;gap:8px 12px;margin-top:12px}
