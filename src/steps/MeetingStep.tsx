@@ -23,6 +23,18 @@ export type FrameHref = (e: { frame: number | null; file_id?: string }) => strin
 /** One agent's turn in the meeting chat: who and how they voted, the statement in a bubble, then its evidence and rules. */
 function Statement({ f, frameHref, calcRule }: { f: Finding; frameHref: FrameHref; calcRule: (id: string) => string }) {
   const [all, setAll] = useState(false);
+  // "Show all" whenever the four-line clamp actually cuts the text: it depends on the width, not the length.
+  const text = useRef<HTMLParagraphElement>(null);
+  const [clipped, setClipped] = useState(false);
+  useEffect(() => {
+    const el = text.current;
+    if (!el || all) return;
+    const check = () => setClipped(el.scrollHeight > el.clientHeight + 1);
+    const ro = new ResizeObserver(check);
+    ro.observe(el);
+    check();
+    return () => ro.disconnect();
+  }, [all, f.statement]);
   const [cls, label] = VERDICT[f.verdict];
   const forced = f.verdict === "object" && f.forced_rules.length > 0;
   // One chip per calculation rule: two cable paths give two LEN calculations, read as one.
@@ -38,8 +50,8 @@ function Statement({ f, frameHref, calcRule }: { f: Finding; frameHref: FrameHre
           {f.model && <ModelChip model={f.model} />}
         </div>
         <div className="bubble">
-          <p className={all ? "" : "clamp"}>{f.statement}</p>
-          {f.statement.length > 240 && <button className="more-btn" onClick={() => setAll(!all)}>{all ? "Show less" : "Show all"}</button>}
+          <p ref={text} className={all ? "" : "clamp"}>{f.statement}</p>
+          {(clipped || all) && <button className="more-btn" onClick={() => setAll(!all)}>{all ? "Show less" : "Show all"}</button>}
         </div>
         {(calcs.length > 0 || frames.length > 0) && (
           <div className="msg-foot">
