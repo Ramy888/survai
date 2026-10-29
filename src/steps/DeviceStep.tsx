@@ -13,6 +13,13 @@ const toFields = (s: DeviceSpec): Fields => ({
 });
 const num = (v: string) => (v.trim() === "" ? null : Number(v));
 
+/** A cited source, with its site named: a third-party mirror (often behind a bot check) is visible before the click. */
+function Source({ s }: { s: DeviceSpec["sources"][number] }) {
+  let host = "";
+  try { host = new URL(s.url).hostname.replace(/^www\./, ""); } catch { /* a malformed URL still shows its title */ }
+  return <li><a href={s.url} target="_blank" rel="noopener noreferrer">{s.title || host || s.url}</a>{host && s.title ? <span className="muted"> · {host}</span> : null}</li>;
+}
+
 const REP_NAME: Record<string, string> = { ...Object.fromEntries(DEPARTMENTS.map(([id, , name]) => [id, name])), transmission: "Transmission" };
 
 /** What was saved in step 1, once the device is confirmed: the survey and the device, read-only. */
@@ -47,7 +54,7 @@ export function DeviceSummary({ survey }: { survey: Survey }) {
             <div>
               <span className="label">Sources</span>
               <ul className="sources">
-                {d.sources.map((s) => <li key={s.url}><a href={s.url} target="_blank" rel="noopener noreferrer">{s.title || new URL(s.url).hostname}</a></li>)}
+                {d.sources.map((s) => <Source key={s.url} s={s} />)}
               </ul>
             </div>
           )}
@@ -156,9 +163,7 @@ function DeviceForm({ survey, onConfirmed }: { survey: Survey; onConfirmed: () =
             <div>
               <span className="label">Sources</span>
               <ul className="sources">
-                {sources.map((s) => (
-                  <li key={s.url}><a href={s.url} target="_blank" rel="noopener noreferrer">{s.title || new URL(s.url).hostname}</a></li>
-                ))}
+                {sources.map((s) => <Source key={s.url} s={s} />)}
               </ul>
             </div>
           )}

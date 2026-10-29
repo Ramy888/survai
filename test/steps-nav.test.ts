@@ -38,7 +38,7 @@ describe("the locked survey step", () => {
         sources: [{ url: "https://example.com/mx104", title: "MX104 datasheet" }] },
     } as const;
     const html = renderToStaticMarkup(createElement(DeviceSummary, { survey: survey as never }));
-    for (const v of ["Demo room", "Core upgrade", "Juniper MX104", "Space", "Power", "3.5", "800", "DC", "40", "240", "14.5", "side to side", "MX104 datasheet"]) expect(html).toContain(v);
+    for (const v of ["Demo room", "Core upgrade", "Juniper MX104", "Space", "Power", "3.5", "800", "DC", "40", "240", "14.5", "side to side", "MX104 datasheet", "· example.com</span>"]) expect(html).toContain(v);
     expect(html).not.toContain("<input");
     expect(html).not.toContain("<button");
   });
