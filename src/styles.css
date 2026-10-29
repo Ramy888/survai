@@ -50,7 +50,8 @@ p{margin:0}
 .sname{font:500 .8rem/1 var(--body);color:var(--muted);white-space:nowrap}
 .stepper li.now .sname{color:var(--ink);font-weight:600}
 
-main{padding:24px 0 120px}
+/* Room under the fixed action bar; main.wrap beats .wrap, whose padding used to reset this to 0 */
+main.wrap:has(+ .actions){padding-bottom:calc(120px + env(safe-area-inset-bottom))}
 .stack{display:grid;gap:20px}
 .panel{background:var(--surface);border:1px solid var(--rule);border-radius:14px;padding:16px}
 .fields{display:grid;gap:14px}

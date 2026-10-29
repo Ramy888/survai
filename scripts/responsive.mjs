@@ -50,13 +50,19 @@ for (const [w, h, mobile] of SIZES) {
         .slice(0, 5).map((e) => e.tagName.toLowerCase() + (e.className && typeof e.className === "string" ? "." + e.className.split(" ").join(".") : ""))`) : [];
       const tag = `${w}x${h}-${theme}-${s.name}`;
       if (over > 0) failures.push(`${tag}: scrolls sideways by ${over}px (${offenders.join(", ")})`);
+      // Scrolled to the bottom, the page's last content must end above the fixed action bar, or it can never be reached.
+      const hidden = await evaluate(`(() => { scrollTo(0, document.documentElement.scrollHeight); const bar = document.querySelector(".actions");
+        const last = document.querySelector("main")?.lastElementChild?.lastElementChild ?? document.querySelector("main")?.lastElementChild;
+        return bar && last ? Math.round(last.getBoundingClientRect().bottom - bar.getBoundingClientRect().top) : 0; })()`);
+      if (hidden > 0) failures.push(`${tag}: the last content ends ${hidden}px under the action bar`);
+      await evaluate("scrollTo(0, 0)");
       const height = Math.min(MAX_H, await evaluate("document.documentElement.scrollHeight"));
       const shot = await send("Page.captureScreenshot", { format: "png", captureBeyondViewport: true, clip: { x: 0, y: 0, width: w, height, scale: 1 } });
       writeFileSync(join(out, `${tag}.png`), Buffer.from(shot.result.data, "base64"));
-      console.log(`${over > 0 ? "FAIL" : "ok  "} ${tag}`);
+      console.log(`${over > 0 || hidden > 0 ? "FAIL" : "ok  "} ${tag}`);
     }
   }
 }
 ws.close(); chrome.kill();
-if (failures.length) { console.error(`\n${failures.length} page(s) scroll sideways:\n${failures.join("\n")}`); process.exit(1); }
-console.log(`\nNo page scrolls sideways (${SIZES.length} sizes × 2 themes × ${screens.length} screens).`);
+if (failures.length) { console.error(`\n${failures.length} problem(s):\n${failures.join("\n")}`); process.exit(1); }
+console.log(`\nNo page scrolls sideways or hides content under the action bar (${SIZES.length} sizes × 2 themes × ${screens.length} screens).`);
