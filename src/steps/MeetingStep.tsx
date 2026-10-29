@@ -72,7 +72,7 @@ export function RoundView({ r, t, frameHref, running }: { r: Round; t: Timeline;
   const near = useRef(true);
   useEffect(() => {
     const el = log.current;
-    if (el && running && near.current) el.scrollTo({ top: el.scrollHeight, behavior: "smooth" });
+    if (el && running && near.current) el.scrollTo({ top: el.scrollHeight, behavior: matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth" });
   }, [count, running]);
   return (
     <section className="panel chat-panel" aria-label={`Round ${r.round}`}>
