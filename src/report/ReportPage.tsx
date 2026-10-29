@@ -56,6 +56,7 @@ export function ReportPage({ id }: { id: string }) {
   useEffect(() => {
     fetch(`/api/surveys/${id}/report`).then(async (res) => (res.ok ? setR(await res.json()) : setError((await res.json()).error ?? "Report unavailable")), () => setError("Report unavailable"));
   }, [id]);
+  useEffect(() => { if (r) document.title = `Report · ${r.header.site} · SurvAI`; }, [r]);
   if (error) return <main className="wrap"><p className="note error" role="alert">{error}</p></main>;
   if (!r) return <main className="wrap"><p className="muted">Loading report…</p></main>;
   const h = r.header;

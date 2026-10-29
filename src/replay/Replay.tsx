@@ -69,6 +69,7 @@ export function Replay({ slug }: { slug: string }) {
     if (res.ok) { setP(body); setError(""); } else setError(body.error ?? "Replay unavailable");
   }, () => setError("Replay unavailable"));
   useEffect(() => { void load(); }, [slug]);
+  useEffect(() => { document.title = "Sample survey replay · SurvAI"; }, []);
   const running = p?.rerun.running ?? false;
   useEffect(() => {
     if (!running) return;
@@ -125,7 +126,7 @@ export function Replay({ slug }: { slug: string }) {
             {tab === "meeting" ? (
               <div className="stack">
                 <div>
-                  <div className="title-row"><h2>Run {t.run}</h2>{ph && <span className="mono muted">{ph.state === "done" ? `Ended in round ${ph.round}` : `Round ${Math.min(ph.round, MAX_ROUNDS)} of ${MAX_ROUNDS}`}</span>}</div>
+                  <div className="title-row"><h2>{t.run && t.run > 1 ? `Meeting, run ${t.run}` : "The meeting"}</h2>{ph && <span className="mono muted">{ph.state === "done" ? `Ended in round ${ph.round}` : `Round ${Math.min(ph.round, MAX_ROUNDS)} of ${MAX_ROUNDS}`}</span>}</div>
                   <p className="muted" aria-live="polite">{running ? (ph?.state === "running" ? `Round ${ph.round}: the departments are reviewing the room live.` : "A new run is starting.")
                     : ph?.state === "waiting" ? "This run stopped on a question only the survey's engineer could answer." : "The meeting is over."}</p>
                 </div>

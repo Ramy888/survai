@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { getSurvey, type Survey } from "./api";
 import { ModelChip } from "./components/Footage";
-import { Shell, StepNav } from "./components/Shell";
+import { STEPS, Shell, StepNav } from "./components/Shell";
 import { DeviceStep } from "./steps/DeviceStep";
 import { SurveyStep } from "./steps/SurveyStep";
 import { UploadStep } from "./steps/UploadStep";
@@ -28,7 +28,7 @@ export function App() {
   const replay = location.pathname.match(/^\/replay\/([a-z0-9-]{1,40})$/)?.[1];
   if (replay) return <Replay slug={replay} />;
   if (id && isReport()) return <ReportPage id={id} />;
-  if (!id) return <SurveyStep onCreated={(newId) => { history.pushState(null, "", `/survey/${newId}`); setId(newId); }} />;
+  if (!id) { document.title = "New survey · SurvAI"; return <SurveyStep onCreated={(newId) => { history.pushState(null, "", `/survey/${newId}`); setId(newId); }} />; }
   return <SurveyView id={id} />;
 }
 
@@ -66,6 +66,8 @@ function SurveyView({ id }: { id: string }) {
     if (h1) { h1.tabIndex = -1; h1.focus({ preventScroll: true }); }
   }, [active]);
 
+  // The tab says where the engineer is (step and site), not just the app's name.
+  useEffect(() => { if (survey && active) document.title = `${STEPS[active - 1]} · ${survey.site} · SurvAI`; }, [active, survey?.site]);
   // Approved is terminal in v1: the report is the survey from here on.
   if (status === "approved") { location.replace(`/survey/${id}/report`); return null; }
   if (!survey || !reached) {
