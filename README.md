@@ -34,7 +34,7 @@ From [`docs/eval/accuracy.md`](docs/eval/accuracy.md); the scripts are in `scrip
 | Taped sheets to blur (SAM 3.1) | **9 of 9** found; "label" alone found 0 of 9, so the blur now also asks for "paper" and "sticker" |
 | Devices in racks (SAM 3.1) | Routers found in **6 of 15** frames that show them; the free-U estimate (U7–U21) is close to what was measured on site (U1–U20) |
 | Meeting repeatability | Same rack in **5 of 5** runs; forced objections identical; verdicts agree **23 of 25** (round 1 run five times on a local test survey of this room, not the public sample) |
-| Rules | **5 of the 12 rules** are calculated in code, and a model cannot overturn them; 264 automated tests |
+| Rules | **5 of the 12 rules** are calculated in code, and a model cannot overturn them; 265 automated tests |
 
 ## The problem
 
@@ -132,7 +132,7 @@ from the top, ladder capacity) are judged by the agents from the frames, with th
   taped sheets, stickers and people, and the browser blurred them before storing the frames.
 - Creating surveys and uploading need a passcode: 5 wrong tries per IP per 10 minutes, compared in constant time.
 - Daily caps on SAM and model calls are taken atomically before each call, so a refused call never reaches a paid
-  API. A public "run the meeting again" is limited to one per visitor per 10 minutes and 20 a day, from its own
+  API. A public "run the meeting again" is limited to one per visitor per 3 minutes and 20 a day, from its own
   allowance.
 - Model output is rendered as text only; a guard in `npm test` fails the build on raw HTML rendering.
 - No secrets in the repo: keys live in Worker secrets and a gitignored env file.

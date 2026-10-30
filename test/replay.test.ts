@@ -145,6 +145,17 @@ describe("POST /api/replay/:slug/rerun", () => {
     expect(started).toEqual([`${id}:2:1`, `${id}:3:1`]);
   });
 
+  it("lets the same visitor rerun again after 3 minutes, not before", async () => {
+    const { id } = await seed();
+    await q("INSERT INTO rerun_requests (ip, at) VALUES ('203.0.113.80', ?1)", ago(2)).run();
+    await q("INSERT INTO lead_notes (survey_id, run, round, body_json, model, outcome, created_at) VALUES (?1, 2, 1, '{}', 'm', 'done', ?2)", id, ago(1)).run(); // that run is over
+    const early = await rerun("203.0.113.80");
+    expect(early.status).toBe(429);
+    expect((await early.json<{ error: string }>()).error).toContain("every 3 minutes");
+    await q("UPDATE rerun_requests SET at = ?1 WHERE ip = '203.0.113.80'", ago(4)).run();
+    expect((await rerun("203.0.113.80")).status).toBe(202);
+  });
+
   it("refuses while a round is running, unless that round has been stuck for long", async () => {
     const { id } = await seed();
     await q("INSERT INTO findings (id, survey_id, run, round, agent, verdict, body_json, layout_version, created_at) VALUES (?1, ?2, 2, 1, 'power', 'approve', '{}', 1, ?3)", crypto.randomUUID(), id, ago(1)).run();

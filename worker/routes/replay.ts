@@ -9,7 +9,8 @@ import { buildTimeline } from "./timeline";
 
 export const replay = new Hono<AppEnv>();
 
-const WINDOW_MIN = 10; // one rerun per IP per window; a round silent this long counts as crashed
+const WINDOW_MIN = 10; // a round silent this long counts as crashed
+const PER_VISITOR_MIN = 3; // one rerun per IP per window; the daily cap below bounds the spend
 const MEETING_CALLS = 25; // up to 3 rounds × (6 departments + the Lead), with room for retries
 // Public reruns share the daily model cap with real surveys, so they get their own allowance and never touch a reserve
 // kept for real work (CSO-1: rotating IPs could otherwise spend the whole day's budget).
@@ -122,9 +123,9 @@ replay.post("/:slug/rerun", async (c) => {
   if (!id) return c.json({ error: "Replay not found" }, 404);
   if (await running(db, id)) return c.json({ error: "The meeting is already running. Watch it here." }, 409);
   const ip = c.req.header("CF-Connecting-IP") ?? "unknown";
-  const since = new Date(Date.now() - WINDOW_MIN * 60_000).toISOString();
+  const since = new Date(Date.now() - PER_VISITOR_MIN * 60_000).toISOString();
   const recent = await db.prepare("SELECT COUNT(*) AS n FROM rerun_requests WHERE ip = ?1 AND at > ?2").bind(ip, since).first<{ n: number }>();
-  if (recent?.n) return c.json({ error: `One rerun per visitor every ${WINDOW_MIN} minutes. Try again later.` }, 429);
+  if (recent?.n) return c.json({ error: `One rerun per visitor every ${PER_VISITOR_MIN} minutes. Try again later.` }, 429);
   const day = new Date().toISOString().slice(0, 10);
   const today = await db.prepare("SELECT COUNT(*) AS n FROM rerun_requests WHERE at >= ?1").bind(day).first<{ n: number }>();
   if ((today?.n ?? 0) >= RERUNS_PER_DAY) return c.json({ error: "The meeting has been rerun enough for today. The replay above is the full recorded meeting; try again tomorrow." }, 429);
