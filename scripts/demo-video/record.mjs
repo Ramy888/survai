@@ -11,12 +11,12 @@ import { fixLayout } from "./fix-layout.mjs";
 import { mkdirSync, readFileSync, readdirSync, rmSync, writeFileSync } from "node:fs";
 import { resolve } from "node:path";
 
-const B = "http://localhost:5173";
+const B = process.env.BASE ?? "http://localhost:5173"; // BASE=<live URL> runs the same flow as an end-to-end check
 // The judges' link, as judges get it: the passcode rides in the link, so the video shows no passcode field to look for.
 const { JUDGE_PASSCODE: JUDGE, SAMPLE, SLUG } = process.env;
 if (!JUDGE || !SAMPLE || !SLUG) throw new Error("JUDGE_PASSCODE, SAMPLE and SLUG are required");
 const MEDIA = resolve("tools/prepare/out/demo-room-public");
-const DIR = resolve("private/video/out") + "/";
+const DIR = resolve(process.env.OUT ?? "private/video/out") + "/";
 rmSync(DIR, { recursive: true, force: true }); mkdirSync(DIR + "frames", { recursive: true });
 
 const b = await launch({ scale: 4 / 3 });
