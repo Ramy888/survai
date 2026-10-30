@@ -5,7 +5,7 @@ const ROWS: [what: string, result: string, how: string][] = [
   ["Taped sheets to blur · Meta SAM 3.1", "9 of 9 found, 0 wrong boxes", "\"label\" alone found 0 of 9, so the app now also asks for paper and sticker"],
   ["Devices in the racks · Meta SAM 3.1", "Routers found in 6 of 15 frames; free-U estimate U7-U21 vs U1-U20 on site", "Weakest number here: the estimate is for the engineer to confirm"],
   ["Meeting repeatability · Muse Spark Open agents, Muse Wonder Lead", "Same rack in 5 of 5 runs; verdicts agree 23 of 25", "Round 1 run five times on a local test survey of this room (not this sample)"],
-  ["Rules", "5 of the 12 rules calculated in code; a model cannot overturn a failed one", "263 automated tests"],
+  ["Rules", "5 of the 12 rules calculated in code; a model cannot overturn a failed one", "264 automated tests"],
 ];
 
 export function Accuracy() {

@@ -34,7 +34,7 @@ From [`docs/eval/accuracy.md`](docs/eval/accuracy.md); the scripts are in `scrip
 | Taped sheets to blur (SAM 3.1) | **9 of 9** found; "label" alone found 0 of 9, so the blur now also asks for "paper" and "sticker" |
 | Devices in racks (SAM 3.1) | Routers found in **6 of 15** frames that show them; the free-U estimate (U7–U21) is close to what was measured on site (U1–U20) |
 | Meeting repeatability | Same rack in **5 of 5** runs; forced objections identical; verdicts agree **23 of 25** (round 1 run five times on a local test survey of this room, not the public sample) |
-| Rules | **5 of the 12 rules** are calculated in code, and a model cannot overturn them; 263 automated tests |
+| Rules | **5 of the 12 rules** are calculated in code, and a model cannot overturn them; 264 automated tests |
 
 ## The problem
 
