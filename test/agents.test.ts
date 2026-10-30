@@ -168,6 +168,15 @@ describe("the Survey Lead's prompt", () => {
     expect(leadSchema([], true).parse(note).next).toBe("done");
     expect(leadSchema([], false).parse(note).next).toBe("another_round");
   });
+
+  it("sends back a closing verdict that still asks for another round, so the report never contradicts itself", () => {
+    const note = (summary: string) => ({ round: 3, placement: { target: "none", reason: "r" }, summary, next: "done" });
+    const asks = leadSchema([], true).safeParse(note("Power still objects. Another round is required."));
+    expect(asks.success).toBe(false);
+    expect(asks.error?.issues[0].message).toMatch(/last round/);
+    expect(leadSchema([], true).safeParse(note("Closing verdict: R4 is agreed; the engineer must provide two DC feeds before installing.")).success).toBe(true);
+    expect(leadSchema([], false).safeParse(note("Another round is required.")).success).toBe(true); // earlier rounds may ask
+  });
 });
 
 describe("the Survey Lead's cable paths", () => {

@@ -37,6 +37,10 @@ export function leadSchema(rackLabels: string[], final = false, doors: Zone[] = 
     summary: z.string().min(1).max(800),
     next: z.enum(["another_round", "done"]).transform((n) => (final ? "done" : n)), // the last round closes the meeting
   }).superRefine((l, ctx) => {
+    // The last round's summary is the closing verdict: it may not ask for a round that will never run.
+    if (final && /\b(another|next|further|new) round\b/i.test(`${l.summary} ${l.placement.reason}`)) {
+      ctx.addIssue({ code: "custom", path: ["summary"], message: "This is the last round: write the closing verdict (what is agreed and what the engineer must settle before installing), not another round" });
+    }
     const rack = l.placement.target.startsWith("rack:") ? l.placement.target.slice(5) : null;
     if (rack && !rackLabels.includes(rack)) ctx.addIssue({ code: "custom", path: ["placement", "target"], message: `there is no rack ${rack}` });
     // Cables may run over racks (the ladder is above them) but never through a door or the space it swings into.

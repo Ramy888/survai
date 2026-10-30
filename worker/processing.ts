@@ -172,7 +172,11 @@ async function writeDraft(
       sam_free_u: free, // SAM's estimate of the empty space in the target rack (or the best-seen rack), for the engineer
       processing_notes: roomNotes, // readings that failed; the engineer fills these in on the layout step
     };
-    statements.push(db.prepare("UPDATE rooms SET facts_json = ?1 WHERE id = ?2").bind(JSON.stringify(facts), r.roomId));
+    // How the footage was made is recorded before processing starts; keep it (the replay says whether SurvAI blurred it).
+    statements.push(db.prepare(
+      `UPDATE rooms SET facts_json = CASE WHEN json_extract(facts_json, '$.footage') IS NULL THEN ?1
+         ELSE json_set(?1, '$.footage', json(json_extract(facts_json, '$.footage'))) END WHERE id = ?2`,
+    ).bind(JSON.stringify(facts), r.roomId));
   }
   if (!request.ok) notes.push(request.error);
   statements.push(db.prepare("UPDATE surveys SET request_json = ?1, processing_error = NULL WHERE id = ?2")

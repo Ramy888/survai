@@ -106,6 +106,15 @@ describe("runProcessing", () => {
     expect((await row<{ n: number }>("SELECT COUNT(*) AS n FROM files WHERE masks_json IS NOT NULL"))!.n).toBe(8);
   });
 
+  it("keeps how the footage was made (set before processing), so the replay tells the truth about blurring", async () => {
+    const { id, room } = await processingSurvey();
+    await env.DB.prepare("UPDATE rooms SET facts_json = ?1 WHERE id = ?2").bind(JSON.stringify({ footage: { source: "video", blurred: true } }), room).run();
+    await run(id, { inventory: INVENTORY, panel: PANEL, reader: REQUEST });
+    const facts = JSON.parse((await row<{ facts_json: string }>("SELECT facts_json FROM rooms WHERE id = ?1", room))!.facts_json);
+    expect(facts.footage).toEqual({ source: "video", blurred: true });
+    expect(facts.size_tiles).toBeTruthy(); // and the draft's own facts are written too
+  });
+
   it("deletes the narrated video once it is read, so only the blurred frames are kept", async () => {
     const { id } = await processingSurvey();
     const key = (await row<{ r2_key: string }>("SELECT r2_key FROM files WHERE kind = 'path_clip'"))!.r2_key;

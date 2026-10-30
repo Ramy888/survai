@@ -5,7 +5,8 @@ floor tiles, Muse Spark drafts the room and reads the engineer's narration, one 
 reviews the plan over up to three rounds, and Muse Wonder leads as Survey Lead. The engineer approves.
 
 - **Try it, no passcode:** https://survai.ramy-comm.workers.dev/sample (a real survey's meeting and report, with a
-  "Run the meeting again, live" button)
+  "Run the meeting again, live" button). In it the departments agree on rack R4 and find the blocker before anyone
+  travels: the room has none of the two free 40 A DC feeds the router needs, so power is arranged before the install.
 - **Live app:** https://survai.ramy-comm.workers.dev (creating a survey needs a team passcode, because it runs paid models)
 - **Demo video (3 min):** https://youtu.be/a9AVNlmbErw. The narration is synthetic: a clone of the builder's own voice
   (Cartesia). Footage in the video is blurred.
@@ -32,8 +33,8 @@ From [`docs/eval/accuracy.md`](docs/eval/accuracy.md); the scripts are in `scrip
 | Rack detection (SAM 3.1) | **43 of 44** boxes on a rack (98%); racks found in **21 of 28** frames (75%) |
 | Taped sheets to blur (SAM 3.1) | **9 of 9** found; "label" alone found 0 of 9, so the blur now also asks for "paper" and "sticker" |
 | Devices in racks (SAM 3.1) | Routers found in **6 of 15** frames that show them; the free-U estimate (U7–U21) is close to what was measured on site (U1–U20) |
-| Meeting repeatability | Same rack in **5 of 5** runs; forced objections identical; verdicts agree **23 of 25** |
-| Rules | **5 of the 12 rules** are calculated in code, and a model cannot overturn them; 249 automated tests |
+| Meeting repeatability | Same rack in **5 of 5** runs; forced objections identical; verdicts agree **23 of 25** (round 1 run five times on a local test survey of this room, not the public sample) |
+| Rules | **5 of the 12 rules** are calculated in code, and a model cannot overturn them; 263 automated tests |
 
 ## The problem
 
@@ -101,7 +102,10 @@ Every statement in the meeting and every step on the processing screen carries a
 it. Day-1 model tests are in `docs/day1.md`.
 
 **Open-weight models:** every department agent and the room layout run on **Muse Spark Open**
-(`meta-models/muse-spark-open-1026`), served through Baseten partner inference.
+(`meta-models/muse-spark-open-1026`), served through Baseten partner inference. Spark Open does the department work: each
+agent's verdict and objections under the rules it owns, the placement options it raises, and Cooling's comparison of
+them. Muse Wonder 1.0 leads because one reasoning model has to weigh those opinions against the calculations,
+resolve conflicts and pick the placement, or say why none passes yet.
 
 ## Rules the agents enforce
 
@@ -124,7 +128,8 @@ from the top, ladder capacity) are judged by the agents from the frames, with th
 
 - In the app, each picked frame goes to SAM 3.1 once to find what to blur; the browser blurs it and uploads only the
   blurred copy. With `tools/prepare`, footage is blurred on the engineer's computer before anything leaves it.
-- The public sample shows its key frames with faces and equipment logos blurred; the rest is shown as filmed.
+- The public sample's footage had equipment logos blurred before upload; in the app, SAM 3.1 found the labels,
+  taped sheets, stickers and people, and the browser blurred them before storing the frames.
 - Creating surveys and uploading need a passcode: 5 wrong tries per IP per 10 minutes, compared in constant time.
 - Daily caps on SAM and model calls are taken atomically before each call, so a refused call never reaches a paid
   API. A public "run the meeting again" is limited to one per visitor per 10 minutes and 20 a day, from its own
@@ -136,13 +141,13 @@ from the top, ladder capacity) are judged by the agents from the frames, with th
 
 One survey from upload to signed report on the deployed app, for one Juniper MX104 router. The footage came from a
 real equipment room. Before upload, it was anonymised: faces, logos, wall and panel text, and papers on the doors are
-blurred; that is what the models saw. (The public sample now shows the same key frames re-cut with only faces and the
-equipment logos blurred.) The engineer's answers in this run were given by the builder. Timings come from the Cloudflare Workflows
+blurred; that is what the models saw. (The public sample is a later survey of the same room, made in the app from one
+narrated video, with logos blurred in the footage and labels, papers and people blurred in the browser.) The engineer's answers in this run were given by the builder. Timings come from the Cloudflare Workflows
 instance records and the database timestamps.
 
 | Stage | Time | Target |
 |---|---|---|
-| Upload (30 key frames, 1 narrated path clip, 2 panel photos, 2 photos; the sample's prepared flow) | 1 min 52 s from creating the survey to the last file (includes the device step) | none |
+| Upload (30 key frames, 1 narrated path clip, 2 panel photos, 2 photos; the prepared-frames flow) | 1 min 52 s from creating the survey to the last file (includes the device step) | none |
 | Processing: SAM 3.1 on 30 frames (5 batches), room inventory, panel photos, request reader | **67 s** | ≤ 2 min ✅ |
 | Meeting: 3 rounds, 5 department agents plus the Survey Lead | **90 s** of agent time (34 s, 31 s, 25 s); 1 min 55 s end to end, including 22 s for the engineer to answer 2 questions | ≤ 3 min ✅ |
 

@@ -18,6 +18,7 @@ const step: StepRunner = { do: (_n, _c, fn) => fn() };
 const liveRule = new Map(meeting.calcs.map((c) => [c.id, c.rule]));
 
 /** Replays recorded replies; calc ids from the live run are mapped to this round's ids of the same rule. */
+const leadRetries: number[] = [];
 function replayFetch() {
   let panel = 0;
   return (async (_url: string, init: RequestInit) => {
@@ -34,7 +35,10 @@ function replayFetch() {
     const recorded = meeting.replies.filter((r) => r.round === round && r.agent === agent).at(-1)!;
     const data = JSON.parse(prompt.slice(prompt.indexOf("<data>\n") + 7, prompt.indexOf("\n</data>")));
     const idOf = new Map((data.calculations as { id: string; rule: string }[]).map((c) => [c.rule, c.id]));
-    return out(recorded.text.replace(/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/g, (id) => idOf.get(liveRule.get(id) ?? "") ?? id));
+    let text = recorded.text.replace(/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/g, (id) => idOf.get(liveRule.get(id) ?? "") ?? id);
+    // The recorded round-3 Lead still asked for "a further round"; sent back with the error, it closes the meeting instead.
+    if (agent === "lead" && prompt.includes("could not be used")) { leadRetries.push(round); text = text.replace(/[^.]*\b(another|next|further|new) round\b[^.]*\./gi, " The engineer must clear it before installing."); }
+    return out(text);
   }) as unknown as typeof fetch;
 }
 
@@ -89,6 +93,7 @@ describe("thin path on recorded replies", () => {
     const report = (await buildReport(env.DB, id))!;
     expect(report.header.devices).toBe("1 × Juniper MX104");
     expect(report.lead?.placement.target).toBe("rack:R5");
+    expect(leadRetries).toEqual([3]); // only the last round's "another round" was sent back
     expect(report.statements).toHaveLength(5);
     expect(report.objections).toEqual([{ agent: "room_manager", rules: expect.arrayContaining(["R1", "R2"]), override_reason: null }]);
     const plan = buildPlan(report.plan as never);
