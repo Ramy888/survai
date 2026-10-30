@@ -8,6 +8,9 @@ import { OWNED_RULES } from "../worker/agents/config";
 import { mergeFinding } from "../worker/agents/merge";
 import { leadPrompt, leadSchema } from "../worker/agents/lead";
 import { buildAgentPrompt, runAgent, type MeetingInput } from "../worker/agents/runner";
+import { askJsonReply } from "../worker/agents/json";
+import { ROUTES } from "../worker/clients/models";
+import { z } from "zod";
 
 const calc = (id: string, rule: string, pass: boolean | null, result: Record<string, unknown> = {}): Calc & { id: string } => ({ id, rule, inputs: {}, result, pass });
 
@@ -123,6 +126,22 @@ describe("runAgent", () => {
   it("is unavailable when the model fails and nothing is forced", async () => {
     const { models } = fakeModels([]);
     expect(await runAgent(models, "space", input())).toMatchObject({ verdict: "unavailable", rule_refs: [], forced_rules: [] });
+  });
+});
+
+describe("askJsonReply", () => {
+  it("hands an answer that keeps breaking the rules to the route's next model, so the Lead falls back on a bad answer too", async () => {
+    const calls: string[] = [];
+    const models = {
+      run: async (route: keyof typeof ROUTES, _p: unknown, _ctx: unknown, from = 0) => {
+        const m = ROUTES[route][from];
+        calls.push(m);
+        return { text: m === "muse-wonder-1.0" ? "not json" : JSON.stringify({ ok: true }), model: m, fellBack: from > 0, raw: null };
+      },
+    } as never;
+    const r = await askJsonReply(models, "lead", { text: "x" }, z.object({ ok: z.literal(true) }), "lead note");
+    expect(r).toMatchObject({ value: { ok: true }, model: "muse-spark-1.3", fellBack: true });
+    expect(calls).toEqual(["muse-wonder-1.0", "muse-wonder-1.0", "muse-spark-1.3"]); // Wonder gets its one corrected retry first
   });
 });
 

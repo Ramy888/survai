@@ -12,4 +12,4 @@ Counts "by eye" were made on overlay sheets of the frames shown in the replay (b
 | Free rack space estimate | SAM's estimate **U7–U21** (15U) vs **U1–U20** entered on site | From the gap below the devices in frame 13, with the rack's box as 42U. An estimate the engineer confirms |
 | Meeting repeatability (Muse Spark Open agents, Muse Wonder Lead) | **5 of 5** runs place the device in the same rack; forced objections identical **5 of 5**; department verdicts agree **23 of 25** (92%) | `meeting-consistency.json`: round 1 run five times on a local test survey of this room (not the public sample) |
 | Agent reliability | **0 of 25** department turns dropped after a second retry (2 of 15 before) | Model replies that break the rules (another department's rule, an unknown calculation) are sent back with the exact error |
-| Rules | **5 of the 12 rules** are calculated in code, and a model cannot overturn a failed one | `npm test`: 265 tests |
+| Rules | **5 of the 12 rules** are calculated in code, and a model cannot overturn a failed one | `npm test`: 266 tests |

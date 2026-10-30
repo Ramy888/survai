@@ -194,6 +194,7 @@ export async function runRound({ env, models, step, startRound }: Deps, surveyId
       return { note: r.value as LeadNote, model: r.model as string, fellBack: r.fellBack };
     } catch (err) {
       if (err instanceof BudgetExceeded || !(err instanceof ModelError || err instanceof BadModelAnswer)) throw err;
+      console.log(JSON.stringify({ evt: "lead_unavailable", reason: err.constructor.name, message: err.message, survey: surveyId, run, round }));
       const note: LeadNote = { round, placement: { target: "none", reason: "The Survey Lead was unavailable this round." }, propose_items: [], conflicts: [], summary: "The Survey Lead was unavailable this round.", next: "another_round" };
       return { note, model: "unavailable", fellBack: false };
     }

@@ -6,7 +6,7 @@ import { Accuracy } from "../components/Accuracy";
 import { Impact } from "../components/Impact";
 import { ReportSheet, type Report } from "../report/ReportPage";
 import "../report/print.css";
-import { NAME, phase, Roster, RoundView, roundsToShow, Thinking } from "../steps/MeetingStep";
+import { NAME, phase, Roster, RoundView, roundsToShow } from "../steps/MeetingStep";
 import { Feeds } from "../components/Feeds";
 import { feedRows, type FeedInput } from "../steps/feeds";
 
@@ -134,7 +134,8 @@ export function Replay({ slug }: { slug: string }) {
   const { view, tabs } = t && ph ? roundsToShow(t, ph, shown) : { view: null, tabs: [] };
   // How many departments met, in words; the sample's count comes from the survey, not from this copy.
   const agents = t ? `${["", "one", "two", "three", "four", "five", "six", "seven"][t.reps.length] ?? t.reps.length} department agents` : "The department agents";
-  const waiting = ph?.state === "waiting" && last ? last.findings.filter((f) => f.question && !f.question.answer) : [];
+  const starting = running && ph?.state !== "running"; // a rerun asked for, its first round not yet written
+  const waiting = !starting && ph?.state === "waiting" && last ? last.findings.filter((f) => f.question && !f.question.answer) : [];
   return (
     <>
       <header className="top"><div className="wrap bar"><a className="brand" href="/">Surv<b>AI</b></a><span className="mono muted">Replay · sample survey</span></div></header>
@@ -170,11 +171,11 @@ export function Replay({ slug }: { slug: string }) {
             {tab === "meeting" ? (
               <div className="stack meeting-anchor" id="meeting">
                 <div>
-                  <div className="title-row"><h2>{t.run && t.run > 1 ? `Meeting, run ${t.run}` : "The meeting"}</h2>{ph && <span className="mono muted">{ph.state === "done" ? `Ended in round ${ph.round}` : `Round ${Math.min(ph.round, MAX_ROUNDS)} of ${MAX_ROUNDS}`}</span>}</div>
+                  <div className="title-row"><h2>{starting ? `Meeting, run ${(t.run ?? 1) + 1}` : t.run && t.run > 1 ? `Meeting, run ${t.run}` : "The meeting"}</h2>{ph && <span className="mono muted">{starting ? `Round 1 of ${MAX_ROUNDS}` : ph.state === "done" ? `Ended in round ${ph.round}` : `Round ${Math.min(ph.round, MAX_ROUNDS)} of ${MAX_ROUNDS}`}</span>}</div>
                   <p className="muted" aria-live="polite">{running ? (ph?.state === "running" ? `Round ${ph.round}: the departments are reviewing the room live.` : "A new run is starting.")
                     : ph?.state === "waiting" ? "This run stopped on a question only the survey's engineer could answer." : "The meeting is over."}</p>
                 </div>
-                {tabs.length > 1 && (
+                {!starting && tabs.length > 1 && (
                   <div className="seg" role="group" aria-label="Round" style={{ gridTemplateColumns: `repeat(${tabs.length}, 1fr)` }}>
                     {tabs.map((r) => <button key={r.round} type="button" aria-pressed={r.round === view?.round} onClick={() => setShown(r.round)}>Round {r.round}</button>)}
                   </div>
@@ -182,18 +183,13 @@ export function Replay({ slug }: { slug: string }) {
                 {/* The chat and who is at the table, side by side on wide screens, as on the engineer's meeting step. */}
                 <div className="stack layout-grid">
                   <div className="stack">
-                    {view
+                    {/* A new run takes the old run's place as soon as it starts, before it has written anything. */}
+                    {view && !starting
                       ? <RoundView r={view} t={t} frameHref={(e) => `/api/replay/${slug}/frames/${e.frame}`} running={running && ph && view === tabs.at(-1) ? ph : null} />
                       : <RoundView r={{ round: 1, findings: [], calcs: [], lead: null }} t={t} frameHref={() => "#"} running={{ round: 1, leadThinking: false }} />}
-                    {running && ph?.state !== "running" && (
-                      <section className="panel" aria-label={`Run ${t.run! + 1}`}>
-                        <p className="muted">Run {t.run! + 1} is starting live:</p>
-                        <div className="chat">{t.reps.map((a) => <Thinking key={a} agent={a} text="Reviewing the room" />)}</div>
-                      </section>
-                    )}
                   </div>
                   <div className="stack meeting-side">
-                    <Roster t={t} r={view} running={!!running && ph?.state === "running" && view === tabs.at(-1)} />
+                    <Roster t={starting ? { ...t, rounds: [] } : t} r={starting ? null : view} running={starting || (!!running && ph?.state === "running" && view === tabs.at(-1))} />
                     {waiting.map((f) => <div className="ask" key={f.id}><span className="label">Waiting on the engineer</span><p>{f.question!.text}</p></div>)}
                   </div>
                 </div>

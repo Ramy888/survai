@@ -145,10 +145,10 @@ export function createModels({ env, fetch: doFetch = fetch, sleep = (ms) => new 
   }
 
   return {
-    /** Runs a prompt on its route's models in order; the reply says which model answered. */
-    async run(route: Route, prompt: Prompt, ctx: LogContext = {}): Promise<Reply> {
+    /** Runs a prompt on its route's models in order, from `from`; the reply says which model answered. */
+    async run(route: Route, prompt: Prompt, ctx: LogContext = {}, from = 0): Promise<Reply> {
       const chain = ROUTES[route];
-      for (let i = 0; ; i++) {
+      for (let i = from; ; i++) {
         try {
           const reply = { ...(await callModel(chain[i], prompt, ctx)), fellBack: i > 0 };
           // Local only (.env): reply texts become test fixtures. Never set in production.
