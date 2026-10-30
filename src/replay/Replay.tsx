@@ -121,6 +121,13 @@ export function Replay({ slug }: { slug: string }) {
     }
   }
 
+  // The top button starts the run far above the meeting, so it takes the judge to where the run will show.
+  function toMeeting() {
+    setTab("meeting");
+    requestAnimationFrame(() => document.getElementById("meeting")?.scrollIntoView({
+      behavior: matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth", block: "start" }));
+  }
+
   const t = p?.timeline;
   const ph = t && phase(t);
   const last = t?.rounds.at(-1);
@@ -144,7 +151,7 @@ export function Replay({ slug }: { slug: string }) {
           <p className="muted small">In this sample the engineer's part (correcting the drafted layout, answering the departments and approving) was played by the builder; every department statement and the Survey Lead's notes are live model output.</p>
           {/* The live proof, where a judge sees it first; the full panel stays at the bottom. */}
           {p?.rerun.enabled && (
-            <p className="rerun-top"><button className="btn btn-secondary" disabled={busy || running} onClick={rerun}>{running ? `Meeting running · ${clock}` : "Run the meeting again, live"}</button>
+            <p className="rerun-top"><button className="btn btn-secondary" disabled={busy || running} onClick={() => { toMeeting(); void rerun(); }}>{running ? `Meeting running · ${clock}` : "Run the meeting again, live"}</button>
               <span className="muted small">About 2 minutes on Meta models. The report keeps the run the engineer approved.</span></p>
           )}
         </div>}
@@ -161,7 +168,7 @@ export function Replay({ slug }: { slug: string }) {
               <button type="button" aria-pressed={tab === "report"} onClick={() => setTab("report")}>Report</button>
             </div>
             {tab === "meeting" ? (
-              <div className="stack">
+              <div className="stack meeting-anchor" id="meeting">
                 <div>
                   <div className="title-row"><h2>{t.run && t.run > 1 ? `Meeting, run ${t.run}` : "The meeting"}</h2>{ph && <span className="mono muted">{ph.state === "done" ? `Ended in round ${ph.round}` : `Round ${Math.min(ph.round, MAX_ROUNDS)} of ${MAX_ROUNDS}`}</span>}</div>
                   <p className="muted" aria-live="polite">{running ? (ph?.state === "running" ? `Round ${ph.round}: the departments are reviewing the room live.` : "A new run is starting.")
@@ -172,17 +179,24 @@ export function Replay({ slug }: { slug: string }) {
                     {tabs.map((r) => <button key={r.round} type="button" aria-pressed={r.round === view?.round} onClick={() => setShown(r.round)}>Round {r.round}</button>)}
                   </div>
                 )}
-                <Roster t={t} r={view} running={!!running && ph?.state === "running" && view === tabs.at(-1)} />
-                {view
-                  ? <RoundView r={view} t={t} frameHref={(e) => `/api/replay/${slug}/frames/${e.frame}`} running={running && ph && view === tabs.at(-1) ? ph : null} />
-                  : <RoundView r={{ round: 1, findings: [], calcs: [], lead: null }} t={t} frameHref={() => "#"} running={{ round: 1, leadThinking: false }} />}
-                {running && ph?.state !== "running" && (
-                  <section className="panel" aria-label={`Run ${t.run! + 1}`}>
-                    <p className="muted">Run {t.run! + 1} is starting live:</p>
-                    <div className="chat">{t.reps.map((a) => <Thinking key={a} agent={a} text="Reviewing the room" />)}</div>
-                  </section>
-                )}
-                {waiting.map((f) => <div className="ask" key={f.id}><span className="label">Waiting on the engineer</span><p>{f.question!.text}</p></div>)}
+                {/* The chat and who is at the table, side by side on wide screens, as on the engineer's meeting step. */}
+                <div className="stack layout-grid">
+                  <div className="stack">
+                    {view
+                      ? <RoundView r={view} t={t} frameHref={(e) => `/api/replay/${slug}/frames/${e.frame}`} running={running && ph && view === tabs.at(-1) ? ph : null} />
+                      : <RoundView r={{ round: 1, findings: [], calcs: [], lead: null }} t={t} frameHref={() => "#"} running={{ round: 1, leadThinking: false }} />}
+                    {running && ph?.state !== "running" && (
+                      <section className="panel" aria-label={`Run ${t.run! + 1}`}>
+                        <p className="muted">Run {t.run! + 1} is starting live:</p>
+                        <div className="chat">{t.reps.map((a) => <Thinking key={a} agent={a} text="Reviewing the room" />)}</div>
+                      </section>
+                    )}
+                  </div>
+                  <div className="stack meeting-side">
+                    <Roster t={t} r={view} running={!!running && ph?.state === "running" && view === tabs.at(-1)} />
+                    {waiting.map((f) => <div className="ask" key={f.id}><span className="label">Waiting on the engineer</span><p>{f.question!.text}</p></div>)}
+                  </div>
+                </div>
               </div>
             ) : (
               <div className="report"><ReportSheet r={p.report} /></div>
