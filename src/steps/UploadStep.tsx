@@ -12,7 +12,7 @@ const ROOM_NAME: Record<string, string> = { devices_hall: "Devices hall", connec
 export const KINDS: { kind: FileKind; label: string; hint: string; limit: number; accept: string; rooms: string[]; optional?: boolean }[] = [
   { kind: "key_frame", label: "Key frames", hint: "Up to 30 sharp, blurred frames", limit: 30, accept: "image/jpeg,image/png", rooms: ["devices_hall", "connect_to"] },
   { kind: "path_clip", label: "Narrated video", hint: "MP4, the cable route, narrated; read once, then deleted", limit: 1, accept: "video/mp4", rooms: ["devices_hall"], optional: true },
-  { kind: "panel_photo", label: "Power panel photos", hint: "Optional: read for the breakers; without one, you enter them in the layout step", limit: 3, accept: "image/jpeg,image/png", rooms: ["devices_hall"], optional: true },
+  { kind: "panel_photo", label: "Power panel photos", hint: "Needed to read the breakers", limit: 3, accept: "image/jpeg,image/png", rooms: ["devices_hall"] },
   { kind: "photo", label: "Other photos", hint: "Optional", limit: 5, accept: "image/jpeg,image/png", rooms: ["devices_hall", "connect_to"], optional: true },
 ];
 const CHECK = <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" aria-hidden="true"><path d="M5 12l5 5L19 7" /></svg>;
@@ -78,7 +78,7 @@ export function UploadStep({ survey, onStarted, back }: { survey: Survey; onStar
         <div>
           <h1>{locked ? "Uploaded footage" : "Upload footage"}</h1>
           <p className="muted">{locked ? "What the models worked from, as uploaded."
-            : "Film one slow walk-through of the room, saying where the device goes and how the cables run, and photograph the power panel if you can. SurvAI takes the frames and the narration from the same video."}</p>
+            : "Film one slow walk-through of the room, saying where the device goes and how the cables run, and photograph the power panel. SurvAI takes the frames and the narration from the same video."}</p>
         </div>
         {locked && <p className="note info">Locked once processing started: the layout and the meeting are built on these files. To use different footage, start a new survey.</p>}
         {survey.processing_error && <p className="note error" role="alert">{survey.processing_error}</p>}
