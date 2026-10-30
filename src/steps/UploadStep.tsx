@@ -12,7 +12,7 @@ const ROOM_NAME: Record<string, string> = { devices_hall: "Devices hall", connec
 export const KINDS: { kind: FileKind; label: string; hint: string; limit: number; accept: string; rooms: string[]; optional?: boolean }[] = [
   { kind: "key_frame", label: "Key frames", hint: "Up to 30 sharp, blurred frames", limit: 30, accept: "image/jpeg,image/png", rooms: ["devices_hall", "connect_to"] },
   { kind: "path_clip", label: "Narrated video", hint: "MP4, the cable route, narrated; read once, then deleted", limit: 1, accept: "video/mp4", rooms: ["devices_hall"], optional: true },
-  { kind: "panel_photo", label: "Power panel photos", hint: "Needed to read the breakers", limit: 3, accept: "image/jpeg,image/png", rooms: ["devices_hall"] },
+  { kind: "panel_photo", label: "Power panel photos", hint: "Optional: read for the breakers; without one, you enter them in the layout step", limit: 3, accept: "image/jpeg,image/png", rooms: ["devices_hall"], optional: true },
   { kind: "photo", label: "Other photos", hint: "Optional", limit: 5, accept: "image/jpeg,image/png", rooms: ["devices_hall", "connect_to"], optional: true },
 ];
 const CHECK = <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" aria-hidden="true"><path d="M5 12l5 5L19 7" /></svg>;
@@ -30,6 +30,7 @@ export function UploadStep({ survey, onStarted, back }: { survey: Survey; onStar
   const [progress, setProgress] = useState<{ slot: string; done: number; total: number; frac: number } | null>(null);
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
+  const [videoWork, setVideoWork] = useState(false); // picking, blurring and uploading the walk-through
   // How the room's key frames arrive: picked here from the walk-through video, or prepared with tools/prepare.
   const [source, setSource] = useState<"video" | "prepared">("video");
   const refresh = () => listFiles(survey.id).then((r) => setRooms(r.rooms), (e: Error) => setError(e.message));
@@ -72,12 +73,12 @@ export function UploadStep({ survey, onStarted, back }: { survey: Survey; onStar
   return (
     <Shell step={2} surveyCode={survey.site}
       actions={locked ? back && <button className="btn btn-primary" onClick={back.go}>{back.label}</button>
-        : <button className="btn btn-primary" disabled={!complete || !!progress || busy || !passcode} onClick={process}>{busy ? "Starting…" : "Process footage"}</button>}>
+        : <button className="btn btn-primary" disabled={!complete || !!progress || videoWork || busy || !passcode} onClick={process}>{busy ? "Starting…" : "Process footage"}</button>}>
       <div className="stack narrow">
         <div>
           <h1>{locked ? "Uploaded footage" : "Upload footage"}</h1>
           <p className="muted">{locked ? "What the models worked from, as uploaded."
-            : "Film one slow walk-through of the room, saying where the device goes and how the cables run, and photograph the power panel. SurvAI takes the frames and the narration from the same video."}</p>
+            : "Film one slow walk-through of the room, saying where the device goes and how the cables run, and photograph the power panel if you can. SurvAI takes the frames and the narration from the same video."}</p>
         </div>
         {locked && <p className="note info">Locked once processing started: the layout and the meeting are built on these files. To use different footage, start a new survey.</p>}
         {survey.processing_error && <p className="note error" role="alert">{survey.processing_error}</p>}
@@ -108,7 +109,7 @@ export function UploadStep({ survey, onStarted, back }: { survey: Survey; onStar
               {KINDS.filter((k) => k.rooms.includes(role) && (k.kind !== "path_clip" || (!locked && source === "prepared"))).map((k) => !locked && source === "video" && k.kind === "key_frame" ? (
                 <VideoFrames key={k.kind} surveyId={survey.id} role={role} passcode={passcode} files={rooms[role].files.filter((f) => f.kind === "key_frame")}
                   narration={role === "devices_hall" ? rooms[role].files.find((f) => f.kind === "path_clip") : undefined}
-                  disabled={!!progress || !passcode} onDone={refresh} onError={setError} />
+                  disabled={!!progress || !passcode} onBusy={setVideoWork} onDone={refresh} onError={setError} />
               ) : (
                 <Slot key={k.kind} surveyId={survey.id} role={role} k={k} files={rooms[role].files.filter((f) => f.kind === k.kind)}
                   missing={rooms[role].missing.includes(k.kind)} progress={progress?.slot === `${role}:${k.kind}` ? progress : null}
@@ -126,9 +127,9 @@ export function UploadStep({ survey, onStarted, back }: { survey: Survey; onStar
 /** The walk-through video as filmed: SurvAI picks the frames in this browser, Meta SAM 3.1 finds the labels to blur,
  * the browser blurs them, and only the blurred frames are uploaded as key frames. The same video carries the
  * narration: it is uploaded once for Muse Spark 1.3 to read and deleted after. The engineer only films. */
-function VideoFrames({ surveyId, role, passcode, files, narration, disabled, onDone, onError }: {
+function VideoFrames({ surveyId, role, passcode, files, narration, disabled, onBusy, onDone, onError }: {
   surveyId: string; role: string; passcode: string; files: UploadedFile[]; narration?: UploadedFile; disabled: boolean;
-  onDone: () => Promise<unknown>; onError: (m: string) => void;
+  onBusy: (busy: boolean) => void; onDone: () => Promise<unknown>; onError: (m: string) => void;
 }) {
   const input = useRef<HTMLInputElement>(null);
   type Work = Progress | { stage: "finding" | "uploading" | "listening" | "narration"; done: number; total: number };
@@ -147,6 +148,7 @@ function VideoFrames({ surveyId, role, passcode, files, narration, disabled, onD
   async function run(file: File | undefined) {
     if (!file) return;
     onError("");
+    onBusy(true);
     clearLive();
     try {
       const { frames, duration } = await framesFromVideo(file, 30, setWork);
@@ -185,7 +187,7 @@ function VideoFrames({ surveyId, role, passcode, files, narration, disabled, onD
       onError((e as Error).message);
     } finally {
       setWork(null);
-      await onDone();
+      try { await onDone(); } finally { onBusy(false); }
     }
   }
 

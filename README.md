@@ -34,7 +34,7 @@ From [`docs/eval/accuracy.md`](docs/eval/accuracy.md); the scripts are in `scrip
 | Taped sheets to blur (SAM 3.1) | **9 of 9** found; "label" alone found 0 of 9, so the blur now also asks for "paper" and "sticker" |
 | Devices in racks (SAM 3.1) | Routers found in **6 of 15** frames that show them; the free-U estimate (U7–U21) is close to what was measured on site (U1–U20) |
 | Meeting repeatability | Same rack in **5 of 5** runs; forced objections identical; verdicts agree **23 of 25** (round 1 run five times on a local test survey of this room, not the public sample) |
-| Rules | **5 of the 12 rules** are calculated in code, and a model cannot overturn them; 266 automated tests |
+| Rules | **5 of the 12 rules** are calculated in code, and a model cannot overturn them; 267 automated tests |
 
 ## The problem
 
@@ -67,7 +67,8 @@ placement. The engineer approves, and the real representatives sign off from a l
    - Muse Spark drafts the room: racks, door, A/C, ladder, columns, wall panels, each linked to the frames it was
      seen in.
    - Muse Spark 1.3 turns the Egyptian Arabic narration into the request (what goes where, the route, the
-     destination) and the questions it leaves open, and reads the breakers on the panel photo.
+     destination) and the questions it leaves open, and reads the breakers on the panel photo (optional: without
+     one, the engineer enters the breakers in the layout step).
 4. **Layout.** The engineer corrects the drafted plan on a 600 mm tile grid and fills in what the footage can't
    show: free breakers, spare cooling, ladder height. The target rack comes marked from the narration, and its free
    rack units come pre-filled from SAM's boxes (the gap below its devices, the rack counted as 42U) for the engineer

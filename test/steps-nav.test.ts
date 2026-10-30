@@ -257,6 +257,9 @@ describe("what feeds the meeting: each value the agents start from, and where it
     expect(row(rows, "where").source).toBe("narration");
     expect(row(rows, "route")).toMatchObject({ value: "up from the top onto the ladder · fibre, DC power", source: "narration" });
     expect(row(rows, "power")).toMatchObject({ value: "8 seen, 2 free; ratings hidden by the blur, confirm on site", source: "panel" });
+    // No panel photo: nothing was read, so the row asks the engineer instead of claiming "0 seen" from a photo.
+    expect(row(feedRows({ ...base, breakers: { seen: 0, free: 0, rated: 0, edited: false } }), "power"))
+      .toMatchObject({ value: "No panel photo: enter the free breakers in the layout step", source: "missing" });
     expect(row(rows, "ladder")).toMatchObject({ value: "2.7 m", source: "assumed" });
   });
 });

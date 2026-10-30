@@ -38,7 +38,8 @@ export function feedRows(i: FeedInput): FeedRow[] {
   }
   if (i.request?.source) rows.push({ key: "where", label: "Where it goes", value: i.request.source, source: "narration" });
   if (d) rows.push({ key: "device", label: "The device", value: [`${d.model}: ${d.height_u}U`, `${d.power_w} W`, `${d.feed_count} × ${d.feed_type} feeds${d.breaker_rating_a ? ` on ${d.breaker_rating_a} A breakers` : ""}`, d.connectors && `${d.connectors} fibre`].filter(Boolean).join(" · "), source: "datasheet" });
-  rows.push({ key: "power", label: "Breakers", value: `${i.breakers.seen} seen, ${i.breakers.free} free; ${i.breakers.rated ? `${i.breakers.rated} with a known rating` : "ratings hidden by the blur, confirm on site"}`, source: i.breakers.edited ? "engineer" : "panel" });
+  if (!i.breakers.seen && !i.breakers.edited) rows.push({ key: "power", label: "Breakers", value: "No panel photo: enter the free breakers in the layout step", source: "missing" });
+  else rows.push({ key: "power", label: "Breakers", value: `${i.breakers.seen} seen, ${i.breakers.free} free; ${i.breakers.rated ? `${i.breakers.rated} with a known rating` : "ratings hidden by the blur, confirm on site"}`, source: i.breakers.edited ? "engineer" : "panel" });
   if (i.spareAcBtu != null) rows.push({ key: "cooling", label: "Cooling", value: `Spare A/C ${i.spareAcBtu} BTU/h`, source: "engineer" });
   else if (i.room && d) {
     const m2 = Math.round(i.room.w * i.room.d * TILE_M * TILE_M * 10) / 10;

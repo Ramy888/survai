@@ -107,7 +107,7 @@ describe("files list and delete", () => {
     const f = await (await upload(id, "devices_hall", "key_frame", JPEG, "frame-01.jpg")).json<{ id: string }>();
     const list = await (await req(`/api/surveys/${id}/files`)).json<{ rooms: Record<string, { files: unknown[]; missing: string[] }> }>();
     expect(list.rooms.devices_hall.files).toHaveLength(1);
-    expect(list.rooms.devices_hall.missing).toEqual(["panel_photo"]); // the narration comes from the walk-through when it fits
+    expect(list.rooms.devices_hall.missing).toEqual([]); // the narration comes from the walk-through; panel photos are optional
     const key = (await env.DB.prepare("SELECT r2_key FROM files WHERE id = ?1").bind(f.id).first<{ r2_key: string }>())!.r2_key;
     expect((await req(`/api/surveys/${id}/files/${f.id}`, { method: "DELETE" })).status).toBe(200);
     expect(await count("SELECT COUNT(*) AS n FROM files")).toBe(0);
@@ -133,7 +133,13 @@ describe("POST /api/surveys/:id/process", () => {
     await upload(id, "devices_hall", "key_frame", JPEG);
     const res = await req(`/api/surveys/${id}/process`, { method: "POST" });
     expect(res.status).toBe(409);
-    expect(await res.json()).toMatchObject({ missing: { devices_hall: ["panel_photo"], connect_to: ["key_frame"] } });
+    expect(await res.json()).toMatchObject({ missing: { devices_hall: [], connect_to: ["key_frame"] } });
+  });
+
+  it("starts with the walk-through's frames alone: panel photos are optional, the engineer enters the breakers", async () => {
+    const id = await surveyIn("uploading");
+    await upload(id, "devices_hall", "key_frame", JPEG);
+    expect((await req(`/api/surveys/${id}/process`, { method: "POST" })).status).toBe(200);
   });
 
   it("starts exactly once when everything is in", async () => {

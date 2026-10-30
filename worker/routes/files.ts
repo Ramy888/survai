@@ -11,7 +11,8 @@ type Role = "devices_hall" | "connect_to";
 const LIMIT: Record<Kind, number> = { key_frame: 30, path_clip: 1, panel_photo: 3, photo: 5 };
 const ALLOWED: Record<Role, Kind[]> = { devices_hall: ["key_frame", "path_clip", "panel_photo", "photo"], connect_to: ["key_frame", "photo"] };
 // The narration rides on the walk-through video when it fits the size limit, so it is not required.
-const REQUIRED: Record<Role, Kind[]> = { devices_hall: ["key_frame", "panel_photo"], connect_to: ["key_frame"] };
+// Panel photos are optional: without one the engineer enters the free breakers in the layout step.
+const REQUIRED: Record<Role, Kind[]> = { devices_hall: ["key_frame"], connect_to: ["key_frame"] };
 const TYPES: Record<Kind, string[]> = { key_frame: ["image/jpeg", "image/png"], panel_photo: ["image/jpeg", "image/png"], photo: ["image/jpeg", "image/png"], path_clip: ["video/mp4"] };
 const EXT: Record<string, string> = { "image/jpeg": "jpg", "image/png": "png", "video/mp4": "mp4" };
 
