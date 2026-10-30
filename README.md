@@ -8,7 +8,7 @@ reviews the plan over up to three rounds, and Muse Wonder leads as Survey Lead. 
   "Run the meeting again, live" button). In it the departments agree on rack R4 and find the blocker before anyone
   travels: the room has none of the two free 40 A DC feeds the router needs, so power is arranged before the install.
 - **Live app:** https://survai.ramy-comm.workers.dev (creating a survey needs a team passcode, because it runs paid models)
-- **Demo video (3 min):** https://youtu.be/a9AVNlmbErw. The narration is synthetic: a clone of the builder's own voice
+- **Demo video (3 min):** https://youtu.be/7Olt652K2Ag. The narration is synthetic: a clone of the builder's own voice
   (Cartesia). Footage in the video is blurred.
 - **Track:** Indie developer · Build for Your World. Built solo by a field network engineer who does these surveys.
 

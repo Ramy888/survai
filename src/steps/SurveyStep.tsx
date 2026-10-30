@@ -5,7 +5,7 @@ import { ModelChip } from "../components/Footage";
 import { Impact } from "../components/Impact";
 import { Shell } from "../components/Shell";
 
-const DEMO_VIDEO = "https://youtu.be/a9AVNlmbErw";
+const DEMO_VIDEO = "https://youtu.be/7Olt652K2Ag";
 
 export const DEPARTMENTS = [
   ["space", "SPC", "Space"],
