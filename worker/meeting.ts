@@ -218,8 +218,9 @@ export async function runRound({ env, models, step, startRound }: Deps, surveyId
       ).bind(crypto.randomUUID(), hallId, surveyId, p.kind, label(p, k), p.x_tiles, p.y_tiles, p.w_tiles ?? null, p.d_tiles ?? null, JSON.stringify(p.props))),
       // Open questions are checked in the same write that stores the outcome, so an answer arriving mid-round is
       // either seen here or flips this note from 'waiting' itself (routes/answer.ts); it is never lost between the two.
+      // A replay rerun of an approved survey has no engineer to answer (routes/answer.ts refuses), so it never waits.
       db.prepare(`INSERT OR IGNORE INTO lead_notes (survey_id, run, round, body_json, model, fell_back, outcome, created_at)
-        SELECT ?1, ?2, ?3, ?4, ?5, ?6, CASE WHEN EXISTS (SELECT 1 FROM questions q JOIN findings f ON f.id = q.finding_id
+        SELECT ?1, ?2, ?3, ?4, ?5, ?6, CASE WHEN (SELECT status FROM surveys WHERE id = ?1) <> 'approved' AND EXISTS (SELECT 1 FROM questions q JOIN findings f ON f.id = q.finding_id
           WHERE f.survey_id = ?1 AND f.run = ?2 AND f.round = ?3 AND q.answer IS NULL) THEN 'waiting' ELSE ?7 END, ?8`)
         .bind(surveyId, run, round, JSON.stringify(lead.note), lead.model, Number(lead.fellBack), result, new Date().toISOString()),
       db.prepare("UPDATE surveys SET deliberated_layout_version = ?1 WHERE id = ?2").bind(m.layoutVersion, surveyId),

@@ -121,6 +121,15 @@ describe("runRound", () => {
     expect(started).toEqual([]);
   });
 
+  it("moves on in a replay rerun of an approved survey: there is no engineer to answer, so a question cannot stall it", async () => {
+    const { id } = await seed({ spare_ac_btu: null, size_tiles: null });
+    await env.DB.prepare("UPDATE surveys SET status = 'approved' WHERE id = ?1").bind(id).run();
+    const out = await go(id, { lead: () => ({ round: 1, placement: { target: "none", reason: "x" }, propose_items: [], conflicts: [], summary: "s", next: "another_round" }) }, 1, 2);
+    expect(out.outcome).toBe("next");
+    expect(await all("SELECT q.answer FROM questions q JOIN findings f ON f.id = q.finding_id WHERE f.survey_id = ?1", id)).toEqual([{ answer: null }]);
+    expect(started).toEqual([{ run: 2, round: 2 }]);
+  });
+
   it("moves on, not waits, when the engineer answers while the Lead is still thinking", async () => {
     const { id } = await seed({ spare_ac_btu: null, size_tiles: null });
     const base = fakeFetch({ lead: () => ({ round: 1, placement: { target: "none", reason: "x" }, propose_items: [], conflicts: [], summary: "s", next: "another_round" }) });
