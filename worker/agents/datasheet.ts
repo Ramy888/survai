@@ -13,6 +13,9 @@ const Reply = z.object({
   breaker_rating_a: z.number().positive().nullish(),
   airflow: z.string().nullish(),
   weight_kg: z.number().positive().nullish(),
+  interfaces: z.string().max(300).nullish(),
+  transceivers: z.string().max(300).nullish(),
+  connectors: z.string().max(200).nullish(),
   sources: z.array(z.object({ url: z.string().url(), title: z.string().nullish() })).min(1),
 });
 
@@ -26,6 +29,9 @@ export interface DeviceSpec {
   breaker_rating_a: number | null;
   airflow: string | null;
   weight_kg: number | null;
+  interfaces: string | null; // ports, e.g. "4 x 10GE SFP+ fixed, 2 MIC slots"
+  transceivers: string | null; // the optics they take, e.g. "SFP+ 10GBASE-LR"
+  connectors: string | null; // the fibre connector, e.g. "LC duplex"
   sources: { url: string; title?: string | null }[];
 }
 
@@ -43,6 +49,8 @@ export async function lookupDatasheet(models: ReturnType<typeof createModels>, m
       `Reply with only a JSON object: {"height_u": number, "depth_mm": number|null, ` +
       `"power_w_typical": number|null, "power_w_max": number, "feed_types": ["AC"|"DC"], "feed_count": number, ` +
       `"breaker_rating_a": number|null, "airflow": string|null, "weight_kg": number|null, ` +
+      `"interfaces": string|null (the network ports), "transceivers": string|null (the optics they take), ` +
+      `"connectors": string|null (the fibre connector type, e.g. LC duplex: the hardware guide lists it with the supported optics), ` +
       `"sources": [{"url": string, "title": string}]}. Use null when the source does not say.`,
   }, { survey, agent: "execution" });
   const s = reply.text.indexOf("{");
@@ -66,6 +74,9 @@ export async function lookupDatasheet(models: ReturnType<typeof createModels>, m
     breaker_rating_a: r.breaker_rating_a ?? null,
     airflow: r.airflow ?? null,
     weight_kg: r.weight_kg ?? null,
+    interfaces: r.interfaces ?? null,
+    transceivers: r.transceivers ?? null,
+    connectors: r.connectors ?? null,
     sources: r.sources,
   };
 }

@@ -14,7 +14,7 @@ const post = (body: unknown, passcode = env.DEMO_PASSCODE, ip = "203.0.113.7") =
   });
 
 beforeEach(async () => {
-  for (const t of ["surveys", "survey_reps", "rooms", "passcode_failures"]) await env.DB.prepare(`DELETE FROM ${t}`).run();
+  for (const t of ["surveys", "survey_reps", "rooms", "passcode_failures", "judge_surveys"]) await env.DB.prepare(`DELETE FROM ${t}`).run();
 });
 
 describe("POST /api/surveys", () => {
@@ -50,6 +50,16 @@ describe("POST /api/surveys", () => {
     for (let i = 0; i < 4; i++) expect((await post(good, "wrong")).status).toBe(401);
     expect((await post(good, env.DEMO_PASSCODE)).status).toBe(429); // locked even with the right code
     expect((await post(good, env.DEMO_PASSCODE, "198.51.100.9")).status).toBe(201); // other IPs unaffected
+  });
+});
+
+describe("the judges' passcode", () => {
+  it("creates surveys like the team passcode, but only 5 a day", async () => {
+    for (let k = 0; k < 5; k++) expect((await post({ ...good, site: `J${k}` }, "judge-passcode", "203.0.113.8")).status).toBe(201);
+    const sixth = await post(good, "judge-passcode", "203.0.113.8");
+    expect(sixth.status).toBe(429);
+    expect(await sixth.json()).toMatchObject({ error: expect.stringMatching(/judges/i) });
+    expect((await post(good)).status).toBe(201); // the team passcode is not capped by it
   });
 });
 

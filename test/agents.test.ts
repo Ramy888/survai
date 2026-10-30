@@ -6,6 +6,7 @@ import { describe, expect, it } from "vitest";
 import type { Calc } from "../worker/calc";
 import { OWNED_RULES } from "../worker/agents/config";
 import { mergeFinding } from "../worker/agents/merge";
+import { leadPrompt, leadSchema } from "../worker/agents/lead";
 import { buildAgentPrompt, runAgent, type MeetingInput } from "../worker/agents/runner";
 
 const calc = (id: string, rule: string, pass: boolean | null, result: Record<string, unknown> = {}): Calc & { id: string } => ({ id, rule, inputs: {}, result, pass });
@@ -96,10 +97,19 @@ describe("runAgent", () => {
     expect(f).toMatchObject({ verdict: "object", rule_refs: ["R3"], evidence: [{ frame_id: "f_9" }] });
   });
 
+  it("gives an agent a second retry with the exact error before giving up, so one slip does not silence a department", async () => {
+    const foreign = reply({ verdict: "object", statement: "No space.", rule_refs: ["R8"], evidence: [{ frame: 9 }] });
+    const badCalc = reply({ verdict: "object", statement: "No space.", rule_refs: ["R4"], evidence: [{ calc: "nope" }] });
+    const good = reply({ verdict: "approve", statement: "Fits.", rule_refs: [], evidence: [] });
+    const { models, prompts } = fakeModels([foreign, badCalc, good]);
+    expect(await runAgent(models, "space", input())).toMatchObject({ verdict: "approve", statement: "Fits." });
+    expect(prompts[2]).toMatch(/nope is not a calculation/);
+  });
+
   it("rejects an objection without evidence or with an unknown frame", async () => {
     const noEvidence = reply({ verdict: "object", statement: "Messy.", rule_refs: ["R2"], evidence: [] });
     const unknownFrame = reply({ verdict: "object", statement: "Messy.", rule_refs: ["R2"], evidence: [{ frame: 77 }] });
-    const { models } = fakeModels([noEvidence, unknownFrame]);
+    const { models } = fakeModels([noEvidence, unknownFrame, unknownFrame]);
     expect(await runAgent(models, "room_manager", input())).toMatchObject({ verdict: "unavailable" });
   });
 
@@ -136,5 +146,38 @@ describe("rule ownership", () => {
     expect(OWNED_RULES).toEqual({
       space: ["R4", "R5"], power: ["R3", "R11"], cooling: ["R10"], execution: ["R8", "R9"], transmission: ["R12"], room_manager: ["R1", "R2", "R6", "R7"],
     });
+  });
+});
+
+describe("the Survey Lead's prompt", () => {
+  const base = { device: {}, quantity: 1, items: [], calcs: [], findings: [] };
+  it("tells the Lead the last round is the last, so it closes the meeting instead of asking for another", () => {
+    expect(leadPrompt({ ...base, round: 3, final: true })).toMatch(/last round.*"done"/s);
+    expect(leadPrompt({ ...base, round: 1, final: false })).not.toMatch(/last round/);
+  });
+  it("weighs two placements in the open: rules, then Cooling's preference, then cost; Cooling compares them", () => {
+    expect(leadPrompt({ ...base, round: 1, final: false })).toMatch(/\(1\) passes the calculated rules; \(2\) better for cooling.*\(3\) cheaper/s);
+    expect(leadPrompt({ ...base, round: 1, final: false })).toMatch(/Cooling has not compared[\s\S]*another_round/);
+    expect(buildAgentPrompt("cooling", input())).toMatch(/compare the target rack and the best free spot for cooling/);
+    expect(buildAgentPrompt("space", input())).toMatch(/name both placements/);
+    expect(buildAgentPrompt("power", input())).not.toMatch(/both placements|best free spot/); // only the departments who weigh placement
+  });
+
+  it("closes the meeting in the last round even when the Lead asks for another", () => {
+    const note = { round: 3, placement: { target: "none", reason: "r" }, summary: "s", next: "another_round" };
+    expect(leadSchema([], true).parse(note).next).toBe("done");
+    expect(leadSchema([], false).parse(note).next).toBe("another_round");
+  });
+});
+
+describe("the Survey Lead's cable paths", () => {
+  const note = (points: [number, number][]) => ({ round: 1, placement: { target: "none", reason: "r" }, summary: "s", next: "done",
+    propose_items: [{ kind: "cable_path", x_tiles: points[0][0], y_tiles: points[0][1], props: { cable_type: "fibre", route: "overhead", points } }] });
+  const door = { label: "D1", x0: 2, x1: 4.5, y0: 0, y1: 1.7 }; // the door and its swing
+  it("may run over racks but never through a door or its swing, so the Lead is asked again", () => {
+    const through = leadSchema([], false, [door]).safeParse(note([[3, 5], [3, 0]]));
+    expect(through.success).toBe(false);
+    expect(JSON.stringify(through.error?.issues)).toMatch(/fibre path crosses door D1/);
+    expect(leadSchema([], false, [door]).safeParse(note([[6, 5], [6, 0]])).success).toBe(true);
   });
 });

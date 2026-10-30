@@ -66,12 +66,18 @@ describe("GET /api/replay/:slug", () => {
     };
     await env.DB.batch([
       q("UPDATE rooms SET facts_json = ?1 WHERE id = ?2", JSON.stringify(facts), hall),
+      q("UPDATE surveys SET request_json = ?1 WHERE id = ?2", JSON.stringify({ destination: "rack 40" }), id), // read, then the video was deleted
       q("INSERT INTO layout_items (id, room_id, kind, label, x_tiles, y_tiles, props_json, source) VALUES (?1, ?4, 'rack', 'R1', 0, 0, '{}', 'ai'), (?2, ?4, 'door', 'D1', 1, 0, '{}', 'ai'), (?3, ?4, 'rack', 'R3', 2, 0, ?5, 'engineer')",
         crypto.randomUUID(), crypto.randomUUID(), crypto.randomUUID(), hall, JSON.stringify({ is_target: true, free_blocks: [{ from_u: 10, to_u: 30 }] })),
     ]);
     const body = await (await call("/api/replay/sample")).json<Record<string, any>>();
-    expect(body.made).toEqual({
-      footage: { frames: 2, clip: false, photos: 1, source: "prepared", blurred: true },
+    // what the agents started from, each value with its source
+    expect(body.made.inputs).toMatchObject({
+      target: { label: "R3", free: [{ from_u: 10, to_u: 30 }], edited: true }, spareAcBtu: 6000, ladder: { m: 2.6, assumed: false },
+      breakers: { seen: 2, free: 1, rated: 2, edited: true }, observations: ["Stepladder"],
+    });
+    expect(body.made).toMatchObject({
+      footage: { frames: 2, narration: true, photos: 1, source: "prepared", blurred: true },
       sam: { frames: 2, rack_frames: 2, tile_frames: 1 },
       drafted: { items: 2, breakers: 3, observations: 1 },
       engineer: { added: 1, target: "R3", free_u: "10-30", free_breakers: 1, spare_ac_btu: 6000, ladder_height_m: 2.6 },
@@ -94,6 +100,20 @@ describe("GET /api/replay/:slug", () => {
     const r = await (await call("/api/replay/sample")).json<Record<string, any>>();
     expect(r.timeline.run).toBe(2);
     expect(r.report.statements.map((s: { statement: string }) => s.statement)).toContain("power-run1");
+  });
+});
+
+describe("GET /sample", () => {
+  it("sends anyone to the current sample's replay, so the public link survives a new slug", async () => {
+    await seed({ slug: "s-abc123" });
+    const res = await call("/sample");
+    expect(res.status).toBe(302);
+    expect(res.headers.get("Location")).toBe("/replay/s-abc123");
+  });
+
+  it("goes to the start page when there is no sample", async () => {
+    await seed({ sample: 0, slug: "s-abc123" });
+    expect((await call("/sample")).headers.get("Location")).toBe("/");
   });
 });
 
@@ -150,10 +170,12 @@ describe("POST /api/replay/:slug/rerun", () => {
     expect(started).toEqual([]);
   });
 
-  it("allows at most 60 public reruns a day, whatever the IPs (CSO-1)", async () => {
-    await seed();
+  it("allows at most 20 public reruns a day, whatever the IPs (CSO-1)", async () => {
+    const { id } = await seed();
     const day = new Date().toISOString().slice(0, 10);
-    await env.DB.batch(Array.from({ length: 60 }, (_, k) => q("INSERT INTO rerun_requests (ip, at) VALUES (?1, ?2)", `198.51.100.${k}`, `${day}T00:00:00Z`)));
+    await env.DB.batch(Array.from({ length: 20 }, (_, k) => q("INSERT INTO rerun_requests (ip, at) VALUES (?1, ?2)", `198.51.100.${k}`, `${day}T00:00:00Z`)));
+    // Those reruns have finished: a lead note newer than them, so the test also holds just after midnight UTC.
+    await q("UPDATE lead_notes SET created_at = ?2 WHERE survey_id = ?1", id, new Date().toISOString()).run();
     const res = await rerun("203.0.113.98");
     expect(res.status).toBe(429);
     expect(await res.json()).toMatchObject({ error: expect.stringMatching(/today/i) });

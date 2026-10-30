@@ -1,0 +1,11 @@
+{
+ "method": "SAM 3.1 'server rack' boxes (as stored for the sample survey) drawn on the 30 key frames; each box and frame checked by eye.",
+ "frames_with_a_rack": 28,
+ "frames_where_sam_found_a_rack": 21,
+ "missed_frames": { "19": "rack face-on, door with a sheet", "20": "racks at the right edge", "21": "motion blur", "23": "motion blur", "24": "racks behind a battery cabinet", "28": "open rack, close up", "29": "open rack, close up" },
+ "frames_without_a_rack": [25, 26],
+ "boxes": 44,
+ "boxes_on_a_rack": 43,
+ "wrong_boxes": { "14": "an electrical cabinet" },
+ "double_counted_racks": { "2": "rack edge boxed twice", "11": "box inside another box", "27": "open door boxed apart from its rack" }
+}

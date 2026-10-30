@@ -125,7 +125,7 @@ describe("GET /api/surveys/:id/timeline", () => {
     expect(r.lead).toMatchObject({ outcome: "waiting", fell_back: true, model: "muse-spark-1.3", summary: "Answer the questions." });
     expect(r.findings[0]).toMatchObject({
       agent: "room_manager", verdict: "question", rules: [{ id: "R7", text: expect.stringMatching(/Off-limits racks/) }],
-      evidence: [{ frame: 2, file_id: `${id}_f2` }], question: { id: qids[0], text: r7.text, answer_kind: "yes_no", answer: null },
+      evidence: [{ frame: 2, file_id: `${id}_f2` }], question: { id: qids[0], text: r7.text, answer_kind: "yes_no", answer: null }, items: [],
     });
   });
 

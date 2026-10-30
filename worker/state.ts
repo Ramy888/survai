@@ -1,6 +1,6 @@
 // The survey state table from the spec. Every other move is a 409.
 export const STATES = ["draft", "uploading", "processing", "layout_review", "deliberating", "approved"] as const;
-export const EVENTS = ["device_confirmed", "files_complete", "processing_done", "processing_failed", "layouts_saved", "approved"] as const;
+export const EVENTS = ["device_confirmed", "files_complete", "processing_done", "processing_failed", "layouts_saved", "approved", "reopened"] as const;
 export type State = (typeof STATES)[number];
 export type Event = (typeof EVENTS)[number];
 
@@ -11,6 +11,7 @@ const TABLE: Partial<Record<`${State}:${Event}`, State>> = {
   "processing:processing_failed": "uploading",
   "layout_review:layouts_saved": "deliberating",
   "deliberating:approved": "approved",
+  "approved:reopened": "deliberating", // a department objected from its desk: the engineer reopens the meeting
 };
 
 export class StateConflict extends Error {

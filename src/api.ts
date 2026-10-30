@@ -2,6 +2,7 @@
 export interface DeviceSpec {
   height_u: number; depth_mm: number | null; power_w: number; feed_type: "AC" | "DC"; feed_types?: ("AC" | "DC")[];
   feed_count: number; breaker_rating_a: number | null; airflow: string | null; weight_kg: number | null;
+  interfaces?: string | null; transceivers?: string | null; connectors?: string | null;
   sources: { url: string; title?: string | null }[];
 }
 export interface Survey {
@@ -47,7 +48,7 @@ export const getSurvey = (id: string) => call<Survey>(`/api/surveys/${id}`);
 
 export type FileKind = "key_frame" | "path_clip" | "panel_photo" | "photo";
 export interface SamBox { x1: number; y1: number; x2: number; y2: number }
-export interface SamMasks { tiles: SamBox[]; racks: SamBox[] }
+export interface SamMasks { tiles: SamBox[]; racks: SamBox[]; devices?: SamBox[]; shelves?: SamBox[] }
 export interface UploadedFile { id: string; kind: FileKind; name: string; bytes: number; masks?: SamMasks }
 export interface RoomFiles { files: UploadedFile[]; missing: FileKind[] }
 
@@ -94,9 +95,10 @@ export const saveLayout = (id: string, role: string, body: { layout_version: num
 
 export interface Question { id: string; text: string; answer_kind: "yes_no" | "number" | "text"; answer: string | null }
 export interface Finding {
-  id: string; agent: string; verdict: "approve" | "object" | "question" | "unavailable"; statement: string; model: string | null;
+  id: string; agent: string; verdict: "approve" | "object" | "question" | "unavailable"; statement: string; model: string | null; fell_back?: boolean;
   forced_rules: string[]; rules: { id: string; text: string | null }[];
   evidence: ({ frame: number | null; file_id?: string } | { calc_id: string })[]; question: Question | null;
+  items?: { kind: string; text: string; quantity?: number | null; unit?: string | null }[];
 }
 export interface Round {
   round: number; findings: Finding[]; calcs: { id: string; rule: string; pass: boolean | null; result: Record<string, unknown> }[];
@@ -131,5 +133,7 @@ export async function signoffFrame(token: string, n: number) {
   if (!res.ok) throw new ApiError("Frame unavailable", res.status);
   return URL.createObjectURL(await res.blob());
 }
+export const reopenSurvey = (id: string, passcode: string) =>
+  call<{ status: string; run: number }>(`/api/surveys/${id}/reopen`, withPasscode(passcode, "POST"));
 export const reissueLinks = (id: string, passcode: string) =>
   call<{ links: { agent: string; token: string }[]; decided: string[] }>(`/api/surveys/${id}/signoff-links`, withPasscode(passcode, "POST"));

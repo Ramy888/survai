@@ -17,12 +17,13 @@ const basetenText = (content: string): Step => ({ status: 200, body: { choices: 
 const metaText = (text: string): Step => ({ status: 200, body: { output: [{ type: "message", content: [{ type: "output_text", text }] }] } });
 
 function harness(script: Record<string, Step[]>, vars: Partial<Env> = {}) {
-  const calls: { model: string; url: string }[] = [];
+  const calls: { model: string; url: string; body: Record<string, unknown> }[] = [];
   const sleeps: number[] = [];
   const logs: string[] = [];
   const fetch = (async (url: string, init: RequestInit) => {
-    const model = JSON.parse(String(init.body)).model as string;
-    calls.push({ model, url });
+    const body = JSON.parse(String(init.body));
+    const model = body.model as string;
+    calls.push({ model, url, body });
     const step = script[model]?.shift();
     if (!step) throw new Error(`unexpected call to ${model}`);
     if (step.timeout) throw new DOMException("timed out", "TimeoutError");
@@ -56,6 +57,15 @@ describe("replies from recorded responses", () => {
     const r = await h.models.run("agent", { text: "panel", images: ["data:image/jpeg;base64,AAAA"] });
     expect(r.model).toBe("muse-spark-open");
     expect(h.calls[0].url).toContain("baseten");
+  });
+});
+
+describe("request bodies", () => {
+  it("sends the walk-through video to Meta without storing the request (a 20 MB video is over the stored-request size)", async () => {
+    const h = harness({ "muse-spark-1.3": [metaText("{}")] });
+    await h.models.run("reader", { text: "narration", videos: ["data:video/mp4;base64,AAAA"] });
+    expect(h.calls[0].body.store).toBe(false);
+    expect(JSON.stringify(h.calls[0].body.input)).toContain("input_video");
   });
 });
 

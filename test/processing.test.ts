@@ -106,6 +106,15 @@ describe("runProcessing", () => {
     expect((await row<{ n: number }>("SELECT COUNT(*) AS n FROM files WHERE masks_json IS NOT NULL"))!.n).toBe(8);
   });
 
+  it("deletes the narrated video once it is read, so only the blurred frames are kept", async () => {
+    const { id } = await processingSurvey();
+    const key = (await row<{ r2_key: string }>("SELECT r2_key FROM files WHERE kind = 'path_clip'"))!.r2_key;
+    await run(id, { inventory: INVENTORY, panel: PANEL, reader: REQUEST });
+    expect((await row<{ n: number }>("SELECT COUNT(*) AS n FROM files WHERE kind = 'path_clip'"))!.n).toBe(0);
+    expect(await env.MEDIA.head(key)).toBeNull();
+    expect(JSON.parse((await row<{ request_json: string }>("SELECT request_json FROM surveys WHERE id = ?1", id))!.request_json).destination).toBe("transmission room rack 40");
+  });
+
   it("still reaches layout review when the model readings fail, with the reasons noted", async () => {
     const { id, room } = await processingSurvey();
     await run(id, { inventory: "I cannot see a room here.", panel: undefined, reader: { transcript_ar: "x" } });
@@ -132,5 +141,28 @@ describe("runProcessing", () => {
     await run(id, { inventory: INVENTORY, panel: PANEL, reader: REQUEST });
     expect((await row<{ n: number }>("SELECT COUNT(*) AS n FROM layout_items WHERE room_id = ?1", room))!.n).toBe(3);
     expect((await row<{ n: number }>("SELECT COUNT(*) AS n FROM questions"))!.n).toBe(1);
+  });
+
+  it("reads the narrated clip first, so the draft marks the rack the engineer named as the target", async () => {
+    const { id, room } = await processingSurvey();
+    const prompts: string[] = [];
+    const base = fakeFetch({ panel: PANEL, reader: REQUEST, inventory: { ...INVENTORY, items: INVENTORY.items.map((i) => (i.label === "R1" ? { ...i, target: true } : i)) } });
+    const spy = (async (url: string, init: RequestInit) => {
+      const body = JSON.parse(String(init.body));
+      prompts.push(String((body.input?.[0]?.content ?? body.messages?.[0]?.content ?? [])[0]?.text ?? ""));
+      return base(url, init);
+    }) as unknown as typeof fetch;
+    await runProcessing({ env, models: createModels({ env, fetch: spy, sleep: async () => {}, log: () => {} }), step }, id);
+    const inventoryPrompt = prompts.find((p) => p.includes("drafting the inventory"))!;
+    expect(prompts.findIndex((p) => p.includes("narrated walk"))).toBeLessThan(prompts.indexOf(inventoryPrompt));
+    expect(inventoryPrompt).toContain("rack under the two devices");
+    const r1 = await row<{ props_json: string }>("SELECT props_json FROM layout_items WHERE room_id = ?1 AND label = 'R1'", room);
+    expect(JSON.parse(r1!.props_json).is_target).toBe(true);
+    const facts = JSON.parse((await row<{ facts_json: string }>("SELECT facts_json FROM rooms WHERE id = ?1", room))!.facts_json);
+    expect(facts.inventory_model).toBe("muse-spark-open");
+    expect(facts).toHaveProperty("sam_free_u");
+    // SAM is also asked for the devices in the racks and the shelves, and they are kept with each frame.
+    const masks = JSON.parse((await row<{ masks_json: string }>("SELECT masks_json FROM files WHERE kind = 'key_frame' LIMIT 1"))!.masks_json);
+    expect(Object.keys(masks).sort()).toEqual(["devices", "racks", "shelves", "tiles"]);
   });
 });

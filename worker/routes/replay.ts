@@ -13,7 +13,7 @@ const WINDOW_MIN = 10; // one rerun per IP per window; a round silent this long 
 const MEETING_CALLS = 25; // up to 3 rounds × (6 departments + the Lead), with room for retries
 // Public reruns share the daily model cap with real surveys, so they get their own allowance and never touch a reserve
 // kept for real work (CSO-1: rotating IPs could otherwise spend the whole day's budget).
-const RERUNS_PER_DAY = 60;
+const RERUNS_PER_DAY = 20; // the link is public: 20 live runs a day caps the spend at about 500 model calls
 const RESERVE_CALLS = 300;
 
 const sample = (db: D1Database, slug: string) =>
@@ -28,17 +28,38 @@ async function howMade(db: D1Database, id: string) {
   const room = await db.prepare("SELECT id, facts_json FROM rooms WHERE survey_id = ?1 AND role = 'devices_hall'").bind(id).first<{ id: string; facts_json: string | null }>();
   if (!room) return null;
   const f = JSON.parse(room.facts_json ?? "{}");
-  const [files, items] = await Promise.all([
+  const [files, items, survey] = await Promise.all([
     db.prepare("SELECT kind, COUNT(*) AS n FROM files WHERE room_id = ?1 GROUP BY kind").bind(room.id).all<{ kind: string; n: number }>(),
-    db.prepare("SELECT label, source, props_json FROM layout_items WHERE room_id = ?1").bind(room.id).all<{ label: string | null; source: string; props_json: string | null }>(),
+    db.prepare("SELECT kind, label, source, props_json FROM layout_items WHERE room_id = ?1").bind(room.id).all<{ kind: string; label: string | null; source: string; props_json: string | null }>(),
+    db.prepare("SELECT s.request_json, s.device_model, s.quantity, d.height_u, d.power_w, d.feed_type, d.feed_count, d.breaker_rating_a, d.connectors FROM surveys s LEFT JOIN device_specs d ON d.survey_id = s.id WHERE s.id = ?1")
+      .bind(id).first<{ request_json: string | null; device_model: string; quantity: number; height_u: number | null; power_w: number | null; feed_type: string | null; feed_count: number | null; breaker_rating_a: number | null; connectors: string | null }>(),
   ]);
   const count = (k: string) => files.results.find((x) => x.kind === k)?.n ?? 0;
+  // The narrated video is deleted once read, so the request it produced is the record that there was one.
+  const narration = count("path_clip") > 0 || (!!survey?.request_json && !("error" in JSON.parse(survey.request_json)));
   const perFrame: { tiles: number; racks: number }[] = f.sam?.per_frame ?? [];
   const target = items.results.map((i) => ({ ...i, props: JSON.parse(i.props_json ?? "{}") })).find((i) => i.props.is_target);
   const block = target?.props.free_blocks?.[0];
+  // What the agents started from, with where each value came from (the same rows the layout step shows).
+  const req = survey?.request_json ? JSON.parse(survey.request_json) : null;
+  const confirmed = (f.breakers_confirmed ?? null) as { free?: boolean; rating_a?: number | null }[] | null;
+  const drafts = (f.breakers_draft ?? []) as { looks_free?: boolean; rating_a?: number | null }[];
+  const inputs = {
+    device: survey?.height_u != null ? { model: survey.device_model, quantity: survey.quantity, height_u: survey.height_u, power_w: survey.power_w!, feed_type: survey.feed_type!, feed_count: survey.feed_count!, breaker_rating_a: survey.breaker_rating_a, connectors: survey.connectors } : null,
+    request: req && !req.error ? { source: req.source, route: req.route, cables: req.cables } : null,
+    target: target ? { label: target.label ?? "the target rack", free: target.props.free_blocks ?? [], samFrame: target.props.free_estimate?.frame ?? null, edited: !target.props.free_estimate } : null,
+    spots: items.results.filter((i) => i.kind === "spot").length,
+    room: f.size_tiles ? { w: f.size_tiles.w, d: f.size_tiles.d, edited: false } : null,
+    spareAcBtu: f.spare_ac_btu ?? null,
+    ladder: { m: f.ladder_height_m ?? null, assumed: false },
+    breakers: confirmed ? { seen: confirmed.length, free: confirmed.filter((b) => b.free).length, rated: confirmed.filter((b) => b.rating_a != null).length, edited: true }
+      : { seen: drafts.length, free: drafts.filter((b) => b.looks_free).length, rated: drafts.filter((b) => b.rating_a != null).length, edited: false },
+    observations: ((f.observations ?? []) as { text: string }[]).map((o) => o.text),
+  };
   return {
+    inputs,
     // Surveys made before the in-app video path were all prepared and blurred on the engineer's computer.
-    footage: { frames: count("key_frame"), clip: count("path_clip") > 0, photos: count("panel_photo") + count("photo"), source: f.footage?.source ?? "prepared", blurred: f.footage?.blurred ?? true },
+    footage: { frames: count("key_frame"), narration, photos: count("panel_photo") + count("photo"), source: f.footage?.source ?? "prepared", blurred: f.footage?.blurred ?? true },
     sam: f.sam ? { frames: f.sam.frames ?? perFrame.length, rack_frames: perFrame.filter((x) => x.racks > 0).length, tile_frames: perFrame.filter((x) => x.tiles > 0).length } : null,
     drafted: { items: items.results.filter((i) => i.source === "ai").length, breakers: f.breakers_draft?.length ?? 0, observations: f.observations?.length ?? 0 },
     engineer: {

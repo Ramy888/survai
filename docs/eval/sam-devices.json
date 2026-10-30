@@ -1,0 +1,8 @@
+{
+ "method": "SAM 3.1 'electronic device' (and 'shelf') on the 30 sample key frames, as asked during processing. Frames checked by eye on overlay sheets.",
+ "frames_showing_mounted_routers": [4, 5, 6, 7, 8, 10, 13, 14, 15, 16, 17, 27, 28, 29, 30],
+ "frames_where_sam_found_them": [6, 7, 8, 10, 13, 29],
+ "frames_with_a_wrong_device_box": { "12": "a door badge/lock" },
+ "free_u_estimate": { "frame": 13, "from_u": 7, "to_u": 21, "engineer_entered": "1-20", "note": "frame 6 gives 4-19; camera angle moves the estimate by a few U" },
+ "words_that_found_nothing": ["router", "network switch", "rack-mounted equipment", "network device", "empty space", "blank panel"]
+}

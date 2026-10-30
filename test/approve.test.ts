@@ -6,7 +6,8 @@ import { beforeEach, describe, expect, it } from "vitest";
 import { approveGate } from "../worker/approve";
 import { createApp } from "../worker/index";
 
-const app = createApp({ startRound: async () => {} });
+const started: string[] = [];
+const app = createApp({ startRound: async (_e, id, run, round) => void started.push(`${id}:${run}:${round}`) });
 const req = (path: string, init: RequestInit = {}) =>
   app.request(path, { ...init, headers: { "Content-Type": "application/json", "X-Passcode": env.DEMO_PASSCODE, "CF-Connecting-IP": "203.0.113.70", ...init.headers } }, env);
 const approve = (id: string, body: object) => req(`/api/surveys/${id}/approve`, { method: "POST", body: JSON.stringify(body) });
@@ -36,7 +37,7 @@ async function seed({ outcome = "done", openQuestion = false, roundVersion = 4 }
 const status = async (id: string) => (await q("SELECT status FROM surveys WHERE id = ?1", id).first<{ status: string }>())!.status;
 
 beforeEach(async () => {
-  for (const t of ["surveys", "rooms", "layout_items", "findings", "questions", "lead_notes", "passcode_failures"]) await env.DB.prepare(`DELETE FROM ${t}`).run();
+  for (const t of ["surveys", "rooms", "layout_items", "findings", "questions", "lead_notes", "passcode_failures", "signoffs"]) await env.DB.prepare(`DELETE FROM ${t}`).run();
 });
 
 describe("approveGate", () => {
@@ -101,5 +102,31 @@ describe("POST /api/surveys/:id/approve", () => {
     const { id } = await seed();
     expect((await req(`/api/surveys/${id}/approve`, { method: "POST", body: "{}", headers: { "X-Passcode": "wrong" } })).status).toBe(401);
     expect((await approve(crypto.randomUUID(), {})).status).toBe(404);
+  });
+});
+
+describe("POST /api/surveys/:id/reopen", () => {
+  it("takes an approved survey back to the meeting, and approving again issues fresh sign-off links", async () => {
+    const { id, ids } = await seed();
+    expect((await approve(id, { overrides: { [ids.power]: "ok" }, issue_links: true })).status).toBe(200);
+    await q("UPDATE signoffs SET rep_name = 'Rep', decision = 'object', comment = 'feed from P2', decided_at = 'now' WHERE survey_id = ?1 AND agent = 'power'", id).run();
+    const res = await req(`/api/surveys/${id}/reopen`, { method: "POST", body: "{}" });
+    expect(res.status).toBe(200);
+    expect(await status(id)).toBe("deliberating");
+    expect(started.at(-1)).toMatch(new RegExp(`^${id}:\\d+:1$`)); // a new meeting run starts at round 1
+    // The objection stays on record until the next approval, so the next meeting run reads it.
+    expect(await q("SELECT decision FROM signoffs WHERE survey_id = ?1 AND agent = 'power'", id).first()).toEqual({ decision: "object" });
+    const again = await approve(id, { overrides: { [ids.power]: "rerouted from P2" }, issue_links: true });
+    expect(again.status).toBe(200);
+    expect((await again.json<{ links: unknown[] }>()).links.length).toBeGreaterThan(0);
+    expect(await q("SELECT decision FROM signoffs WHERE survey_id = ?1 AND agent = 'power'", id).first()).toEqual({ decision: null });
+  });
+
+  it("is 409 unless approved, refuses the public sample, and needs the passcode", async () => {
+    const { id } = await seed();
+    expect((await req(`/api/surveys/${id}/reopen`, { method: "POST", body: "{}" })).status).toBe(409);
+    await q("UPDATE surveys SET status = 'approved', is_sample = 1 WHERE id = ?1", id).run();
+    expect((await req(`/api/surveys/${id}/reopen`, { method: "POST", body: "{}" })).status).toBe(409);
+    expect((await req(`/api/surveys/${id}/reopen`, { method: "POST", body: "{}", headers: { "X-Passcode": "wrong" } })).status).toBe(401);
   });
 });

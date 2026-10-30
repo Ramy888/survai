@@ -2,12 +2,17 @@
 // which starts a live run on the same fixed frames. It holds no survey id, so it cannot reach any write route.
 import { useEffect, useState } from "react";
 import { ApiError, type Timeline } from "../api";
+import { Accuracy } from "../components/Accuracy";
+import { Impact } from "../components/Impact";
 import { ReportSheet, type Report } from "../report/ReportPage";
 import "../report/print.css";
-import { NAME, phase, RoundView, Thinking } from "../steps/MeetingStep";
+import { NAME, phase, Roster, RoundView, roundsToShow, Thinking } from "../steps/MeetingStep";
+import { Feeds } from "../components/Feeds";
+import { feedRows, type FeedInput } from "../steps/feeds";
 
 type Made = {
-  footage: { frames: number; clip: boolean; photos: number; source: "video" | "prepared"; blurred: boolean };
+  inputs?: FeedInput;
+  footage: { frames: number; narration: boolean; photos: number; source: "video" | "prepared"; blurred: boolean };
   sam: { frames: number; rack_frames: number; tile_frames: number } | null;
   drafted: { items: number; breakers: number; observations: number };
   engineer: { added: number; target: string | null; free_u: string | null; free_breakers: number; spare_ac_btu: number | null; ladder_height_m: number | null };
@@ -15,6 +20,16 @@ type Made = {
 type Payload = { timeline: Timeline; report: Report; made: Made | null; rerun: { enabled: boolean; running: boolean } };
 
 const plural = (n: number, one: string, many = `${one}s`) => `${n} ${n === 1 ? one : many}`;
+
+/** How the key frames were made, in the replay's words. Prepared but not blurred means only faces and logos were. */
+export function footageNote(f: Made["footage"]) {
+  if (f.source === "prepared") return f.blurred
+    ? { label: "Filmed, blurred on the engineer's computer", text: "Faces, labels and logos were blurred before upload." }
+    : { label: "Filmed, logos blurred on the engineer's computer", text: "Only faces and equipment logos were blurred before upload; the room is shown as filmed." };
+  return f.blurred
+    ? { label: "Filmed, frames picked and blurred in SurvAI", text: "SurvAI picked the sharpest frames from the walk-through video, and Meta SAM 3.1 found the labels it blurred before anything was stored." }
+    : { label: "Filmed, frames picked in SurvAI", text: "SurvAI picked the sharpest frames from the walk-through video." };
+}
 
 /** The pipeline behind the meeting, so a judge sees more than the finished result: filmed, drafted, corrected. */
 function HowMade({ slug, made, t }: { slug: string; made: Made; t: Timeline }) {
@@ -43,18 +58,16 @@ function HowMade({ slug, made, t }: { slug: string; made: Made; t: Timeline }) {
       <h2 id="made-h">How this survey was made</h2>
       <ol className="made-steps">
         <li>
-          <span className="label">1 · {f.source === "prepared" ? "Filmed, blurred on the engineer's computer" : f.blurred ? "Filmed, frames picked and blurred in SurvAI" : "Filmed, frames picked in SurvAI"}</span>
+          <span className="label">1 · {footageNote(f).label}</span>
           <div className="made-frames">{Array.from({ length: Math.min(6, f.frames) }, (_, k) => (
             <img key={k} src={`/api/replay/${slug}/frames/${k + 1}`} alt={`Key frame ${k + 1}`} loading="lazy" />))}</div>
-          <p>{plural(f.frames, "key frame")}{f.clip ? ", a narrated path clip" : ""}{f.photos ? ` and ${plural(f.photos, "photo")}` : ""}. {f.source === "prepared" ? "Faces, labels and logos were blurred before upload."
-            : f.blurred ? "SurvAI picked the sharpest frames from the walk-through video, and Meta SAM 3.1 found the labels it blurred before anything was stored."
-              : "SurvAI picked the sharpest frames from the walk-through video."}</p>
+          <p>{plural(f.frames, "key frame")}{f.narration ? ", the engineer's narration" : ""}{f.photos ? ` and ${plural(f.photos, "photo")}` : ""}. {footageNote(f).text}</p>
         </li>
         <li>
           <span className="label">2 · Drafted by the models</span>
           <p>{sam && <>Meta SAM 3.1 found racks in {sam.rack_frames} of {sam.frames} frames and floor tiles in {sam.tile_frames}. </>}
             Muse Spark drafted {d.items > 0 ? plural(d.items, "layout item") : "the room's layout"}, read {plural(d.breakers, "breaker slot")} on the panel photos
-            {d.observations ? ` and noted ${plural(d.observations, "housekeeping issue")}` : ""}, and read the request from the narrated clip.</p>
+            {d.observations ? ` and noted ${plural(d.observations, "housekeeping issue")}` : ""}, and read the request from the engineer's narration.</p>
         </li>
         <li>
           <span className="label">3 · Corrected and answered by the engineer</span>
@@ -81,11 +94,17 @@ export function Replay({ slug }: { slug: string }) {
   useEffect(() => { void load(); }, [slug]);
   useEffect(() => { document.title = "Sample survey replay · SurvAI"; }, []);
   const running = p?.rerun.running ?? false;
+  // A live run shows its clock, so a judge sees it is working and roughly how long it takes.
+  const [elapsed, setElapsed] = useState(0);
   useEffect(() => {
     if (!running) return;
+    const start = Date.now();
+    setElapsed(0);
     const t = setInterval(() => void load(), 2000);
-    return () => clearInterval(t);
+    const tick = setInterval(() => setElapsed(Math.floor((Date.now() - start) / 1000)), 1000);
+    return () => { clearInterval(t); clearInterval(tick); };
   }, [running]);
+  const clock = `${Math.floor(elapsed / 60)}:${String(elapsed % 60).padStart(2, "0")}`;
 
   async function rerun() {
     setBusy(true); setNote("");
@@ -105,7 +124,7 @@ export function Replay({ slug }: { slug: string }) {
   const t = p?.timeline;
   const ph = t && phase(t);
   const last = t?.rounds.at(-1);
-  const view = t && (t.rounds.find((r) => r.round === shown) ?? last);
+  const { view, tabs } = t && ph ? roundsToShow(t, ph, shown) : { view: null, tabs: [] };
   // How many departments met, in words; the sample's count comes from the survey, not from this copy.
   const agents = t ? `${["", "one", "two", "three", "four", "five", "six", "seven"][t.reps.length] ?? t.reps.length} department agents` : "The department agents";
   const waiting = ph?.state === "waiting" && last ? last.findings.filter((f) => f.question && !f.question.answer) : [];
@@ -121,19 +140,22 @@ export function Replay({ slug }: { slug: string }) {
           </div>
         ) : <div className="narrow-intro">
           <h1>A real equipment-room survey, replayed</h1>
-          <p className="muted">{agents.charAt(0).toUpperCase() + agents.slice(1)} met over prepared, anonymised footage of a real room. Read their meeting and the report, or run the meeting again live.</p>
+          <p className="muted">{agents.charAt(0).toUpperCase() + agents.slice(1)} met over the key frames of a real room. Read their meeting and the report, or run the meeting again live.</p>
           <p className="muted small">In this sample the engineer's part (correcting the drafted layout, answering the departments and approving) was played by the builder; every department statement and the Survey Lead's notes are live model output.</p>
           {/* The live proof, where a judge sees it first; the full panel stays at the bottom. */}
           {p?.rerun.enabled && (
-            <p className="rerun-top"><button className="btn btn-secondary" disabled={busy || running} onClick={rerun}>{running ? "Meeting running…" : "Run the meeting again, live"}</button>
+            <p className="rerun-top"><button className="btn btn-secondary" disabled={busy || running} onClick={rerun}>{running ? `Meeting running · ${clock}` : "Run the meeting again, live"}</button>
               <span className="muted small">About 2 minutes on Meta models. The report keeps the run the engineer approved.</span></p>
           )}
         </div>}
+        {p && <Impact />}
+        {p && <Accuracy />}
         {error && p && <p className="note error" role="alert">{error}</p>}
         {!p && !error && <p className="muted">Loading the replay…</p>}
         {p && t && (
           <>
             {p.made && <HowMade slug={slug} made={p.made} t={t} />}
+            {p.made?.inputs && <Feeds rows={feedRows(p.made.inputs)} title="What the agents started from" foot="Read from the frames, the narration, the datasheet and the panel photos, then checked by the engineer; the agents got these values as text." />}
             <div className="seg" role="group" aria-label="View">
               <button type="button" aria-pressed={tab === "meeting"} onClick={() => setTab("meeting")}>Meeting</button>
               <button type="button" aria-pressed={tab === "report"} onClick={() => setTab("report")}>Report</button>
@@ -145,13 +167,14 @@ export function Replay({ slug }: { slug: string }) {
                   <p className="muted" aria-live="polite">{running ? (ph?.state === "running" ? `Round ${ph.round}: the departments are reviewing the room live.` : "A new run is starting.")
                     : ph?.state === "waiting" ? "This run stopped on a question only the survey's engineer could answer." : "The meeting is over."}</p>
                 </div>
-                {t.rounds.length > 1 && (
-                  <div className="seg" role="group" aria-label="Round" style={{ gridTemplateColumns: `repeat(${t.rounds.length}, 1fr)` }}>
-                    {t.rounds.map((r) => <button key={r.round} type="button" aria-pressed={r.round === view?.round} onClick={() => setShown(r.round)}>Round {r.round}</button>)}
+                {tabs.length > 1 && (
+                  <div className="seg" role="group" aria-label="Round" style={{ gridTemplateColumns: `repeat(${tabs.length}, 1fr)` }}>
+                    {tabs.map((r) => <button key={r.round} type="button" aria-pressed={r.round === view?.round} onClick={() => setShown(r.round)}>Round {r.round}</button>)}
                   </div>
                 )}
+                <Roster t={t} r={view} running={!!running && ph?.state === "running" && view === tabs.at(-1)} />
                 {view
-                  ? <RoundView r={view} t={t} frameHref={(e) => `/api/replay/${slug}/frames/${e.frame}`} running={running && ph && view === last ? ph : null} />
+                  ? <RoundView r={view} t={t} frameHref={(e) => `/api/replay/${slug}/frames/${e.frame}`} running={running && ph && view === tabs.at(-1) ? ph : null} />
                   : <RoundView r={{ round: 1, findings: [], calcs: [], lead: null }} t={t} frameHref={() => "#"} running={{ round: 1, leadThinking: false }} />}
                 {running && ph?.state !== "running" && (
                   <section className="panel" aria-label={`Run ${t.run! + 1}`}>
@@ -166,7 +189,7 @@ export function Replay({ slug }: { slug: string }) {
             )}
             {p.rerun.enabled && (
               <div className="panel stack" style={{ gap: 10 }}>
-                <button className="btn btn-primary" disabled={busy || running} onClick={rerun}>{running ? "Meeting running…" : busy ? "Starting…" : "Run the meeting again"}</button>
+                <button className="btn btn-primary" disabled={busy || running} onClick={rerun}>{running ? `Meeting running · ${clock}` : busy ? "Starting…" : "Run the meeting again"}</button>
                 <p className="muted small">Starts a live run of the same {agents} on the same frames (Muse Spark and Muse Wonder). The report keeps the run the engineer approved.</p>
                 {note && <p className="note warn" role="status">{note}</p>}
               </div>

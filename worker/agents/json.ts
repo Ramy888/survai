@@ -21,17 +21,18 @@ type Models = ReturnType<typeof import("../clients/models").createModels>;
 type RunArgs = Parameters<Models["run"]>;
 
 /** Ask for JSON; a malformed or cut-off answer is retried once with the error (spec: then "unavailable"). */
-export async function askJsonReply<T>(models: Models, route: RunArgs[0], prompt: RunArgs[1], schema: z.ZodType<T>, what: string, ctx?: RunArgs[2]) {
-  const first = await models.run(route, prompt, ctx);
-  try {
-    return { value: parseAnswer(first.text, schema, what), model: first.model, fellBack: first.fellBack };
-  } catch (err) {
-    if (!(err instanceof BadModelAnswer)) throw err;
-    const retry = await models.run(route, {
-      ...prompt,
-      text: `${prompt.text}\n\nYour previous answer could not be used (${err.message}). Reply again with only the complete JSON object, shorter if needed.`,
-    }, ctx);
-    return { value: parseAnswer(retry.text, schema, what), model: retry.model, fellBack: retry.fellBack };
+export async function askJsonReply<T>(models: Models, route: RunArgs[0], prompt: RunArgs[1], schema: z.ZodType<T>, what: string, ctx?: RunArgs[2], retries = 1) {
+  let reply = await models.run(route, prompt, ctx);
+  for (let k = 0; ; k++) {
+    try {
+      return { value: parseAnswer(reply.text, schema, what), model: reply.model, fellBack: reply.fellBack };
+    } catch (err) {
+      if (!(err instanceof BadModelAnswer) || k >= retries) throw err;
+      reply = await models.run(route, {
+        ...prompt,
+        text: `${prompt.text}\n\nYour previous answer could not be used (${err.message}). Reply again with only the complete JSON object, shorter if needed.`,
+      }, ctx);
+    }
   }
 }
 

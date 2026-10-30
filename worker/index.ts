@@ -35,6 +35,12 @@ export function createApp(deps: { fetch?: typeof fetch; sleep?: (ms: number) => 
     c.header("X-Content-Type-Options", "nosniff");
   });
 
+  // The public link to the sample survey: always the current sample, whatever its slug.
+  app.get("/sample", async (c) => {
+    const r = await c.env.DB.prepare("SELECT replay_slug FROM surveys WHERE is_sample = 1 AND replay_slug IS NOT NULL LIMIT 1").first<{ replay_slug: string }>();
+    return c.redirect(r ? `/replay/${r.replay_slug}` : "/", 302);
+  });
+
   app.get("/api/health", async (c) => {
     await c.env.DB.prepare("SELECT 1").first();
     return c.json({ ok: true });

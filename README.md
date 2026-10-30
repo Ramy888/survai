@@ -4,8 +4,36 @@ Telecom equipment-room site surveys, from anonymised footage to a signed report.
 floor tiles, Muse Spark drafts the room and reads the engineer's narration, one Muse Spark agent per department
 reviews the plan over up to three rounds, and Muse Wonder leads as Survey Lead. The engineer approves.
 
-**Demo video (2:59):** https://youtu.be/9MUwTUvP_Ms. The narration is synthetic: a clone of the builder's own voice
-(Cartesia). All footage in it is blurred.
+- **Try it, no passcode:** https://survai.ramy-comm.workers.dev/sample (a real survey's meeting and report, with a
+  "Run the meeting again, live" button)
+- **Live app:** https://survai.ramy-comm.workers.dev (creating a survey needs a team passcode, because it runs paid models)
+- **Demo video (3 min):** https://youtu.be/a9AVNlmbErw. The narration is synthetic: a clone of the builder's own voice
+  (Cartesia). Footage in the video is blurred.
+- **Track:** Indie developer · Build for Your World. Built solo by a field network engineer who does these surveys.
+
+## Impact: one engineer on site instead of six
+
+Figures from the builder's own team:
+
+| | Today | With SurvAI |
+|---|---|---|
+| Who goes to the site | The engineer and 5 departments (Space/Acceptance, Power, Cooling, Execution, Room Manager); each can do one site a day | One engineer, who films the room |
+| Where the departments work | On site, together, on a day everyone is free | At their desks: each gets the report and its sign-off link; a representative's objection goes into the next meeting run |
+| Request to signed survey | 3–5 days | The same day: processing about a minute, the meeting 2–3 minutes |
+| Per year (1,000+ surveys in one region) | about 6,000 person-days on site | about 1,000: **5 of 6 site visits saved, about 5,000 person-days a year** |
+
+## Measured accuracy
+
+From [`docs/eval/accuracy.md`](docs/eval/accuracy.md); the scripts are in `scripts/eval/`.
+
+| What | Result |
+|---|---|
+| Datasheet lookup (Muse Spark 1.3, web search) | **8 of 8** fields match Juniper's MX104 hardware guide |
+| Rack detection (SAM 3.1) | **43 of 44** boxes on a rack (98%); racks found in **21 of 28** frames (75%) |
+| Taped sheets to blur (SAM 3.1) | **9 of 9** found; "label" alone found 0 of 9, so the blur now also asks for "paper" and "sticker" |
+| Devices in racks (SAM 3.1) | Routers found in **6 of 15** frames that show them; the free-U estimate (U7–U21) is close to what was measured on site (U1–U20) |
+| Meeting repeatability | Same rack in **5 of 5** runs; forced objections identical; verdicts agree **23 of 25** |
+| Rules | **5 of the 12 rules** are calculated in code, and a model cannot overturn them; 249 automated tests |
 
 ## The problem
 
@@ -28,8 +56,10 @@ placement. The engineer approves, and the real representatives sign off from a l
    30 sharpest frames in the browser (one per time slice, the same rule as `tools/prepare`), sends each picked frame to
    Meta SAM 3.1 once to find labels to blur (nothing is kept on the server), blurs them in the browser, and uploads only
    the blurred frames. Privacy is SurvAI's job, not the engineer's. **Prepared frames**: frames already picked and
-   blurred elsewhere (for example on a Mac with `tools/prepare`, where nothing unblurred leaves the computer). Then the
-   narrated clip of the cable route and photos of the power panel.
+   blurred elsewhere (for example on a Mac with `tools/prepare`, where nothing unblurred leaves the computer). The same
+   walk-through carries the engineer's narration of where the device goes and how the cables run: the browser shows it
+   as a waveform under the frames and uploads the video once for Muse Spark 1.3 to read; processing deletes it right
+   after, so only blurred frames are kept. Then photos of the power panel.
 3. **Processing** (a Cloudflare Workflow, about a minute):
    - SAM 3.1 outlines every rack and floor tile in every frame. The tile grid gives the room size; the outlines are
      kept as evidence the engineer can see.
@@ -38,29 +68,40 @@ placement. The engineer approves, and the real representatives sign off from a l
    - Muse Spark 1.3 turns the Egyptian Arabic narration into the request (what goes where, the route, the
      destination) and the questions it leaves open, and reads the breakers on the panel photo.
 4. **Layout.** The engineer corrects the drafted plan on a 600 mm tile grid and fills in what the footage can't
-   show: free breakers, spare cooling, ladder height, the target rack.
+   show: free breakers, spare cooling, ladder height. The target rack comes marked from the narration, and its free
+   rack units come pre-filled from SAM's boxes (the gap below its devices, the rack counted as 42U) for the engineer
+   to confirm. Dashed outlines show where a new 80 × 80 cm rack would fit in line with the others without blocking a
+   door or an aisle (1.2 m kept clear in front of every rack); the Survey Lead places a new rack only on one of them.
 5. **Meeting.** Up to 3 rounds. Each department agent sees the room facts, the rules it owns, the calculations, and
    every other agent's statement from the round before. The Survey Lead resolves conflicts, proposes the reserved
-   area and cable paths, and decides whether another round is needed. Agents ask the engineer questions; the
-   answers change the facts for the next round.
+   area and cable paths (cables may cross racks, never a door or its swing; a path through one is sent back), and
+   decides whether another round is needed; in the last round it closes the meeting with a verdict. Agents ask the
+   engineer questions; the answers change the facts for the next round. A reply that breaks the rules (another
+   department's rule, an unknown frame or calculation) goes back to the agent with the exact error, up to twice.
 6. **Approve and report.** Approving over an objection needs a written reason. The report mirrors a real company
    survey form: approved items, every statement with its rule and evidence, the floor plan to scale with cable
-   lengths, overrides and reasons. It prints to A4. Each department gets its own sign-off link, shown once.
+   lengths (from the plan, else from the narration or Execution's measurement, labelled), overrides and reasons. It
+   prints to A4. Each department gets its own sign-off link; a representative's decision and comment go into the
+   next run of the meeting, so a department can change the outcome without travelling.
 
 ## Meta models
 
 | Task | Model | Notes |
 |---|---|---|
-| Racks and floor tiles in every key frame | **SAM 3.1** (Meta Model API) | Image mode on the sharpest frames; video mode stopped tracking after 16 instances on a long walk-through |
+| Labels, taped sheets, stickers and people to blur, in the browser | **SAM 3.1** (Meta Model API) | Boxes only; the browser blurs and uploads the blurred frame, the server keeps nothing |
+| Racks, floor tiles, devices in the racks and empty shelves in every key frame | **SAM 3.1** (Meta Model API) | Image mode on the sharpest frames; video mode stopped tracking after 16 instances on a long walk-through |
 | Department agents: Space, Power, Cooling, Execution, Room Manager, Transmission | **Muse Spark Open** (open weights, on Baseten) | Fall back to Muse Spark 1.3 if Baseten fails |
-| Room inventory from the frames | **Muse Spark Open** | Same fallback |
+| Room layout from the frames, with the target rack named in the narration | **Muse Spark Open** | Same fallback; the plan names the model that drew it |
 | Survey Lead | **Muse Wonder 1.0** | 20 s limit, falls back to Muse Spark 1.3; the app shows which model answered |
-| Request from the narrated clip (video and audio, Egyptian Arabic) | **Muse Spark 1.3** | Video goes to Meta-hosted models only |
+| Request from the narration in the walk-through (video and audio, Egyptian Arabic) | **Muse Spark 1.3** | Video goes to Meta-hosted models only, sent with `store: false`, deleted after reading |
 | Breakers on the panel photo | **Muse Spark 1.3** | Spark Open refused panel photos in day-1 tests |
 | Device datasheet, with citations | **Muse Spark 1.3** + web search | Cached per device model (one lookup cost about $0.45) |
 
 Every statement in the meeting and every step on the processing screen carries a tag naming the model that wrote
 it. Day-1 model tests are in `docs/day1.md`.
+
+**Open-weight models:** every department agent and the room layout run on **Muse Spark Open**
+(`meta-models/muse-spark-open-1026`), served through Baseten partner inference.
 
 ## Rules the agents enforce
 
@@ -81,10 +122,12 @@ from the top, ladder capacity) are judged by the agents from the frames, with th
 
 ## Privacy and limits
 
-- Footage is blurred locally before upload, and only blurred files reach any model.
+- In the app, each picked frame goes to SAM 3.1 once to find what to blur; the browser blurs it and uploads only the
+  blurred copy. With `tools/prepare`, footage is blurred on the engineer's computer before anything leaves it.
+- The public sample shows its key frames with faces and equipment logos blurred; the rest is shown as filmed.
 - Creating surveys and uploading need a passcode: 5 wrong tries per IP per 10 minutes, compared in constant time.
 - Daily caps on SAM and model calls are taken atomically before each call, so a refused call never reaches a paid
-  API. A public "run the meeting again" is limited to one per visitor per 10 minutes and 60 a day, from its own
+  API. A public "run the meeting again" is limited to one per visitor per 10 minutes and 20 a day, from its own
   allowance.
 - Model output is rendered as text only; a guard in `npm test` fails the build on raw HTML rendering.
 - No secrets in the repo: keys live in Worker secrets and a gitignored env file.
@@ -93,12 +136,13 @@ from the top, ladder capacity) are judged by the agents from the frames, with th
 
 One survey from upload to signed report on the deployed app, for one Juniper MX104 router. The footage came from a
 real equipment room. Before upload, it was anonymised: faces, logos, wall and panel text, and papers on the doors are
-blurred. The engineer's answers in this run were given by the builder. Timings come from the Cloudflare Workflows
+blurred; that is what the models saw. (The public sample now shows the same key frames re-cut with only faces and the
+equipment logos blurred.) The engineer's answers in this run were given by the builder. Timings come from the Cloudflare Workflows
 instance records and the database timestamps.
 
 | Stage | Time | Target |
 |---|---|---|
-| Upload (30 key frames, 1 narrated path clip, 2 panel photos, 2 photos) | 1 min 52 s from creating the survey to the last file (includes the device step) | none |
+| Upload (30 key frames, 1 narrated path clip, 2 panel photos, 2 photos; the sample's prepared flow) | 1 min 52 s from creating the survey to the last file (includes the device step) | none |
 | Processing: SAM 3.1 on 30 frames (5 batches), room inventory, panel photos, request reader | **67 s** | ≤ 2 min ✅ |
 | Meeting: 3 rounds, 5 department agents plus the Survey Lead | **90 s** of agent time (34 s, 31 s, 25 s); 1 min 55 s end to end, including 22 s for the engineer to answer 2 questions | ≤ 3 min ✅ |
 
@@ -174,6 +218,7 @@ To deploy your own copy: create a D1 database and an R2 bucket named in `wrangle
 
 Everything in this repository was written during the build window (first commit Oct 27, 2026; the history shows
 each step). One file is reused from the builder's earlier project: `scripts/demo-video/cdp.mjs`, a small headless
-Chrome driver used only to record the demo video; it is not part of the app.
+Chrome driver used only to record the demo video; it is not part of the app. The room footage is the builder's own,
+filmed in a room the builder surveys for work.
 
 Built on Cloudflare Workers, D1, R2 and Workflows, with Vite and React. MIT licensed.

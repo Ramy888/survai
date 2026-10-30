@@ -6,9 +6,9 @@ import { requirePasscode } from "../passcode";
 import { bytesToDataUrl } from "../processing";
 import type { AppEnv } from "../types";
 
-// "label" also finds stickers, signs and taped sheets (probed live on a frame with drawn labels); "text" and "logo"
-// found nothing there, so they are not asked.
-const CONCEPTS = ["label", "person"] as const;
+// Measured on 12 frames of the sample room (docs/eval/accuracy.md): "label" finds device label plates but missed all 9
+// taped sheets; "paper" found all 9 and "sticker" the cable and device tags. "text" and "logo" found nothing.
+const CONCEPTS = ["label", "paper", "sticker", "person"] as const;
 const MIN_CONFIDENCE = 0.4;
 const MAX_BYTES = 3 * 1024 * 1024; // a 1280 px JPEG is well under this
 

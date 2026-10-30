@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { ApiError, approveSurvey, getTimeline, savePasscode, savedPasscode, type Survey, type Timeline } from "../api";
 import { Shell } from "../components/Shell";
-import { copyAll, shareAll, SignoffLinks } from "../signoff/SignoffLinks";
+import { LinkActions, SignoffLinks } from "../signoff/SignoffLinks";
 
 const TAG: Record<string, string> = { space: "SPC", power: "PWR", cooling: "CLG", execution: "EXE", transmission: "TRN", room_manager: "RMG" };
 const NAME: Record<string, string> = { space: "Space", power: "Power", cooling: "Cooling", execution: "Execution", transmission: "Transmission", room_manager: "Room Manager" };
@@ -40,7 +40,7 @@ export function ApproveStep({ survey, onBack, onApproved }: { survey: Survey; on
   if (links) {
     return (
       <Shell step={5} surveyCode={survey.site}
-        actions={<><button className="btn btn-secondary" onClick={() => copyAll(links)}>Copy all links</button><button className="btn btn-secondary" onClick={() => shareAll(links)}>Share all</button>
+        actions={<><LinkActions links={links} />
           <button className="btn btn-primary" onClick={onApproved}>Open the report</button></>}>
         <div className="stack narrow">
           <div>

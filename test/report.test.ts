@@ -5,7 +5,7 @@
 import { env } from "cloudflare:workers";
 import { beforeEach, describe, expect, it } from "vitest";
 import { createApp } from "../worker/index";
-import { buildPlan, dragTo } from "../src/report/plan";
+import { buildPlan, dragTo, turned } from "../src/report/plan";
 
 const app = createApp();
 const q = (sql: string, ...a: unknown[]) => env.DB.prepare(sql).bind(...a);
@@ -58,7 +58,7 @@ describe("GET /api/surveys/:id/report", () => {
     // Each approved item names its department, so two departments approving the same placement read as two confirmations.
     expect(r.approved_items).toEqual([{ text: "R5 U10-U30 holds the MX104", agent: expect.any(String) }]);
     expect(r.rules).toContainEqual({ rule: "R8", text: "Leave 2U above an installed active device" });
-    expect(r.cable_lengths).toEqual([{ path: "fibre-1", cable_type: "fibre", route: "overhead", length_m: 6 }]);
+    expect(r.cable_lengths).toEqual([{ path: "fibre-1", cable_type: "fibre", route: "overhead", length_m: 6, source: "calc" }]);
     expect(r.objections).toEqual([{ agent: "room_manager", rules: ["R1", "R2"], override_reason: null }]);
     expect(r.lead).toMatchObject({ summary: "Placed in R5.", model: "muse-wonder-1.0" });
     expect(r.lead).toHaveProperty("next");
@@ -66,8 +66,29 @@ describe("GET /api/surveys/:id/report", () => {
     expect(r.plan.items.length).toBe(3);
   });
 
+  it("fills a length the plan cannot measure from the narration, else from Execution's measured items", async () => {
+    const id = await seedMet();
+    const report = async () => (await (await app.request(`/api/surveys/${id}/report`, {}, env)).json<Record<string, any>>()).cable_lengths[0];
+    await env.DB.batch([
+      q("UPDATE calcs SET result_json = ?2 WHERE survey_id = ?1 AND rule = 'LEN'", id, JSON.stringify({ length_m: null, run_m: null })),
+      q("UPDATE findings SET body_json = json_set(body_json, '$.items', json(?2)) WHERE survey_id = ?1 AND agent = 'execution'", id,
+        JSON.stringify([{ kind: "measurement", text: "Single-mode fiber run to the Transmission room", quantity: 22, unit: "m" }, { kind: "measurement", text: "DC power cable", quantity: 7, unit: "m" }])),
+    ]);
+    expect(await report()).toMatchObject({ length_m: 22, source: "execution" });
+    await env.DB.prepare("UPDATE surveys SET request_json = json_set(request_json, '$.cable_length_m', 30) WHERE id = ?1").bind(id).run();
+    expect(await report()).toMatchObject({ length_m: 30, source: "narration" });
+  });
+
   it("is 404 for an unknown survey", async () => {
     expect((await app.request("/api/surveys/00000000-0000-4000-8000-000000000000/report", {}, env)).status).toBe(404);
+  });
+});
+
+describe("a free spot for a new rack on the plan", () => {
+  it("is drawn as a dashed outline that cannot be dragged", () => {
+    const plan = buildPlan({ size: { w: 9, d: 12 }, lengths: {}, clearances: [],
+      items: [{ id: "spot-0", kind: "spot", label: "fits", x: 0.17, y: 5.4, w: 1.33, d: 1.33, facing: "east", props: {}, source: "lead" }] } as never);
+    expect(plan.shapes[0]).toMatchObject({ type: "rect", hatched: "spot", fixed: true, label: "fits" });
   });
 });
 
@@ -78,6 +99,14 @@ describe("dragTo (moving an item on the layout's floor plan)", () => {
   it("keeps the whole item inside the room", () => {
     expect(dragTo({ x: 2, y: 3 }, { dx: -5, dy: 20 }, { w: 1, d: 1.7 }, { w: 9, d: 12 })).toEqual({ x: 0, y: 10.3 });
     expect(dragTo({ x: 0, y: 0 }, { dx: 3, dy: 3 }, { w: 12, d: 1 }, { w: 9, d: 12 })).toEqual({ x: 0, y: 3 });
+  });
+});
+
+describe("turned (turning an item a quarter clockwise on the layout's floor plan)", () => {
+  it("swaps width and depth about the item's centre and turns its front clockwise", () => {
+    expect(turned({ x_tiles: 2, y_tiles: 3, w_tiles: 1.7, d_tiles: 1, facing: "west" })).toEqual({ x_tiles: 2.4, y_tiles: 2.7, w_tiles: 1, d_tiles: 1.7, facing: "north" });
+    expect(turned({ x_tiles: 0, y_tiles: 0, w_tiles: 1, d_tiles: 1.7, facing: "south" })).toMatchObject({ x_tiles: 0, y_tiles: 0.4, facing: "west" }); // never past the wall
+    expect(turned({ x_tiles: 1, y_tiles: 1, w_tiles: 4, d_tiles: 0.5, facing: null })).toMatchObject({ w_tiles: 0.5, d_tiles: 4, facing: null }); // a ladder has no front
   });
 });
 

@@ -64,7 +64,7 @@ async function seed(facts: Record<string, unknown> = {}, rackFree = [{ from_u: 1
 beforeEach(async () => {
   prompts.length = 0;
   started.length = 0;
-  for (const t of ["surveys", "survey_reps", "device_specs", "rooms", "layout_items", "files", "calcs", "findings", "questions", "lead_notes", "usage_counters"]) await env.DB.prepare(`DELETE FROM ${t}`).run();
+  for (const t of ["surveys", "survey_reps", "device_specs", "rooms", "layout_items", "files", "calcs", "findings", "questions", "lead_notes", "usage_counters", "signoffs"]) await env.DB.prepare(`DELETE FROM ${t}`).run();
 });
 
 describe("runRound", () => {
@@ -75,7 +75,7 @@ describe("runRound", () => {
     const findings = await all<{ agent: string; layout_version: number; run: number }>("SELECT agent, layout_version, run FROM findings WHERE survey_id = ?1 AND round = 1 ORDER BY agent", id);
     expect(findings.map((f) => f.agent)).toEqual(["cooling", "execution", "power", "room_manager", "space"]);
     expect(findings.every((f) => f.layout_version === 3 && f.run === 1)).toBe(true);
-    expect((await all<{ rule: string }>("SELECT rule FROM calcs WHERE survey_id = ?1 AND round = 1 AND run = 1", id)).map((c) => c.rule).sort()).toEqual(["R10", "R11", "R6", "R8"]);
+    expect((await all<{ rule: string }>("SELECT rule FROM calcs WHERE survey_id = ?1 AND round = 1 AND run = 1", id)).map((c) => c.rule).sort()).toEqual(["R10", "R11", "R6", "R8", "SPOT"]);
     expect(await all("SELECT model, fell_back FROM lead_notes WHERE survey_id = ?1", id)).toEqual([{ model: "muse-wonder-1.0", fell_back: 0 }]);
     expect(started).toEqual([{ run: 1, round: 2 }]);
   });
@@ -90,6 +90,14 @@ describe("runRound", () => {
     expect(space).not.toContain("SPACE-R1");
   });
 
+  it("puts a department representative's sign-off comment into the next meeting run, so a rep can change the outcome", async () => {
+    const { id } = await seed();
+    await env.DB.prepare("INSERT INTO signoffs (survey_id, agent, token_hash, rep_name, decision, comment, decided_at) VALUES (?1, 'power', 'h1', 'Rep A', 'object', 'REP-SAYS: feed from P2, not P1', 'now')").bind(id).run();
+    await go(id, {});
+    for (const agent of ["power", "space"]) expect(prompts.find((p) => p.agent === agent)!.text).toContain("REP-SAYS: feed from P2, not P1");
+    expect(prompts.find((p) => p.agent === "lead")!.text).toContain("REP-SAYS");
+  });
+
   it("forces Execution's objection when the target rack is too full", async () => {
     const { id } = await seed({}, [{ from_u: 18, to_u: 22 }]);
     await go(id, {});
@@ -98,8 +106,15 @@ describe("runRound", () => {
     expect(JSON.parse(f.body_json).forced_rules).toEqual(["R8"]);
   });
 
-  it("waits for the engineer when a question is open, without starting the next round", async () => {
+  it("does not ask for spare cooling when the room's size is known: the heat is checked against the floor area", async () => {
     const { id } = await seed({ spare_ac_btu: null });
+    await go(id, { lead: () => ({ round: 1, placement: { target: "none", reason: "x" }, propose_items: [], conflicts: [], summary: "s", next: "done" }) });
+    expect(await all("SELECT q.target_fact FROM questions q JOIN findings f ON f.id = q.finding_id WHERE f.survey_id = ?1", id)).toEqual([]);
+    expect(await all("SELECT pass FROM calcs WHERE survey_id = ?1 AND rule = 'R10'", id)).toEqual([{ pass: 1 }]);
+  });
+
+  it("waits for the engineer when a question is open, without starting the next round", async () => {
+    const { id } = await seed({ spare_ac_btu: null, size_tiles: null }); // no room size and no spare figure: Cooling must ask
     const out = await go(id, { lead: () => ({ round: 1, placement: { target: "none", reason: "wait" }, propose_items: [], conflicts: [], summary: "s", next: "another_round" }) });
     expect(out.outcome).toBe("waiting");
     expect(await all("SELECT q.target_fact FROM questions q JOIN findings f ON f.id = q.finding_id WHERE f.survey_id = ?1", id)).toEqual([{ target_fact: "spare_ac_btu" }]);
@@ -107,7 +122,7 @@ describe("runRound", () => {
   });
 
   it("moves on, not waits, when the engineer answers while the Lead is still thinking", async () => {
-    const { id } = await seed({ spare_ac_btu: null });
+    const { id } = await seed({ spare_ac_btu: null, size_tiles: null });
     const base = fakeFetch({ lead: () => ({ round: 1, placement: { target: "none", reason: "x" }, propose_items: [], conflicts: [], summary: "s", next: "another_round" }) });
     const answerFirst = (async (url: string, init: RequestInit) => {
       if (String(init.body).includes("You are the Survey Lead")) await env.DB.prepare("UPDATE questions SET answer = '6000' WHERE answer IS NULL").run();
@@ -160,8 +175,8 @@ describe("runRound", () => {
 
   it("names the Lead's cable paths by type, whatever order it proposes them in, so the round's length calculations still match", async () => {
     const { id, room } = await seed();
-    await go(id, { lead: () => ({ round: 1, placement: { target: "rack:R3", reason: "x" }, propose_items: [path("power", 1), path("fibre", 2)], conflicts: [], summary: "s", next: "another_round" }) });
-    await go(id, { lead: () => ({ round: 2, placement: { target: "rack:R3", reason: "x" }, propose_items: [path("fibre", 2), path("power", 1)], conflicts: [], summary: "s", next: "done" }) }, 2);
+    await go(id, { lead: () => ({ round: 1, placement: { target: "rack:R3", reason: "x" }, propose_items: [path("power", 6), path("fibre", 7)], conflicts: [], summary: "s", next: "another_round" }) });
+    await go(id, { lead: () => ({ round: 2, placement: { target: "rack:R3", reason: "x" }, propose_items: [path("fibre", 7), path("power", 6)], conflicts: [], summary: "s", next: "done" }) }, 2);
     const labels = (await all<{ label: string }>("SELECT label FROM layout_items WHERE room_id = ?1 AND kind = 'cable_path' ORDER BY label", room)).map((r) => r.label);
     const measured = (await all<{ p: string }>("SELECT json_extract(inputs_json, '$.path') p FROM calcs WHERE survey_id = ?1 AND round = 2 AND rule = 'LEN' ORDER BY p", id)).map((r) => r.p);
     expect(labels).toEqual(["fibre-1", "power-1"]);

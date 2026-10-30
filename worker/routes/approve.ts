@@ -5,6 +5,7 @@ import { approveGate } from "../approve";
 import { requirePasscode } from "../passcode";
 import { transition, type State } from "../state";
 import type { AppEnv } from "../types";
+import { nextRun } from "./deliberate";
 import { newToken, tokenHash } from "./signoff";
 
 export const approve = new Hono<AppEnv>();
@@ -59,8 +60,11 @@ approve.post("/:id/approve", requirePasscode, async (c) => {
       .bind(transition(s.status, "approved"), JSON.stringify({ text: body.data.tech_specs }), id, s.layout_version, latest!.run),
     ...overridden.map((f) => db.prepare("UPDATE findings SET override_reason = ?1 WHERE id = ?2 AND (SELECT status FROM surveys WHERE id = ?3) = 'approved'")
       .bind(body.data.overrides[f.id].trim(), f.id, id)),
-    ...links.map((l, k) => db.prepare("INSERT INTO signoffs (survey_id, agent, token_hash) SELECT ?1, ?2, ?3 WHERE (SELECT status FROM surveys WHERE id = ?1) = 'approved'")
-      .bind(id, l.agent, hashes[k])),
+    // After a reopened meeting, a department signs off again on the new outcome: its old decision was read by the new run.
+    ...links.map((l, k) => db.prepare(
+      `INSERT INTO signoffs (survey_id, agent, token_hash) SELECT ?1, ?2, ?3 WHERE (SELECT status FROM surveys WHERE id = ?1) = 'approved'
+       ON CONFLICT (survey_id, agent) DO UPDATE SET token_hash = excluded.token_hash, rep_name = NULL, decision = NULL, comment = NULL, decided_at = NULL`,
+    ).bind(id, l.agent, hashes[k])),
   ]);
   if (!moved[0].meta.changes) return c.json({ error: "The survey changed while approving. Reload and try again." }, 409);
   return c.json({ status: "approved", links });
@@ -86,4 +90,20 @@ approve.post("/:id/signoff-links", requirePasscode, async (c) => {
   // A department that decided in the meantime keeps its record, so its new link is not returned.
   const links = fresh.filter((_, k) => res[k].meta.changes);
   return c.json({ links, decided: findings.map((f) => f.agent).filter((a) => !links.some((l) => l.agent === a)).sort() });
+});
+
+// A department's objection from its sign-off link can change the outcome: the engineer reopens the meeting, and the
+// next run reads every department's sign-off and comment. The public sample stays as recorded.
+approve.post("/:id/reopen", requirePasscode, async (c) => {
+  const db = c.env.DB;
+  const id = c.req.param("id");
+  const s = await db.prepare("SELECT status, is_sample FROM surveys WHERE id = ?1").bind(id).first<{ status: State; is_sample: number }>();
+  if (!s) return c.json({ error: "Survey not found" }, 404);
+  if (s.status !== "approved" || s.is_sample) return c.json({ error: "Only an approved survey can be reopened", state: s.status }, 409);
+  const r = await db.prepare("UPDATE surveys SET status = ?1 WHERE id = ?2 AND status = 'approved' AND is_sample = 0")
+    .bind(transition(s.status, "reopened"), id).run();
+  if (!r.meta.changes) return c.json({ error: "The survey changed. Reload and try again." }, 409);
+  const run = await nextRun(db, id);
+  await c.var.startRound(c.env, id, run, 1);
+  return c.json({ status: "deliberating", run });
 });

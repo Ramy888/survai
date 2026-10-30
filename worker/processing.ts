@@ -2,12 +2,12 @@
 // draft layout. Only SAM and the budget are fatal (survey back to uploading); a failed model reading is noted and
 // the engineer fills it in on the layout step.
 import { Inventory, inventoryPrompt } from "./agents/inventory";
-import { BadModelAnswer, askJson } from "./agents/json";
+import { BadModelAnswer, askJson, askJsonReply } from "./agents/json";
 import { PANEL_PROMPT, PanelReading } from "./agents/panel";
 import { READER_PROMPT, Request } from "./agents/reader";
 import { BudgetExceeded, ModelError, SamUnavailable, type createModels } from "./clients/models";
 import { transition } from "./state";
-import { type FrameBoxes, summarizeSam } from "./vision/sam-summary";
+import { estimateFreeU, type FrameBoxes, summarizeSam } from "./vision/sam-summary";
 
 export interface StepRunner {
   do<T>(name: string, config: { retries: { limit: number; delay: `${number} seconds`; backoff?: "constant" | "linear" | "exponential" } }, fn: () => Promise<T>): Promise<T>;
@@ -55,8 +55,26 @@ export async function runProcessing({ env, models, step }: Deps, surveyId: strin
          WHERE r.survey_id = ?1 ORDER BY f.created_at`,
       ).bind(surveyId).all<FileRow>()).results);
 
+    // The narrated clip first: it names the rack the device goes in, which the inventory draft then marks.
+    const clip = files.find((f) => f.kind === "path_clip");
+    const request = clip
+      ? await step.do("request reader", STEP, () => optional("narration", async () => {
+          return askJson(models, "reader", { text: READER_PROMPT, videos: [await toDataUrl(env.MEDIA, clip.r2_key)] }, Request, "narration", { ...ctx, agent: "request" });
+        }))
+      : await step.do("earlier narration", STEP, async () => {
+          // A second run finds the video already deleted: keep what the first run read.
+          const row = await env.DB.prepare("SELECT request_json FROM surveys WHERE id = ?1").bind(surveyId).first<{ request_json: string | null }>();
+          const earlier = row?.request_json ? Request.safeParse(JSON.parse(row.request_json)) : null;
+          return earlier?.success ? { ok: true as const, value: earlier.data } : { ok: false as const, error: "no narration: the video was not uploaded" };
+        });
+    // Read once, then gone: the video shows the room unblurred, and only the blurred frames are kept.
+    if (clip) await step.do("delete narrated video", STEP, async () => {
+      await env.DB.prepare("DELETE FROM files WHERE id = ?1").bind(clip.id).run();
+      await env.MEDIA.delete(clip.r2_key);
+    });
+
     const rooms = [...new Set(files.map((f) => f.role))];
-    const roomResults: Record<string, { roomId: string; frames: FrameBoxes[]; inventory: Awaited<ReturnType<typeof optional<Inventory>>> }> = {};
+    const roomResults: Record<string, { roomId: string; frames: FrameBoxes[]; inventory: Awaited<ReturnType<typeof optional<{ value: Inventory; model: string }>>> }> = {};
     for (const role of rooms) {
       const frameFiles = files.filter((f) => f.role === role && f.kind === "key_frame");
       const frames: FrameBoxes[] = [];
@@ -65,8 +83,10 @@ export async function runProcessing({ env, models, step }: Deps, surveyId: strin
         frames.push(...(await step.do(`sam ${role} ${b / SAM_BATCH + 1}`, STEP, () =>
           Promise.all(batch.map(async (f, i) => {
             const image = await toDataUrl(env.MEDIA, f.r2_key);
-            const [tiles, racks] = await Promise.all([models.segment(image, "floor tile", ctx), models.segment(image, "server rack", ctx)]);
-            const boxes = { tiles: tiles.boxes, racks: racks.boxes };
+            // "router" and "network switch" find nothing; "electronic device" finds the routers in the racks, and
+            // "shelf" the empty shelves below them (probed on the sample room).
+            const [tiles, racks, devices, shelves] = await Promise.all(["floor tile", "server rack", "electronic device", "shelf"].map((c) => models.segment(image, c, ctx)));
+            const boxes = { tiles: tiles.boxes, racks: racks.boxes, devices: devices.boxes, shelves: shelves.boxes };
             await env.DB.prepare("UPDATE files SET masks_json = ?1 WHERE id = ?2").bind(JSON.stringify(boxes), f.id).run();
             return { fileId: f.id, n: b + i + 1, width: tiles.width || racks.width, height: tiles.height || racks.height, ...boxes };
           })))));
@@ -76,7 +96,8 @@ export async function runProcessing({ env, models, step }: Deps, surveyId: strin
       const inventory = await step.do(`inventory ${role}`, STEP, () => optional("room inventory", async () => {
         const images = await Promise.all(picked.map(({ f }) => toDataUrl(env.MEDIA, f.r2_key)));
         // Spark Open reasons at length; 12,000 tokens cut the JSON off mid-answer in the live run.
-        return askJson(models, "inventory", { text: inventoryPrompt(summary, picked.map((p) => p.n)), images, maxTokens: 24_000 }, Inventory, "room inventory", { ...ctx, agent: "inventory" });
+        const said = request.ok ? `${request.value.source}. ${request.value.translation_en}` : null; // where it goes, then the route and panels
+        return askJsonReply(models, "inventory", { text: inventoryPrompt(summary, picked.map((p) => p.n), said), images, maxTokens: 24_000 }, Inventory, "room inventory", { ...ctx, agent: "inventory" });
       }));
       roomResults[role] = { roomId: files.find((f) => f.role === role)!.room_id, frames, inventory };
     }
@@ -86,13 +107,6 @@ export async function runProcessing({ env, models, step }: Deps, surveyId: strin
         const reading = await askJson(models, "panel", { text: PANEL_PROMPT, images: [await toDataUrl(env.MEDIA, f.r2_key)] }, PanelReading, "panel photo", { ...ctx, agent: "power" });
         return { fileId: f.id, reading };
       }))));
-
-    const clip = files.find((f) => f.kind === "path_clip");
-    const request = clip
-      ? await step.do("request reader", STEP, () => optional("narrated path clip", async () => {
-          return askJson(models, "reader", { text: READER_PROMPT, videos: [await toDataUrl(env.MEDIA, clip.r2_key)] }, Request, "narrated path clip", { ...ctx, agent: "request" });
-        }))
-      : { ok: false as const, error: "no path clip" };
 
     await step.do("write draft", STEP, () => writeDraft(env, surveyId, roomResults, panels, request));
   } catch (err) {
@@ -111,7 +125,7 @@ export async function runProcessing({ env, models, step }: Deps, surveyId: strin
 async function writeDraft(
   env: Env,
   surveyId: string,
-  rooms: Record<string, { roomId: string; frames: FrameBoxes[]; inventory: { ok: true; value: Inventory } | { ok: false; error: string } }>,
+  rooms: Record<string, { roomId: string; frames: FrameBoxes[]; inventory: { ok: true; value: { value: Inventory; model: string } } | { ok: false; error: string } }>,
   panels: ({ ok: true; value: { fileId: string; reading: PanelReading } } | { ok: false; error: string })[],
   request: { ok: true; value: Request } | { ok: false; error: string },
 ) {
@@ -120,14 +134,18 @@ async function writeDraft(
   const statements: D1PreparedStatement[] = [];
   const notes: string[] = [];
   for (const [role, r] of Object.entries(rooms)) {
-    const inv = r.inventory.ok ? r.inventory.value : null;
+    const inv = r.inventory.ok ? r.inventory.value.value : null;
+    const target = inv?.items.find((i) => i.kind === "rack" && i.target); // at most one target, the first the model marked
+    // Free rack units from SAM's boxes, on the frames the target rack was seen in when the draft says which.
+    // The target's own frames first; when none shows its devices, the best-seen open rack of the walk (the one filmed).
+    const free = estimateFreeU(r.frames, target?.frames) ?? (target?.frames?.length ? estimateFreeU(r.frames) : null);
     const roomNotes = r.inventory.ok ? [] : [r.inventory.error];
     statements.push(db.prepare("DELETE FROM layout_items WHERE room_id = ?1 AND source = 'ai'").bind(r.roomId));
     for (const it of inv?.items ?? []) {
       const [w, d] = DEFAULT_SIZE[it.kind];
       // A door's swing side is inferred later from the wall it sits on: "facing" is where it faces, not where it swings.
       const props = it.kind === "rack"
-        ? { height_u: 42, free_blocks: [], is_target: false, off_limits: false, top_height_m: 2.0, contents: it.contents ?? "unknown", frames: it.frames, notes: it.notes ?? null }
+        ? { height_u: 42, free_blocks: it === target && free ? [{ from_u: free.from_u, to_u: free.to_u }] : [], free_estimate: it === target && free ? { by: "sam-3.1", frame: free.frame } : null, is_target: it === target, off_limits: false, top_height_m: 2.0, contents: it.contents ?? "unknown", frames: it.frames, notes: it.notes ?? null }
         : it.kind === "door" ? { swing_m: 0.9, side: null, frames: it.frames } : { frames: it.frames, notes: it.notes ?? null };
       statements.push(db.prepare(
         `INSERT INTO layout_items (id, room_id, kind, label, x_tiles, y_tiles, w_tiles, d_tiles, facing, props_json, source)
@@ -150,6 +168,8 @@ async function writeDraft(
       inter_room_m: null,
       observations: inv?.observations ?? [],
       inventory_notes: inv?.notes ?? "",
+      inventory_model: r.inventory.ok ? r.inventory.value.model : null, // the layout step names the model that drew it
+      sam_free_u: free, // SAM's estimate of the empty space in the target rack (or the best-seen rack), for the engineer
       processing_notes: roomNotes, // readings that failed; the engineer fills these in on the layout step
     };
     statements.push(db.prepare("UPDATE rooms SET facts_json = ?1 WHERE id = ?2").bind(JSON.stringify(facts), r.roomId));

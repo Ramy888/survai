@@ -23,11 +23,19 @@ const NewSurvey = z
   });
 
 export const surveys = new Hono<AppEnv>();
+const JUDGE_SURVEYS_PER_DAY = 5; // each survey runs paid models; the judges' link is shared outside the team
 
 surveys.post("/", requirePasscode, async (c) => {
   const parsed = NewSurvey.safeParse(await c.req.json().catch(() => null));
   if (!parsed.success) return c.json({ error: parsed.error.issues.map((i) => `${i.path.join(".")}: ${i.message}`).join("; ") }, 400);
   const s = parsed.data;
+  if (c.var.judge) {
+    // One atomic upsert: the 6th survey of the day finds the count at the cap and gets no row back.
+    const taken = await c.env.DB.prepare(
+      `INSERT INTO judge_surveys (day, count) VALUES (?1, 1) ON CONFLICT (day) DO UPDATE SET count = count + 1 WHERE count < ?2 RETURNING count`,
+    ).bind(new Date().toISOString().slice(0, 10), JUDGE_SURVEYS_PER_DAY).first();
+    if (!taken) return c.json({ error: `The judges' link allows ${JUDGE_SURVEYS_PER_DAY} new surveys a day. Try again tomorrow, or open the sample survey.` }, 429);
+  }
   const reps = new Set<string>(s.reps ?? DEFAULT_REPS);
   if (s.connects_to === "other_room") reps.add("transmission");
   const id = crypto.randomUUID();

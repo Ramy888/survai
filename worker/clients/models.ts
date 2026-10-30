@@ -63,7 +63,7 @@ const BACKOFF_MS = [1000, 2000, 4000];
 // Wonder gets no timeout retry: the spec gives the Lead 20 s before Spark 1.3 takes over.
 const LIMITS: Record<ModelId, { timeoutMs: number; timeoutRetries: number }> = {
   "muse-spark-open": { timeoutMs: 60_000, timeoutRetries: 1 },
-  "muse-spark-1.3": { timeoutMs: 60_000, timeoutRetries: 1 },
+  "muse-spark-1.3": { timeoutMs: 90_000, timeoutRetries: 1 }, // an 82 s walk-through took 30 s to read
   "muse-wonder-1.0": { timeoutMs: 20_000, timeoutRetries: 0 },
   "sam-3.1": { timeoutMs: 30_000, timeoutRetries: 1 },
 };
@@ -129,6 +129,7 @@ export function createModels({ env, fetch: doFetch = fetch, sleep = (ms) => new 
     } else {
       raw = await post(model, {
         model,
+        store: false, // a whole walk-through video is over the size Meta will store a request at; nothing needs storing
         reasoning: { effort: p.reasoning ?? "low" },
         ...(p.webSearch ? { tools: [{ type: "web_search" }] } : {}),
         input: [{ role: "user", content: [

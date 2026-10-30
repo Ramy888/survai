@@ -5,7 +5,7 @@ import { BadModelAnswer, askJsonReply } from "./agents/json";
 import { type LeadNote, leadPrompt, leadSchema } from "./agents/lead";
 import { type MeetingInput, runAgent } from "./agents/runner";
 import {
-  type Breaker, type Calc, type CablePath, type Rect, cableLength, clearances, r3PowerSeparation, r6DoorSwing, r8FreeU, r10Cooling, r11Breakers,
+  type Breaker, type Calc, type CablePath, type Rect, cableLength, clearances, r3PowerSeparation, r6DoorSwing, r8FreeU, r10Cooling, r11Breakers, rackSpots,
 } from "./calc";
 import { BudgetExceeded, ModelError, type createModels } from "./clients/models";
 import type { StepRunner } from "./processing";
@@ -30,9 +30,9 @@ async function loadMeeting(db: D1Database, surveyId: string, run: number, round:
   const s = await db.prepare("SELECT quantity, device_model, layout_version, request_json FROM surveys WHERE id = ?1").bind(surveyId)
     .first<{ quantity: number; device_model: string; layout_version: number; request_json: string | null }>();
   if (!s) throw new Error(`survey ${surveyId} not found`);
-  const [d, reps, rooms, items, frames, prev, lead, answers] = await Promise.all([
-    db.prepare("SELECT height_u, power_w, feed_type, feed_count, breaker_rating_a FROM device_specs WHERE survey_id = ?1").bind(surveyId)
-      .first<{ height_u: number; power_w: number; feed_type: "AC" | "DC"; feed_count: number; breaker_rating_a: number | null }>(),
+  const [d, reps, rooms, items, frames, prev, lead, answers, signed] = await Promise.all([
+    db.prepare("SELECT height_u, power_w, feed_type, feed_count, breaker_rating_a, interfaces, transceivers, connectors FROM device_specs WHERE survey_id = ?1").bind(surveyId)
+      .first<{ height_u: number; power_w: number; feed_type: "AC" | "DC"; feed_count: number; breaker_rating_a: number | null; interfaces: string | null; transceivers: string | null; connectors: string | null }>(),
     db.prepare("SELECT agent FROM survey_reps WHERE survey_id = ?1 ORDER BY agent").bind(surveyId).all<{ agent: Agent }>(),
     db.prepare("SELECT id, role, facts_json FROM rooms WHERE survey_id = ?1 ORDER BY role DESC").bind(surveyId).all<{ id: string; role: string; facts_json: string | null }>(),
     db.prepare("SELECT li.id, li.room_id, li.kind, li.label, li.x_tiles, li.y_tiles, li.w_tiles, li.d_tiles, li.facing, li.props_json, li.source FROM layout_items li JOIN rooms r ON r.id = li.room_id WHERE r.survey_id = ?1")
@@ -43,6 +43,9 @@ async function loadMeeting(db: D1Database, surveyId: string, run: number, round:
       : db.prepare("SELECT agent, verdict, body_json FROM findings WHERE survey_id = ?1 AND round = 0").bind(surveyId).all<{ agent: string; verdict: string; body_json: string }>(),
     db.prepare("SELECT body_json FROM lead_notes WHERE survey_id = ?1 AND run = ?2 AND round = ?3").bind(surveyId, run, round - 1).first<{ body_json: string }>(),
     db.prepare("SELECT q.text, q.answer FROM questions q JOIN findings f ON f.id = q.finding_id WHERE f.survey_id = ?1 AND q.answer IS NOT NULL").bind(surveyId).all<{ text: string; answer: string }>(),
+    // A department representative's sign-off (from their link, in their office) goes into the next run of the meeting.
+    db.prepare("SELECT agent, rep_name, decision, comment FROM signoffs WHERE survey_id = ?1 AND decision IS NOT NULL ORDER BY agent").bind(surveyId)
+      .all<{ agent: string; rep_name: string | null; decision: string; comment: string | null }>(),
   ]);
   if (!d) throw new Error(`survey ${surveyId} has no confirmed device`);
   const frameList = numberFrames(frames.results);
@@ -70,7 +73,11 @@ async function loadMeeting(db: D1Database, surveyId: string, run: number, round:
     calcs: [],
     previous: prev.results.map((p) => ({ agent: p.agent, verdict: p.verdict, statement: String(JSON.parse(p.body_json).statement ?? "") })),
     lead: leadNote && { conflicts: leadNote.conflicts, summary: leadNote.summary },
-    answers: answers.results.map((a) => ({ question: a.text, answer: a.answer })),
+    answers: [
+      ...answers.results.map((a) => ({ question: a.text, answer: a.answer })),
+      ...signed.results.map((r) => ({ question: `Sign-off by the ${r.agent.replace("_", " ")} department's representative${r.rep_name ? ` (${r.rep_name})` : ""}`,
+        answer: `${r.decision}${r.comment ? `: ${r.comment}` : ""}` })),
+    ],
   };
   return { input, reps: reps.results.map((r) => r.agent), layoutVersion: s.layout_version, roomIds: Object.fromEntries(rooms.results.map((r) => [r.role, r.id])) };
 }
@@ -96,7 +103,7 @@ export function computeCalcs(input: MeetingInput): Calc[] {
     ? { label: target.label ?? "target", free_blocks: (target.props.free_blocks as { from_u: number; to_u: number }[]) ?? [] }
     : reserved[0] ? { label: reserved[0].label ?? "new rack", free_blocks: [{ from_u: 1, to_u: Number(reserved[0].props.height_u ?? 42) }] } : null;
   out.push(r8FreeU({ height_u: input.device.height_u, quantity: input.quantity, rack }));
-  out.push(r10Cooling({ power_w: input.device.power_w, quantity: input.quantity, spare_ac_btu: (f.spare_ac_btu as number | null) ?? null }));
+  out.push(r10Cooling({ power_w: input.device.power_w, quantity: input.quantity, spare_ac_btu: (f.spare_ac_btu as number | null) ?? null, room_tiles: hall?.size_tiles ?? null }));
   out.push(r11Breakers({
     feed_type: input.device.feed_type, feed_count: input.device.feed_count, quantity: input.quantity, breaker_rating_a: input.device.breaker_rating_a,
     breakers: Array.isArray(f.breakers_confirmed) ? (f.breakers_confirmed as Breaker[]) : null,
@@ -121,6 +128,8 @@ export function computeCalcs(input: MeetingInput): Calc[] {
       out.push({ rule: "LEN", inputs: { path: p.label, cable_type: p.cable_type, route: p.route }, result: len, pass: len.length_m === null ? null : true });
     }
     const size = room.size_tiles;
+    // Where a new 80 x 80 cm rack fits without blocking a door or an aisle: facts for Space and the Lead's placement.
+    if (size) out.push({ rule: "SPOT", inputs: { size_m: 0.8 }, pass: true, result: { spots: rackSpots({ room: size, items: room.items.map((i) => ({ ...rect(i), kind: i.kind, facing: i.facing })) }) } });
     if (size) {
       for (const r of room.items.filter((i) => i.kind === "reserved")) {
         const door = room.items.find((i) => i.kind === "door");
@@ -171,11 +180,17 @@ export async function runRound({ env, models, step, startRound }: Deps, surveyId
   const hall = input.rooms.find((r) => r.role === "devices_hall");
   const lead = await step.do("lead", STEP, async () => {
     const racks = (hall?.items ?? []).filter((i) => i.kind === "rack").map((i) => i.label ?? "");
+    // Each door with its swing (from the R6 calculation), so a cable path the Lead draws through one is sent back.
+    const doorZones = (hall?.items ?? []).filter((i) => i.kind === "door").map((d) => {
+      const z = calcs.find((c) => c.rule === "R6" && c.inputs.door === d.label)?.result.zone as { x0: number; x1: number; y0: number; y1: number } | undefined;
+      const [w, dd] = [d.w ?? 1.5, d.d ?? 0.2];
+      return { label: d.label ?? "door", x0: Math.min(d.x, z?.x0 ?? d.x), x1: Math.max(d.x + w, z?.x1 ?? d.x + w), y0: Math.min(d.y, z?.y0 ?? d.y), y1: Math.max(d.y + dd, z?.y1 ?? d.y + dd) };
+    });
     try {
       const r = await askJsonReply(models, "lead", { text: leadPrompt({
-        round, device: input.device, quantity: input.quantity, items: hall?.items ?? [], calcs,
+        round, final: round >= MAX_ROUNDS, device: input.device, answers: input.answers, quantity: input.quantity, items: hall?.items ?? [], calcs,
         findings: findings.map((f) => ({ agent: f.agent, verdict: f.verdict, statement: f.statement, rule_refs: f.rule_refs, question: f.question })),
-      }) }, leadSchema(racks), "lead note", { survey: surveyId, round, agent: "lead" });
+      }) }, leadSchema(racks, round >= MAX_ROUNDS, doorZones), "lead note", { survey: surveyId, round, agent: "lead" });
       return { note: r.value as LeadNote, model: r.model as string, fellBack: r.fellBack };
     } catch (err) {
       if (err instanceof BudgetExceeded || !(err instanceof ModelError || err instanceof BadModelAnswer)) throw err;

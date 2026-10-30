@@ -10,6 +10,7 @@ const ALLOWED: Record<string, string> = {
   "processing:processing_failed": "uploading",
   "layout_review:layouts_saved": "deliberating",
   "deliberating:approved": "approved",
+  "approved:reopened": "deliberating", // a department objected from its desk: the engineer reopens the meeting
 };
 
 describe("survey state machine", () => {
@@ -22,6 +23,10 @@ describe("survey state machine", () => {
       });
     }
   }
+
+  it("lets an approved survey go back to the meeting", () => {
+    expect(transition("approved", "reopened" as never)).toBe("deliberating");
+  });
 
   it("allows layout saves only while reviewing or deliberating", () => {
     expect(STATES.filter(canSaveLayout)).toEqual(["layout_review", "deliberating"]);

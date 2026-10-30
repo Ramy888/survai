@@ -12,7 +12,7 @@ export interface PlanInput {
 }
 type Box = { id: string; fixed: boolean; label: string; x: number; y: number; w: number; d: number }; // fixed: the Survey Lead's, not the engineer's to move
 export type Shape =
-  | Box & { type: "rect"; kind: string; facing: string | null; hatched?: "reserved" | "off_limits"; target?: boolean }
+  | Box & { type: "rect"; kind: string; facing: string | null; hatched?: "reserved" | "off_limits" | "spot"; target?: boolean }
   | Box & { type: "door"; side: string; swing: number }
   | Box & { type: "ladder" }
   | { type: "path"; label: string; cable_type: string; route: string; points: [number, number][] }
@@ -33,7 +33,7 @@ export function buildPlan(i: PlanInput): { w: number; d: number; shapes: Shape[]
     } else {
       shapes.push({
         type: "rect", kind: it.kind, ...base, facing: it.facing,
-        ...(it.kind === "reserved" ? { hatched: "reserved" as const } : it.props.off_limits ? { hatched: "off_limits" as const } : {}),
+        ...(it.kind === "reserved" ? { hatched: "reserved" as const } : it.kind === "spot" ? { hatched: "spot" as const } : it.props.off_limits ? { hatched: "off_limits" as const } : {}),
         ...(it.props.is_target ? { target: true } : {}),
       });
     }
@@ -48,4 +48,12 @@ export function buildPlan(i: PlanInput): { w: number; d: number; shapes: Shape[]
 export function dragTo(at: { x: number; y: number }, by: { dx: number; dy: number }, size: { w: number; d: number }, room: { w: number; d: number }) {
   const place = (v: number, len: number, max: number) => Math.round(Math.min(Math.max(0, max - len), Math.max(0, v)) * 10) / 10;
   return { x: place(at.x + by.dx, size.w, room.w), y: place(at.y + by.dy, size.d, room.d) };
+}
+
+const CLOCKWISE: Record<string, string> = { north: "east", east: "south", south: "west", west: "north" };
+/** An item turned a quarter clockwise about its centre (front included), snapped to a tenth of a tile, never past the wall at 0. */
+export function turned(i: { x_tiles: number; y_tiles: number; w_tiles: number | null; d_tiles: number | null; facing: string | null }) {
+  const w = i.w_tiles ?? 1, d = i.d_tiles ?? 1;
+  const snap = (v: number) => Math.max(0, Math.round(v * 10 + 1e-9) / 10);
+  return { x_tiles: snap(i.x_tiles + (w - d) / 2), y_tiles: snap(i.y_tiles + (d - w) / 2), w_tiles: d, d_tiles: w, facing: i.facing ? CLOCKWISE[i.facing] ?? i.facing : i.facing };
 }

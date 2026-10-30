@@ -41,13 +41,14 @@ beforeEach(async () => {
 describe("POST /api/surveys/:id/redact", () => {
   it("returns SAM 3.1's boxes for labels and people, drops low-confidence ones, and stores nothing", async () => {
     const id = await seed();
-    const { app, asked } = appWith({ label: box(40, 120, 267, 188, 0.92) + box(0, 0, 5, 5, 0.2), person: box(300, 100, 420, 800, 0.81) });
+    const { app, asked } = appWith({ label: box(40, 120, 267, 188, 0.92) + box(0, 0, 5, 5, 0.2), person: box(300, 100, 420, 800, 0.81), paper: box(10, 10, 90, 120, 0.85) });
     const res = await post(app, `/api/surveys/${id}/redact`, JPEG);
     expect(res.status).toBe(200);
-    expect(asked.sort()).toEqual(["label", "person"]);
+    // "label" alone missed every taped sheet in the sample; "paper" and "sticker" find them (docs/eval/accuracy.md).
+    expect(asked.sort()).toEqual(["label", "paper", "person", "sticker"]);
     expect(await res.json()).toEqual({
       width: 478, height: 850,
-      boxes: [{ x1: 40, y1: 120, x2: 267, y2: 188, concept: "label" }, { x1: 300, y1: 100, x2: 420, y2: 800, concept: "person" }],
+      boxes: [{ x1: 40, y1: 120, x2: 267, y2: 188, concept: "label" }, { x1: 10, y1: 10, x2: 90, y2: 120, concept: "paper" }, { x1: 300, y1: 100, x2: 420, y2: 800, concept: "person" }],
     });
     expect((await env.DB.prepare("SELECT COUNT(*) AS n FROM files").first<{ n: number }>())!.n).toBe(0);
     expect((await env.MEDIA.list()).objects.filter((o) => o.key.includes(id))).toEqual([]);

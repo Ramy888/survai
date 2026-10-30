@@ -1,0 +1,9 @@
+{
+  "_": "The real devices hall, from the builder's sketch (Oct 30), as seen walking in: door mid bottom wall, two rows of three racks toward the far left with fronts to the door, two power panels on the left wall, a ladder over the racks turning down the right side. Tiles of 600 mm.",
+  "racks": [[1, 0.3], [2, 0.3], [3, 0.3], [1, 3.6], [2, 3.6], [3, 3.6]],
+  "target_slot": 1,
+  "rack_facing": "south",
+  "panels": [[0, 6], [0, 7.4]],
+  "ladder_across": [0.8, 2.5],
+  "door_y_from_bottom": 0.2
+}

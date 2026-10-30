@@ -12,7 +12,7 @@ export const RULES: Record<string, { owner: Agent; text: string }> = {
   R7: { owner: "room_manager", text: "Off-limits racks (customer / access-device) are not used; ask when unsure" },
   R8: { owner: "execution", text: "Leave 2U above an installed active device" },
   R9: { owner: "execution", text: "New cables leave from the top of the rack" },
-  R10: { owner: "cooling", text: "Added heat load stays within spare A/C capacity" },
+  R10: { owner: "cooling", text: "Added heat stays within the room's cooling: the spare A/C capacity, or the design heat density for the room's floor area" },
   R11: { owner: "power", text: "Every required feed has a free breaker of the required type and rating" },
   R12: { owner: "transmission", text: "The interconnect ladder has spare capacity" },
 };

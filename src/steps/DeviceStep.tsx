@@ -4,12 +4,13 @@ import { ModelChip } from "../components/Footage";
 import { Shell } from "../components/Shell";
 import { DEPARTMENTS } from "./SurveyStep";
 
-type Fields = Record<"height_u" | "power_w" | "feed_count" | "breaker_rating_a" | "depth_mm" | "weight_kg" | "airflow", string>;
-const empty: Fields = { height_u: "", power_w: "", feed_count: "", breaker_rating_a: "", depth_mm: "", weight_kg: "", airflow: "" };
+type Fields = Record<"height_u" | "power_w" | "feed_count" | "breaker_rating_a" | "depth_mm" | "weight_kg" | "airflow" | "interfaces" | "transceivers" | "connectors", string>;
+const empty: Fields = { height_u: "", power_w: "", feed_count: "", breaker_rating_a: "", depth_mm: "", weight_kg: "", airflow: "", interfaces: "", transceivers: "", connectors: "" };
 const toFields = (s: DeviceSpec): Fields => ({
   height_u: String(s.height_u), power_w: String(s.power_w), feed_count: String(s.feed_count),
   breaker_rating_a: s.breaker_rating_a == null ? "" : String(s.breaker_rating_a), depth_mm: s.depth_mm == null ? "" : String(s.depth_mm),
   weight_kg: s.weight_kg == null ? "" : String(s.weight_kg), airflow: s.airflow ?? "",
+  interfaces: s.interfaces ?? "", transceivers: s.transceivers ?? "", connectors: s.connectors ?? "",
 });
 const num = (v: string) => (v.trim() === "" ? null : Number(v));
 
@@ -49,6 +50,9 @@ export function DeviceSummary({ survey }: { survey: Survey }) {
             {row("Depth (mm)", d.depth_mm)}
             {row("Weight (kg)", d.weight_kg)}
             {row("Airflow", d.airflow)}
+            {row("Interfaces", d.interfaces)}
+            {row("Transceivers", d.transceivers)}
+            {row("Fibre connectors", d.connectors)}
           </dl>
           {d.sources.length > 0 && (
             <div>
@@ -108,7 +112,8 @@ function DeviceForm({ survey, onConfirmed }: { survey: Survey; onConfirmed: () =
         height_u: Number(fields.height_u), power_w: Math.round(Number(fields.power_w)), feed_type: feedType,
         feed_count: Math.round(Number(fields.feed_count)), breaker_rating_a: num(fields.breaker_rating_a),
         depth_mm: num(fields.depth_mm) === null ? null : Math.round(Number(fields.depth_mm)),
-        weight_kg: num(fields.weight_kg), airflow: fields.airflow.trim() || null, sources,
+        weight_kg: num(fields.weight_kg), airflow: fields.airflow.trim() || null,
+        interfaces: fields.interfaces.trim() || null, transceivers: fields.transceivers.trim() || null, connectors: fields.connectors.trim() || null, sources,
       }, passcode);
       savePasscode(passcode);
       onConfirmed();
@@ -122,7 +127,8 @@ function DeviceForm({ survey, onConfirmed }: { survey: Survey; onConfirmed: () =
   const input = (k: keyof Fields, label: string, mode: "decimal" | "numeric" | "text" = "decimal") => (
     <div className="field">
       <label htmlFor={k}>{label}</label>
-      <input id={k} inputMode={mode} className={mode === "text" ? undefined : "mono"} value={fields[k]} onChange={set(k)} disabled={phase === "looking"} />
+      <input id={k} inputMode={mode} className={mode === "text" ? undefined : "mono"} value={fields[k]} onChange={set(k)} disabled={phase === "looking"}
+        placeholder={phase === "found" ? "not in the datasheet" : undefined} />
     </div>
   );
 
@@ -138,7 +144,7 @@ function DeviceForm({ survey, onConfirmed }: { survey: Survey; onConfirmed: () =
           {phase === "looking" && (
             <p className="loading"><span className="spin" aria-hidden="true" />Reading the {survey.device_model} datasheet. This takes about 30 seconds.</p>
           )}
-          {phase === "found" && <p className="found"><ModelChip model="muse-spark-1.3" what="found the datasheet" /> Check the values before confirming.</p>}
+          {phase === "found" && <p className="found"><ModelChip model="muse-spark-1.3" what={`web search · ${sources.length} source${sources.length === 1 ? "" : "s"}`} /> Check the values before confirming.</p>}
           {phase === "manual" && note && <p className="note error">{note}</p>}
           <div className="three">
             {input("height_u", "Height (U)")}
@@ -159,6 +165,11 @@ function DeviceForm({ survey, onConfirmed }: { survey: Survey; onConfirmed: () =
             {input("weight_kg", "Weight (kg)")}
           </div>
           {input("airflow", "Airflow", "text")}
+          {input("interfaces", "Interfaces", "text")}
+          <div className="two">
+            {input("transceivers", "Transceivers", "text")}
+            {input("connectors", "Fibre connectors", "text")}
+          </div>
           {sources.length > 0 && (
             <div>
               <span className="label">Sources</span>

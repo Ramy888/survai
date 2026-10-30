@@ -16,10 +16,13 @@ export const requirePasscode: MiddlewareHandler<AppEnv> = async (c, next) => {
 
   const given = c.req.header("X-Passcode") ?? "";
   // Hashing both sides gives equal lengths, which timingSafeEqual requires.
-  const ok = given !== "" && crypto.subtle.timingSafeEqual(await digest(given), await digest(c.env.DEMO_PASSCODE));
-  if (!ok) {
+  const matches = async (secret: string | undefined) => !!secret && given !== "" && crypto.subtle.timingSafeEqual(await digest(given), await digest(secret));
+  const team = await matches(c.env.DEMO_PASSCODE);
+  const judge = !team && await matches(c.env.JUDGE_PASSCODE);
+  if (!team && !judge) {
     await c.env.DB.prepare("INSERT INTO passcode_failures (ip, at) VALUES (?1, ?2)").bind(ip, new Date().toISOString()).run();
     return c.json({ error: "Wrong passcode." }, 401);
   }
+  c.set("judge", judge);
   await next();
 };

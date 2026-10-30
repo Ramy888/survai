@@ -8,7 +8,7 @@ import type { AppEnv } from "../types";
 export const timeline = new Hono<AppEnv>();
 
 type Evidence = { frame_id?: string; calc_id?: string };
-type Body = { statement: string; rule_refs?: string[]; forced_rules?: string[]; evidence?: Evidence[]; model?: string };
+type Body = { statement: string; rule_refs?: string[]; forced_rules?: string[]; evidence?: Evidence[]; model?: string; fell_back?: boolean; items?: object[] };
 
 timeline.get("/:id/timeline", async (c) => {
   const t = await buildTimeline(c.env.DB, c.req.param("id"));
@@ -50,10 +50,10 @@ export async function buildTimeline(db: D1Database, id: string) {
       findings: findings.results.filter((f) => f.round === round).map((f) => {
         const b = JSON.parse(f.body_json) as Body;
         return {
-          id: f.id, agent: f.agent, verdict: f.verdict, statement: b.statement, model: b.model ?? null, forced_rules: b.forced_rules ?? [],
+          id: f.id, agent: f.agent, verdict: f.verdict, statement: b.statement, model: b.model ?? null, fell_back: b.fell_back === true, forced_rules: b.forced_rules ?? [],
           rules: (b.rule_refs ?? []).map((r) => ({ id: r, text: RULES[r]?.text ?? null })),
           evidence: (b.evidence ?? []).map((e) => (e.frame_id ? { frame: frameNo.get(e.frame_id) ?? null, file_id: e.frame_id } : { calc_id: e.calc_id })),
-          question: question(f.id),
+          question: question(f.id), items: b.items ?? [],
         };
       }),
       lead: lead ? { summary: note.summary, placement: note.placement, conflicts: note.conflicts ?? [], model: lead.model, fell_back: lead.fell_back === 1, outcome: lead.outcome } : null,

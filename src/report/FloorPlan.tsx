@@ -6,8 +6,8 @@ const M = 30; // margin
 const px = (n: number) => M + n * T;
 
 function Rack({ s, labelOnly = false }: { s: Extract<Shape, { type: "rect" }>; labelOnly?: boolean }) {
-  const fill = s.hatched === "reserved" ? "url(#hatch-reserved)" : s.hatched === "off_limits" ? "url(#hatch-off)" : s.target ? "var(--primary-soft)" : "var(--surface)";
-  const stroke = s.target || s.hatched === "reserved" ? "var(--primary)" : "var(--ink)";
+  const fill = s.hatched === "reserved" ? "url(#hatch-reserved)" : s.hatched === "off_limits" ? "url(#hatch-off)" : s.hatched === "spot" ? "none" : s.target ? "var(--primary-soft)" : "var(--surface)";
+  const stroke = s.target || s.hatched === "reserved" || s.hatched === "spot" ? "var(--primary)" : "var(--ink)";
   const cx = px(s.x + s.w / 2);
   const cy = px(s.y + s.d / 2);
   // A small triangle on the side the rack faces (its front).
@@ -20,7 +20,8 @@ function Rack({ s, labelOnly = false }: { s: Extract<Shape, { type: "rect" }>; l
   if (labelOnly) return label;
   return (
     <g>
-      <rect x={px(s.x)} y={px(s.y)} width={s.w * T} height={s.d * T} fill={fill} stroke={stroke} strokeWidth={s.target || s.hatched === "reserved" ? 2.5 : 1.5} />
+      <rect x={px(s.x)} y={px(s.y)} width={s.w * T} height={s.d * T} fill={fill} stroke={stroke} strokeWidth={s.target || s.hatched === "reserved" ? 2.5 : 1.5}
+        strokeDasharray={s.hatched === "spot" ? "6 4" : undefined} />
       {f && <path d="M-4 -3 L4 -3 L0 4 Z" transform={`translate(${f[0]} ${f[1]}) rotate(${f[2]})`} fill="var(--muted)" />}
     </g>
   );
@@ -30,7 +31,7 @@ type Movable = Extract<Shape, { type: "rect" | "door" | "ladder" }>;
 const STEP: Record<string, [number, number]> = { ArrowLeft: [-1, 0], ArrowRight: [1, 0], ArrowUp: [0, -1], ArrowDown: [0, 1] };
 
 /** The plan; with onMove, the engineer's items can be dragged (or moved with the arrow keys) into place. */
-export function FloorPlan({ onMove, ...props }: PlanInput & { onMove?: (id: string, x: number, y: number) => void }) {
+export function FloorPlan({ onMove, onTurn, ...props }: PlanInput & { onMove?: (id: string, x: number, y: number) => void; onTurn?: (id: string) => void }) {
   const plan = buildPlan(props);
   const W = plan.w * T + 2 * M;
   const H = plan.d * T + 2 * M + 30;
@@ -48,12 +49,15 @@ export function FloorPlan({ onMove, ...props }: PlanInput & { onMove?: (id: stri
   const at = (e: PointerEvent) => new DOMPoint(e.clientX, e.clientY).matrixTransform(svg.current!.getScreenCTM()!.inverse());
   const move = (s: Movable, dx: number, dy: number) => { const p = dragTo(s, { dx, dy }, s, plan); onMove!(s.id, p.x, p.y); };
   const handle = (s: Movable) => !onMove || s.fixed ? {} : {
-    className: "movable", tabIndex: 0, role: "button", "aria-label": `Move ${s.label}: drag it, or use the arrow keys`,
+    className: "movable", tabIndex: 0, role: "button", "aria-label": `Move ${s.label}: drag it, or use the arrow keys${onTurn ? "; R turns it" : ""}`,
     onPointerDown: (e: PointerEvent<SVGGElement>) => { const p = at(e); drag.current = { s, x: p.x, y: p.y }; e.currentTarget.setPointerCapture(e.pointerId); },
     onPointerMove: (e: PointerEvent) => { const d = drag.current; if (!d) return; const p = at(e); move(d.s, (p.x - d.x) / T, (p.y - d.y) / T); },
     onPointerUp: () => { drag.current = null; },
     onPointerCancel: () => { drag.current = null; },
-    onKeyDown: (e: KeyboardEvent) => { const k = STEP[e.key]; if (!k) return; e.preventDefault(); const n = e.shiftKey ? 0.1 : 0.5; move(s, k[0] * n, k[1] * n); },
+    onKeyDown: (e: KeyboardEvent) => {
+      if ((e.key === "r" || e.key === "R") && onTurn) { e.preventDefault(); onTurn(s.id); return; }
+      const k = STEP[e.key]; if (!k) return; e.preventDefault(); const n = e.shiftKey ? 0.1 : 0.5; move(s, k[0] * n, k[1] * n);
+    },
   };
   return (
     <figure className="plan-fig">
@@ -124,7 +128,7 @@ export function FloorPlan({ onMove, ...props }: PlanInput & { onMove?: (id: stri
         <g stroke="var(--muted)"><line x1={M} y1={H - 22} x2={M + plan.w * T} y2={H - 22} /><line x1={M} y1={H - 27} x2={M} y2={H - 17} /><line x1={M + plan.w * T} y1={H - 27} x2={M + plan.w * T} y2={H - 17} /></g>
         <text x={W / 2} y={H - 4} textAnchor="middle" fontFamily="JetBrains Mono" fontSize="13" fill="var(--muted)">{(plan.w * 600).toLocaleString("en-US")} mm</text>
       </svg>
-      <figcaption className="legend"><span><i className="lg-cable" />Cable path</span><span><i className="lg-power" />Power</span><span>▨ Off limits</span><span className="lg-reserved">▨ New rack</span><span>▾ Rack front</span><span>1 tile = 600 mm</span></figcaption>
+      <figcaption className="legend"><span><i className="lg-cable" />Cable path</span><span><i className="lg-power" />Power</span><span>▨ Off limits</span><span className="lg-reserved">▨ New rack</span><span className="lg-reserved">⬚ Free spot, 80 × 80 cm</span><span>▾ Rack front</span><span>1 tile = 600 mm</span></figcaption>
     </figure>
   );
 }

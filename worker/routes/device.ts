@@ -16,6 +16,9 @@ const Confirm = z.object({
   breaker_rating_a: z.number().positive().max(400).nullish(),
   airflow: z.string().trim().max(60).nullish(),
   weight_kg: z.number().positive().max(500).nullish(),
+  interfaces: z.string().trim().max(300).nullish(),
+  transceivers: z.string().trim().max(300).nullish(),
+  connectors: z.string().trim().max(200).nullish(),
   sources: z.array(z.object({ url: z.string().url(), title: z.string().nullish() })).max(10).optional(),
 });
 
@@ -53,9 +56,10 @@ device.put("/:id/device", requirePasscode, async (c) => {
     c.env.DB.prepare("UPDATE surveys SET status = ?1 WHERE id = ?2 AND status = ?3").bind(next, id, row.status),
     c.env.DB.prepare(
       `INSERT OR REPLACE INTO device_specs (survey_id, height_u, depth_mm, power_w, feed_type, feed_count,
-         breaker_rating_a, airflow, weight_kg, sources_json, confirmed) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, 1)`,
+         breaker_rating_a, airflow, weight_kg, sources_json, interfaces, transceivers, connectors, confirmed)
+       VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, 1)`,
     ).bind(id, d.height_u, d.depth_mm ?? null, d.power_w, d.feed_type, d.feed_count, d.breaker_rating_a ?? null,
-      d.airflow ?? null, d.weight_kg ?? null, JSON.stringify(d.sources ?? [])),
+      d.airflow ?? null, d.weight_kg ?? null, JSON.stringify(d.sources ?? []), d.interfaces || null, d.transceivers || null, d.connectors || null),
   ]);
   if (!moved.meta.changes) return c.json({ error: "The device was already confirmed", state: row.status }, 409);
   return c.json({ status: next });

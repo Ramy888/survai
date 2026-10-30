@@ -1,9 +1,10 @@
 import { useEffect, useState } from "react";
+import { modelName } from "../components/Footage";
 import { FloorPlan } from "./FloorPlan";
 import type { PlanItem } from "./plan";
 import "./print.css";
-import { reissueLinks, savedPasscode } from "../api";
-import { copyAll, shareAll, SignoffLinks, type IssuedLink } from "../signoff/SignoffLinks";
+import { reissueLinks, reopenSurvey, savedPasscode } from "../api";
+import { LinkActions, SignoffLinks, type IssuedLink } from "../signoff/SignoffLinks";
 
 export type Report = {
   header: Record<string, string | null>;
@@ -15,7 +16,7 @@ export type Report = {
   approved_items: { text: string; agent: string }[];
   specs: { kind: string; text: string; quantity: number | null; unit: string | null; agent: string }[];
   rules: { rule: string; text: string }[];
-  cable_lengths: { path: string; cable_type: string; route: string; length_m: number | null }[];
+  cable_lengths: { path: string; cable_type: string; route: string; length_m: number | null; source?: "calc" | "narration" | "execution" | null }[];
   objections: { agent: string; rules: string[]; override_reason: string | null }[];
   lead: { summary: string; placement: { target: string; reason: string }; model: string; fell_back: boolean; next?: "another_round" | "done" | null } | null;
   meeting?: { run: number; round: number } | null;
@@ -102,6 +103,15 @@ export function ReportPage({ id }: { id: string }) {
         {h.status === "approved" && passcode && <button className="btn btn-secondary" onClick={() => void reissue()}>New sign-off links</button>}
         <button className="btn btn-primary" onClick={() => window.print()}>Print or save as PDF</button>
       </div>
+      {h.status === "approved" && passcode && r.signoffs.some((x) => x.decision === "object") && (
+        <section className="no-print panel reopen" aria-label="A department objected">
+          {r.signoffs.filter((x) => x.decision === "object").map((x) => (
+            <p key={x.agent}><b>{NAME[x.agent] ?? x.agent}</b> objected{x.rep_name ? ` (${x.rep_name})` : ""}{x.comment ? `: ${x.comment}` : "."}</p>
+          ))}
+          <p className="muted small">Reopen the meeting to act on it: a new run starts, and every department reads the sign-offs and comments.</p>
+          <button className="btn btn-primary" onClick={() => reopenSurvey(id, passcode).then(() => { location.href = `/survey/${id}`; }, (e: Error) => setLinkError(e.message))}>Reopen the meeting</button>
+        </section>
+      )}
       {(links || linkError) && (
         <div className="no-print stack" style={{ marginBottom: 16 }}>
           {linkError && <p className="note error" role="alert">{linkError}</p>}
@@ -109,8 +119,7 @@ export function ReportPage({ id }: { id: string }) {
             <>
               <p className="muted">{links.issued.length ? "New links for the departments that have not decided. Their old links no longer work." : "Every department has decided; no new links needed."}
                 {links.decided.length > 0 && ` Already decided: ${links.decided.length}.`}</p>
-              {links.issued.length > 0 && <><SignoffLinks links={links.issued} /><div className="row-btns"><button className="btn btn-secondary" onClick={() => copyAll(links.issued)}>Copy all links</button>
-                <button className="btn btn-secondary" onClick={() => shareAll(links.issued)}>Share all</button></div></>}
+              {links.issued.length > 0 && <><SignoffLinks links={links.issued} /><div className="row-btns"><LinkActions links={links.issued} /></div></>}
             </>
           )}
         </div>
@@ -155,7 +164,7 @@ export function ReportSheet({ r }: { r: Report }) {
       <table className="form">
         <caption>Cable lengths</caption>
         <thead><tr><th>Cable</th><th>Route</th><th>Length</th></tr></thead>
-        <tbody>{r.cable_lengths.length ? r.cable_lengths.map((c) => <tr key={c.path}><td>{c.path}</td><td>{c.route}</td><td className="mono">{c.length_m == null ? "unknown" : `${c.length_m} m`}</td></tr>) : <tr><td colSpan={3} className="muted">No cable path was drawn in this survey.</td></tr>}</tbody>
+        <tbody>{r.cable_lengths.length ? r.cable_lengths.map((c) => <tr key={c.path}><td>{c.path}</td><td>{c.route}</td><td className="mono">{c.length_m == null ? "unknown" : `${c.length_m} m`}{c.source === "narration" ? <span className="muted"> (said in the narration)</span> : c.source === "execution" ? <span className="muted"> (Execution)</span> : null}</td></tr>) : <tr><td colSpan={3} className="muted">No cable path was drawn in this survey.</td></tr>}</tbody>
       </table>
       <section className="plan-section"><h2>Layout</h2><FloorPlan {...r.plan} /></section>
       <table className="form">
@@ -179,7 +188,7 @@ export function ReportSheet({ r }: { r: Report }) {
       {r.lead && (
         <table className="form">
           <caption>Survey Lead</caption>
-          <tbody><tr><td>{r.lead.summary}<span className="muted"> (Muse {r.lead.model.includes("wonder") ? "Wonder" : "Spark 1.3"}{r.lead.fell_back ? ", fallback" : ""})</span>
+          <tbody><tr><td>{r.lead.summary}<span className="muted"> (Meta {modelName(r.lead.model) ?? r.lead.model}{r.lead.fell_back ? ", fallback" : ""})</span>
             {atLimit && <p className="muted" style={{ margin: "6px 0 0" }}>The meeting stopped at its {MAX_ROUNDS}-round limit. {h.status === "approved"
               ? "The engineer approved over the remaining objections; see Objections overridden by the engineer." : "The engineer decides on the remaining objections."}</p>}</td></tr></tbody>
         </table>

@@ -4,7 +4,7 @@
 // Expected values are hand calculations (1 tile = 0.6 m, 1U = 44.45 mm, 1 W = 3.412 BTU/h).
 import { describe, expect, it } from "vitest";
 import {
-  type Breaker, cableLength, clearances, contiguousFree, heatLoad, r3PowerSeparation, r6DoorSwing, r8FreeU, r10Cooling, r11Breakers,
+  type Breaker, cableLength, clearances, contiguousFree, heatLoad, r3PowerSeparation, r6DoorSwing, r8FreeU, r10Cooling, r11Breakers, rackSpots, ROOM_W_PER_M2,
 } from "../worker/calc";
 
 describe("heat load and R10", () => {
@@ -16,6 +16,14 @@ describe("heat load and R10", () => {
     expect(r10Cooling({ power_w: 800, quantity: 1, spare_ac_btu: 4800 })).toMatchObject({ rule: "R10", pass: true, result: { heat_btu: 2729.6 } });
     expect(r10Cooling({ power_w: 800, quantity: 1, spare_ac_btu: 2000 })).toMatchObject({ pass: false, result: { over_btu: 729.6 } });
     expect(r10Cooling({ power_w: 800, quantity: 1, spare_ac_btu: null })).toMatchObject({ pass: null, result: { missing: ["spare_ac_btu"] } });
+  });
+  it("without a spare-capacity figure, checks the added heat against the room's floor area (measured from the frames)", () => {
+    // 10 x 10 tiles of 0.6 m = 36 m2; 800 W over 36 m2 = 22.2 W/m2, far under the design figure
+    expect(r10Cooling({ power_w: 800, quantity: 1, spare_ac_btu: null, room_tiles: { w: 10, d: 10 } }))
+      .toMatchObject({ rule: "R10", pass: true, result: { heat_btu: 2729.6, room_m2: 36, w_per_m2: 22.2, limit_w_per_m2: ROOM_W_PER_M2 } });
+    expect(r10Cooling({ power_w: 9000, quantity: 3, spare_ac_btu: null, room_tiles: { w: 6, d: 6 } })).toMatchObject({ pass: false }); // 27 kW in 13 m2
+    // a measured spare capacity, when the engineer gives one, wins over the estimate
+    expect(r10Cooling({ power_w: 800, quantity: 1, spare_ac_btu: 2000, room_tiles: { w: 10, d: 10 } })).toMatchObject({ pass: false, result: { spare_btu: 2000 } });
   });
 });
 
@@ -137,5 +145,37 @@ describe("cable length leaving the room", () => {
     expect(len(true, null)).toMatchObject({ pass: null, result: { missing: ["inter_room_m"] } });
     expect(len(true, 10).result).toMatchObject({ length_m: 15 }); // (1.8 + 1.2 + 10) x 1.1 = 14.3 -> 15
     expect(len(false, null).result).toMatchObject({ length_m: 4 }); // (1.8 + 1.2) x 1.1 = 3.3 -> 4
+  });
+});
+
+describe("floor space for a new 80 x 80 cm rack", () => {
+  // Hand-checked: a row of two racks facing east at x 0.5; a new rack is 0.8 / 0.6 = 1.33 tiles a side, front flush
+  // with the row (x = 1.5 - 1.33 = 0.17). Above R1 its working area would reach the door's swing; below R2 it is free.
+  const room = { w: 9, d: 12 };
+  const rack = (label: string, x: number, y: number, facing = "east") => ({ label, kind: "rack", x, y, w: 1, d: 1.7, facing });
+  const door = { label: "D1", kind: "door", x: 3, y: 0, w: 1.5, d: 0.2, facing: null };
+  const row = [rack("R1", 0.5, 2), rack("R2", 0.5, 3.7), door];
+
+  it("finds a spot in line with the row, facing the same way, clear of the door's swing", () => {
+    expect(rackSpots({ room, items: row })).toEqual([{ x: 0.17, y: 5.4, w: 1.33, d: 1.33, facing: "east", next_to: "R2" }]);
+  });
+
+  it("keeps 1.2 m clear in front of the new rack and in front of every other rack", () => {
+    expect(rackSpots({ room, items: [...row, { label: "AC1", kind: "ac", x: 2, y: 5.6, w: 1, d: 1, facing: null }] })).toEqual([]);
+    // R3 faces the row across a 1.5-tile gap: the spot below R2 would sit in R3's working area, so only R3's own
+    // neighbour in its row is offered.
+    expect(rackSpots({ room, items: [...row, rack("R3", 3, 5.4, "west")] })).toEqual([{ x: 3, y: 7.1, w: 1.33, d: 1.33, facing: "west", next_to: "R3" }]);
+  });
+
+  it("offers each gap once: two candidates that would overlap are one spot", () => {
+    const gap = [rack("R1", 0.5, 2), rack("R2", 0.5, 5.2), door]; // a 1.5-tile gap between R1 and R2
+    const spots = rackSpots({ room, items: gap });
+    const between = spots.filter((p) => p.y > 3 && p.y < 5.2);
+    expect(between).toHaveLength(1);
+  });
+
+  it("ignores overhead ladders and cable paths, and finds nothing without a rack to line up with", () => {
+    expect(rackSpots({ room, items: [...row, { label: "L1", kind: "ladder", x: 0, y: 5, w: 9, d: 0.5, facing: null }] })).toHaveLength(1);
+    expect(rackSpots({ room, items: [door] })).toEqual([]);
   });
 });

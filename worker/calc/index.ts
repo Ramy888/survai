@@ -24,8 +24,18 @@ const unknown = (rule: string, inputs: Record<string, unknown>, missing: string[
 
 export const heatLoad = (powerW: number, quantity: number) => r1(powerW * BTU_PER_W * quantity);
 
-export function r10Cooling(i: { power_w: number; quantity: number; spare_ac_btu: number | null }): Calc {
-  if (i.spare_ac_btu == null) return unknown("R10", i, ["spare_ac_btu"]);
+// shortcut: an assumed design heat density for a small equipment room, not a measured A/C capacity; set it per operator
+export const ROOM_W_PER_M2 = 500;
+
+/** R10: the added heat against the spare A/C capacity when one is known; otherwise against the room's floor area
+ * (its size in 600 mm tiles, measured from the frames) at an assumed design density. */
+export function r10Cooling(i: { power_w: number; quantity: number; spare_ac_btu: number | null; room_tiles?: { w: number; d: number } | null }): Calc {
+  if (i.spare_ac_btu == null) {
+    if (!i.room_tiles) return unknown("R10", i, ["spare_ac_btu"]);
+    const roomM2 = r1(i.room_tiles.w * i.room_tiles.d * TILE_M * TILE_M);
+    const density = r1((i.power_w * i.quantity) / roomM2);
+    return { rule: "R10", inputs: i, pass: density <= ROOM_W_PER_M2, result: { heat_btu: heatLoad(i.power_w, i.quantity), heat_w: i.power_w * i.quantity, room_m2: roomM2, w_per_m2: density, limit_w_per_m2: ROOM_W_PER_M2 } };
+  }
   const heat = heatLoad(i.power_w, i.quantity);
   const pass = heat <= i.spare_ac_btu;
   return { rule: "R10", inputs: i, pass, result: { heat_btu: heat, spare_btu: i.spare_ac_btu, ...(pass ? {} : { over_btu: r1(heat - i.spare_ac_btu) }) } };
@@ -144,4 +154,63 @@ export function clearances(i: { reserved: Rect; room: { w: number; d: number }; 
     out.push({ to: `door ${i.door.label}`, m: r2(g.tiles * TILE_M), from: g.from, at: g.at });
   }
   return out;
+}
+
+type Zone = { x0: number; x1: number; y0: number; y1: number };
+const zoneOf = (r: Rect): Zone => ({ x0: r.x, x1: r.x + r.w, y0: r.y, y1: r.y + r.d });
+const hits = (a: Zone, b: Zone) => a.x0 < b.x1 - 1e-6 && b.x0 < a.x1 - 1e-6 && a.y0 < b.y1 - 1e-6 && b.y0 < a.y1 - 1e-6;
+const FRONT_CLEAR_TILES = 2; // 1.2 m in front of a rack stays free to work and to pass
+const SWING_TILES = 0.9 / TILE_M;
+
+/** The space in front of a rack, where people work and pass. */
+function frontZone(z: Zone, facing: string | null | undefined): Zone {
+  switch (facing ?? "east") {
+    case "west": return { ...z, x0: z.x0 - FRONT_CLEAR_TILES, x1: z.x0 };
+    case "north": return { ...z, y0: z.y0 - FRONT_CLEAR_TILES, y1: z.y0 };
+    case "south": return { ...z, y0: z.y1, y1: z.y1 + FRONT_CLEAR_TILES };
+    default: return { ...z, x0: z.x1, x1: z.x1 + FRONT_CLEAR_TILES };
+  }
+}
+
+/** A door and the floor it swings over, into the room from the wall it sits on. */
+function doorZone(d: Rect, room: { w: number; d: number }): Zone {
+  const z = zoneOf(d);
+  if (z.y0 <= 0.5) return { ...z, y1: z.y1 + SWING_TILES };
+  if (z.y1 >= room.d - 0.5) return { ...z, y0: z.y0 - SWING_TILES };
+  if (z.x0 <= 0.5) return { ...z, x1: z.x1 + SWING_TILES };
+  if (z.x1 >= room.w - 0.5) return { ...z, x0: z.x0 - SWING_TILES };
+  return { x0: z.x0 - SWING_TILES, x1: z.x1 + SWING_TILES, y0: z.y0 - SWING_TILES, y1: z.y1 + SWING_TILES };
+}
+
+/**
+ * Where a new rack (80 x 80 cm by default) fits: beside an existing rack in its row, front flush and facing the same
+ * way (R4, R5), not on anything on the floor, not in a door's swing, with 1.2 m clear in front of it, and outside the
+ * working space in front of every other rack, so no aisle is blocked. Overhead ladders and cable paths don't count.
+ */
+export function rackSpots(i: { room: { w: number; d: number }; items: (Rect & { kind: string; facing?: string | null })[]; size_m?: number; max?: number }) {
+  const s = (i.size_m ?? 0.8) / TILE_M;
+  const floor = i.items.filter((it) => !["ladder", "cable_path"].includes(it.kind));
+  const racks = floor.filter((it) => it.kind === "rack" || it.kind === "reserved");
+  const blocked = [
+    ...floor.filter((it) => it.kind !== "door").map(zoneOf),
+    ...floor.filter((it) => it.kind === "door").map((d) => doorZone(d, i.room)),
+    ...racks.map((r) => frontZone(zoneOf(r), r.facing)),
+  ];
+  const inRoom = (z: Zone) => z.x0 >= -1e-6 && z.y0 >= -1e-6 && z.x1 <= i.room.w + 1e-6 && z.y1 <= i.room.d + 1e-6;
+  const out: { x: number; y: number; w: number; d: number; facing: string; next_to: string }[] = [];
+  for (const r of racks) {
+    const f = r.facing ?? "east";
+    // Front flush with the rack, one rack-width along the row on either side.
+    const along = f === "east" || f === "west"
+      ? [r.y - s, r.y + r.d].map((y) => ({ x: f === "east" ? r.x + r.w - s : r.x, y }))
+      : [r.x - s, r.x + r.w].map((x) => ({ x, y: f === "south" ? r.y + r.d - s : r.y }));
+    for (const p of along) {
+      const z = { x0: p.x, x1: p.x + s, y0: p.y, y1: p.y + s };
+      const front = frontZone(z, f);
+      if (!inRoom(z) || !inRoom(front) || blocked.some((b) => hits(z, b) || hits(front, b))) continue;
+      if (out.some((o) => hits(z, { x0: o.x, x1: o.x + o.w, y0: o.y, y1: o.y + o.d }))) continue; // one spot per gap
+      out.push({ x: r2(p.x), y: r2(p.y), w: r2(s), d: r2(s), facing: f, next_to: r.label });
+    }
+  }
+  return out.slice(0, i.max ?? 3);
 }

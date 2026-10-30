@@ -5,7 +5,12 @@
 // Type-checked with the app (browser) config, not the Worker one.
 import { describe, expect, it } from "vitest";
 import { coverage, padBox, scaleBoxes } from "../src/footage/blur";
+import { peaks } from "../src/footage/narration";
 import { pickSharpest, sharpness } from "../src/footage/pick";
+import { createElement } from "react";
+import { renderToStaticMarkup } from "react-dom/server.edge";
+import { FrameStrip } from "../src/components/Footage";
+import { footageNote } from "../src/replay/Replay";
 
 describe("pickSharpest (same rule as tools/prepare)", () => {
   it("spreads 30 picks across the whole clip, sorted and at least 1 s apart", () => {
@@ -63,5 +68,36 @@ describe("blur boxes (same padding and coverage as tools/prepare)", () => {
 
   it("rescales SAM's boxes from the size it saw to the frame's size", () => {
     expect(scaleBoxes([{ x1: 10, y1: 20, x2: 30, y2: 40 }], 100, 200, 300, 600)).toEqual([{ x1: 30, y1: 60, x2: 90, y2: 120 }]);
+  });
+});
+
+describe("the replay's note on how the frames were made", () => {
+  const f = { frames: 30, narration: true, photos: 4 };
+  it("says labels were blurred only when they were", () => {
+    expect(footageNote({ ...f, source: "prepared", blurred: true }).text).toBe("Faces, labels and logos were blurred before upload.");
+    const logos = footageNote({ ...f, source: "prepared", blurred: false });
+    expect(logos.label).toBe("Filmed, logos blurred on the engineer's computer");
+    expect(logos.text).toBe("Only faces and equipment logos were blurred before upload; the room is shown as filmed.");
+  });
+});
+
+describe("the live frame strip", () => {
+  it("outlines what SAM 3.1 found on each frame and counts it, so the blurring is visible as it happens", () => {
+    const box = { x1: 10, y1: 20, x2: 60, y2: 40 };
+    const html = renderToStaticMarkup(createElement(FrameStrip, { items: [
+      { key: "a", src: "blob:a", n: 1, found: { w: 478, h: 850, boxes: [box, box] } },
+      { key: "b", src: "blob:b", n: 2, found: { w: 478, h: 850, boxes: [] } },
+    ] }));
+    expect(html.match(/<rect /g)).toHaveLength(2);
+    expect(html).toContain('viewBox="0 0 478 850"');
+    expect(html).toContain("1 · 2");
+    expect(html).not.toContain("2 · 0");
+  });
+});
+
+describe("narration waveform", () => {
+  it("keeps the loudest sample of each bucket, so a short loud word still shows", () => {
+    expect(peaks(new Float32Array([0, 0.1, -0.9, 0.2, 0, 0, 0.3, -0.4]), 4)).toEqual([0.1, 0.9, 0, 0.4].map((v) => Math.fround(v)));
+    expect(peaks(new Float32Array(3), 10)).toHaveLength(3); // fewer samples than bars: one bar per sample
   });
 });

@@ -1,0 +1,109 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>SurvAI architecture</title>
+<!-- The demo video's closing card (record.mjs): who does what, where Meta's models sit, and what code decides.
+     Body class "loop-on" is the second reveal: the meeting loop and its rules box light up. -->
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600&family=Barlow:wght@400;500;600&family=JetBrains+Mono:wght@500&display=swap" rel="stylesheet">
+<style>
+  :root{--ground:#EEF1F1;--surface:#FFFFFF;--ink:#14191C;--muted:#56636B;--rule:#D9E0E2;--primary:#0B6770;--soft:#E2F0F1;--cable:#12A9B4;--rules:#9A5B00;--rules-bg:#FCEFD8}
+  *{box-sizing:border-box}
+  body{margin:0;height:100vh;background:var(--ground);color:var(--ink);font:400 15px/1.3 Barlow,sans-serif;display:flex;flex-direction:column;padding:26px 40px 18px;gap:10px}
+  h1{margin:0;font:600 38px/1 'Barlow Condensed',sans-serif}
+  h1 span{color:var(--primary)}
+  .lanes{flex:1;display:grid;grid-template-rows:1fr 1fr 1.2fr .9fr;gap:12px;position:relative}
+  .lane{display:grid;grid-template-columns:150px 1fr;background:var(--surface);border:1px solid var(--rule);border-radius:12px;overflow:visible}
+  .lane>h2{margin:0;padding:12px 14px;font:600 19px/1.1 'Barlow Condensed',sans-serif;border-right:1px solid var(--rule);display:flex;flex-direction:column;justify-content:center;gap:4px}
+  .lane>h2 small{font:400 13px/1.25 Barlow,sans-serif;color:var(--muted)}
+  .row{display:grid;grid-template-columns:repeat(6,1fr);align-items:center;gap:34px;padding:10px 18px}
+  .box{border:1.5px solid var(--primary);border-radius:9px;padding:7px 11px;background:var(--surface);font-weight:500;min-width:0}
+  .box small{display:block;font-weight:400;color:var(--muted);font-size:13px}
+  .meta{border-color:#0866FF;background:#EEF4FF}
+  .meta b{font-family:'JetBrains Mono',monospace;font-size:14px;color:#0848B0}
+  .loop{border:2px solid var(--rules);background:var(--rules-bg);border-radius:12px;padding:16px 12px 10px;margin:0 -12px;display:grid;grid-template-columns:repeat(3,1fr);gap:58px;align-items:center;position:relative;transition:opacity .6s,box-shadow .6s}
+  .loop .tag{position:absolute;top:-11px;left:12px;background:var(--rules);color:#fff;font:600 13px/1 Barlow,sans-serif;padding:4px 8px;border-radius:999px}
+  .loop .box{border-color:var(--rules)}
+  .rule-note{font-size:12.5px;color:#5a3a00;max-width:300px}
+  body:not(.loop-on) .loop,body:not(.loop-on) .lit{opacity:.28}
+  body.loop-on .loop{box-shadow:0 0 0 6px rgba(154,91,0,.12)}
+  .lit{transition:opacity .6s}
+  svg.arrows{position:absolute;inset:0;width:100%;height:100%;pointer-events:none;overflow:visible}
+  svg.arrows path{fill:none;stroke:var(--primary);stroke-width:2}
+  svg.arrows path.back{stroke:var(--rules);stroke-dasharray:6 5}
+  svg.arrows path.model{stroke:#0866FF;stroke-width:1.5;stroke-dasharray:3 4}
+  .foot{display:flex;justify-content:space-between;align-items:baseline;gap:24px}
+  .caption{font:500 19px/1.3 Barlow,sans-serif}
+  .link{font:500 17px/1 'JetBrains Mono',monospace;color:var(--primary);white-space:nowrap}
+</style>
+</head>
+<body>
+<h1>How Surv<span>AI</span> works</h1>
+<div class="lanes" id="lanes">
+  <section class="lane"><h2>Engineer<small>on site, phone or laptop</small></h2>
+    <div class="row">
+      <div class="box" id="video" style="grid-column:1">One walk-through video<small>narrated in Arabic</small></div>
+      <div class="box" id="blur" style="grid-column:2">30 sharpest frames<small>blurred in the browser</small></div>
+      <div class="box lit" id="engineer" style="grid-column:4">Fixes the plan, answers<small>approves; an override needs a reason</small></div>
+    </div>
+  </section>
+  <section class="lane"><h2>Meta models<small>the eyes and the reasoning</small></h2>
+    <div class="row">
+      <div class="box meta" id="sam" style="grid-column:2"><b>SAM 3.1</b><small>what to blur; racks, tiles, devices</small></div>
+      <div class="box meta" id="spark" style="grid-column:3"><b>Muse Spark 1.3</b><small>narration → request; panel; datasheet</small></div>
+      <div class="box meta lit" id="open" style="grid-column:5"><b>Muse Spark Open</b><small>open weights: room draft, every agent</small></div>
+      <div class="box meta lit" id="wonder" style="grid-column:6"><b>Muse Wonder 1.0</b><small>the Survey Lead</small></div>
+    </div>
+  </section>
+  <section class="lane"><h2>SurvAI<small>Cloudflare Workers + Workflows</small></h2>
+    <div class="row">
+      <div class="box" id="process" style="grid-column:3">Process the footage<small>~1 min; the video is read once, then deleted</small></div>
+      <div class="loop" id="loop" style="grid-column:4/7"><span class="tag">Code decides, models speak · up to 3 rounds · placement: rules → cooler → cheaper</span>
+        <div class="box" id="calc">Calculations in code<small>5 of 12 rules; a fail forces the objection</small></div>
+        <div class="box" id="agents">Department agents<small>one per chosen department, in parallel</small></div>
+        <div class="box" id="lead">Survey Lead<small>resolves, places the device, routes cables</small></div>
+      </div>
+    </div>
+  </section>
+  <section class="lane"><h2>Departments<small>at their desks</small></h2>
+    <div class="row">
+      <div class="box lit" id="report" style="grid-column:6">Report + a sign-off link each<small>an objection reopens the meeting</small></div>
+    </div>
+  </section>
+  <svg class="arrows" id="arrows"></svg>
+</div>
+<div class="foot">
+  <div class="caption">Code decides five rules and forces the objections; Meta's models write the statements and place the device; the engineer and the departments sign.</div>
+  <div class="link">survai.ramy-comm.workers.dev/sample</div>
+</div>
+<script>
+  // Arrows from box edges, measured after layout: [from, to, style]. Styles: "" data flow, "back" loops back, "model" a Meta model at work.
+  const LINKS = [
+    ["video", "blur", ""], ["blur", "process", ""], ["process", "calc", ""], ["calc", "agents", ""], ["agents", "lead", ""],
+    ["lead", "report", ""], ["calc", "engineer", "back"], ["report", "process", "back"],
+    ["sam", "blur", "model"], ["spark", "process", "model"], ["open", "agents", "model"], ["wonder", "lead", "model"],
+  ];
+  function draw() {
+    const root = document.getElementById("lanes").getBoundingClientRect(), svg = document.getElementById("arrows");
+    const r = (id) => { const q = document.getElementById(id).getBoundingClientRect(); return { l: q.left - root.left, r: q.right - root.left, t: q.top - root.top, b: q.bottom - root.top, cx: (q.left + q.right) / 2 - root.left, cy: (q.top + q.bottom) / 2 - root.top }; };
+    let out = `<defs>${["primary", "rules", "meta"].map((k) => `<marker id="h-${k}" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" fill="${{ primary: "#0B6770", rules: "#9A5B00", meta: "#0866FF" }[k]}" stroke="none"/></marker>`).join("")}</defs>`;
+    for (const [from, to, style] of LINKS) {
+      const a = r(from), b = r(to);
+      let d;
+      if (Math.abs(a.cy - b.cy) < 30) d = a.cx < b.cx ? `M${a.r} ${a.cy}H${b.l}` : `M${a.l} ${a.cy}H${b.r}`; // same row
+      else if (from === "report") d = `M${a.l} ${a.cy}H${b.cx}V${b.b}`; // a sign-off feeds the next run
+      else if (from === "calc" && to === "engineer") d = `M${a.cx} ${a.t}V${b.b}`; // questions up, answers down
+      else if (from === "blur") d = `M${a.l + 14} ${a.b}V${a.b + 12}H${a.l - 17}V${b.cy}H${b.l}`; // frames down the gap beside SAM, into processing
+      else { const down = a.cy < b.cy, y1 = down ? a.b : a.t, y2 = down ? b.t : b.b, x1 = a.cx, x2 = b.cx; d = `M${x1} ${y1}C${x1} ${(y1 + y2) / 2} ${x2} ${(y1 + y2) / 2} ${x2} ${y2}`; }
+      const k = style === "back" ? "rules" : style === "model" ? "meta" : "primary";
+      const lit = ["calc", "agents", "lead", "report", "open", "wonder"].includes(from) ? " lit" : "";
+      out += `<path class="${style}${lit}" d="${d}" marker-end="url(#h-${k})"${from === "calc" && to === "engineer" ? ` marker-start="url(#h-${k})"` : ""}/>`;
+    }
+    svg.innerHTML = out;
+  }
+  document.fonts.ready.then(draw);
+  addEventListener("resize", draw);
+</script>
+</body>
+</html>

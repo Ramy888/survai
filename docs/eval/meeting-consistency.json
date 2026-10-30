@@ -1,0 +1,105 @@
+{
+ "survey": "local test room",
+ "runs": [
+  {
+   "seconds": 36,
+   "placement": "rack:R3",
+   "verdicts": {
+    "cooling": "approve",
+    "execution": "object",
+    "power": "approve",
+    "room_manager": "object",
+    "space": "approve"
+   },
+   "forced": {
+    "cooling": [],
+    "execution": [
+     "R8"
+    ],
+    "power": [],
+    "room_manager": [],
+    "space": []
+   }
+  },
+  {
+   "seconds": 72,
+   "placement": "rack:R3",
+   "verdicts": {
+    "cooling": "approve",
+    "execution": "object",
+    "power": "approve",
+    "room_manager": "object",
+    "space": "object"
+   },
+   "forced": {
+    "cooling": [],
+    "execution": [
+     "R8"
+    ],
+    "power": [],
+    "room_manager": [],
+    "space": []
+   }
+  },
+  {
+   "seconds": 28,
+   "placement": "rack:R3",
+   "verdicts": {
+    "cooling": "approve",
+    "execution": "object",
+    "power": "approve",
+    "room_manager": "object",
+    "space": "approve"
+   },
+   "forced": {
+    "cooling": [],
+    "execution": [
+     "R8"
+    ],
+    "power": [],
+    "room_manager": [],
+    "space": []
+   }
+  },
+  {
+   "seconds": 44,
+   "placement": "rack:R3",
+   "verdicts": {
+    "cooling": "approve",
+    "execution": "object",
+    "power": "approve",
+    "room_manager": "object",
+    "space": "object"
+   },
+   "forced": {
+    "cooling": [],
+    "execution": [
+     "R8"
+    ],
+    "power": [],
+    "room_manager": [],
+    "space": []
+   }
+  },
+  {
+   "seconds": 52,
+   "placement": "rack:R3",
+   "verdicts": {
+    "cooling": "approve",
+    "execution": "object",
+    "power": "approve",
+    "room_manager": "object",
+    "space": "approve"
+   },
+   "forced": {
+    "cooling": [],
+    "execution": [
+     "R8"
+    ],
+    "power": [],
+    "room_manager": [],
+    "space": []
+   }
+  }
+ ]
+}
